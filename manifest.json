@@ -1,0 +1,11 @@
+{
+  "name": "Casino Run",
+  "short_name": "Casino Run",
+  "description": "A fast casino survival game where you race against the clock.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#021920",
+  "theme_color": "#073b4c",
+  "orientation": "portrait",
+  "icons": []
+}
