@@ -4,6 +4,9 @@ let timeLeft = 120;
 let currentRound = 1;
 let moneyPopupActive = false;
 let allInAnimationActive = false;
+let popupQueueActive = false;
+let popupQueue = Promise.resolve();
+let goalPopupQueued = false;
 
 let goalPopupOpen = false;
 let runEnded = false;
@@ -481,153 +484,183 @@ function animateBalanceChange(type) {
   }, 750);
 }
 
+
+function queuePopupStep(stepFunction, duration = 1000) {
+  popupQueueActive = true;
+
+  popupQueue = popupQueue.then(() => {
+    return new Promise((resolve) => {
+      stepFunction();
+
+      setTimeout(() => {
+        resolve();
+      }, duration);
+    });
+  });
+
+  popupQueue.finally(() => {
+    popupQueueActive = false;
+  });
+
+  return popupQueue;
+}
+
+function clearPopupQueue() {
+  popupQueue = Promise.resolve();
+  popupQueueActive = false;
+  goalPopupQueued = false;
+}
+
 function showMoneyGainPopup(amount, bonusLines = []) {
   if (!moneyPopupLayer || amount <= 0) return;
 
   moneyPopupActive = true;
 
-  moneyPopupLayer.classList.remove("hidden");
-  moneyPopupLayer.innerHTML = "";
+  queuePopupStep(() => {
+    moneyPopupLayer.classList.remove("hidden");
+    moneyPopupLayer.innerHTML = "";
 
-  const card = document.createElement("div");
-  card.classList.add("money-popup-card");
+    const card = document.createElement("div");
+    card.classList.add("money-popup-card");
 
-  const mainNumber = document.createElement("div");
-  mainNumber.classList.add("money-popup-main");
-  mainNumber.textContent = "+$0.00";
+    const mainNumber = document.createElement("div");
+    mainNumber.classList.add("money-popup-main");
+    mainNumber.textContent = "+$0.00";
 
-  const linesWrapper = document.createElement("div");
-  linesWrapper.classList.add("money-popup-lines");
+    const linesWrapper = document.createElement("div");
+    linesWrapper.classList.add("money-popup-lines");
 
-  bonusLines.forEach((line) => {
-    const lineElement = document.createElement("div");
-    lineElement.classList.add("money-popup-line");
+    bonusLines.forEach((line) => {
+      const lineElement = document.createElement("div");
+      lineElement.classList.add("money-popup-line");
 
-    if (line.type === "base") {
-      lineElement.classList.add("base-win");
-    }
-
-    if (line.type === "bonus") {
-      lineElement.classList.add("item-bonus");
-    }
-
-    lineElement.textContent = line.text;
-    linesWrapper.appendChild(lineElement);
-  });
-
-  card.appendChild(mainNumber);
-
-  if (bonusLines.length > 0) {
-    card.appendChild(linesWrapper);
-  }
-
-  moneyPopupLayer.appendChild(card);
-
-  card.animate(
-    [
-      {
-        transform: "scale(0.65)",
-        opacity: 0
-      },
-      {
-        transform: "scale(1.12)",
-        opacity: 1
-      },
-      {
-        transform: "scale(1)",
-        opacity: 1
+      if (line.type === "base") {
+        lineElement.classList.add("base-win");
       }
-    ],
-    {
-      duration: 650,
-      easing: "cubic-bezier(0.16, 0.9, 0.22, 1)",
-      fill: "forwards"
+
+      if (line.type === "bonus") {
+        lineElement.classList.add("item-bonus");
+      }
+
+      lineElement.textContent = line.text;
+      linesWrapper.appendChild(lineElement);
+    });
+
+    card.appendChild(mainNumber);
+
+    if (bonusLines.length > 0) {
+      card.appendChild(linesWrapper);
     }
-  );
 
-  let countStartTime = null;
-  const countDuration = 2500;
-
-  function countUpMoney(timestamp) {
-    if (!countStartTime) {
-      countStartTime = timestamp;
-    }
-
-    const elapsed = timestamp - countStartTime;
-    const progress = Math.min(elapsed / countDuration, 1);
-
-    const easedProgress = 1 - Math.pow(1 - progress, 4);
-    const currentAmount = amount * easedProgress;
-
-    mainNumber.textContent = `+$${currentAmount.toFixed(2)}`;
-
-    if (progress < 1) {
-      requestAnimationFrame(countUpMoney);
-    } else {
-      mainNumber.textContent = `+$${amount.toFixed(2)}`;
-    }
-  }
-
-  requestAnimationFrame(countUpMoney);
-
-  setTimeout(() => {
-    card.classList.add("money-popup-readable-pulse");
-  }, 2600);
-
-  setTimeout(() => {
-    card.classList.remove("money-popup-readable-pulse");
-
-    const balanceBox = balanceText.getBoundingClientRect();
-    const cardBox = card.getBoundingClientRect();
-
-    const cardCenterX = cardBox.left + cardBox.width / 2;
-    const cardCenterY = cardBox.top + cardBox.height / 2;
-
-    const targetX = balanceBox.left + balanceBox.width / 2;
-    const targetY = balanceBox.top + balanceBox.height / 2;
-
-    const moveX = targetX - cardCenterX;
-    const moveY = targetY - cardCenterY;
+    moneyPopupLayer.appendChild(card);
 
     card.animate(
       [
         {
-          transform: "scale(1)",
+          transform: "scale(0.65)",
+          opacity: 0
+        },
+        {
+          transform: "scale(1.12)",
           opacity: 1
         },
         {
-          transform: "scale(1.08)",
-          opacity: 1,
-          offset: 0.25
-        },
-        {
-          transform: `translate(${moveX}px, ${moveY}px) scale(0.16)`,
-          opacity: 0
+          transform: "scale(1)",
+          opacity: 1
         }
       ],
       {
-        duration: 1500,
+        duration: 650,
         easing: "cubic-bezier(0.16, 0.9, 0.22, 1)",
         fill: "forwards"
       }
     );
-  }, 4500);
 
-  setTimeout(() => {
-    moneyPopupLayer.classList.add("hidden");
-    moneyPopupLayer.innerHTML = "";
+    let countStartTime = null;
+    const countDuration = 2500;
 
-    balanceText.classList.remove("balance-gain");
-    void balanceText.offsetWidth;
-    balanceText.classList.add("balance-gain");
+    function countUpMoney(timestamp) {
+      if (!countStartTime) {
+        countStartTime = timestamp;
+      }
+
+      const elapsed = timestamp - countStartTime;
+      const progress = Math.min(elapsed / countDuration, 1);
+
+      const easedProgress = 1 - Math.pow(1 - progress, 4);
+      const currentAmount = amount * easedProgress;
+
+      mainNumber.textContent = `+$${currentAmount.toFixed(2)}`;
+
+      if (progress < 1) {
+        requestAnimationFrame(countUpMoney);
+      } else {
+        mainNumber.textContent = `+$${amount.toFixed(2)}`;
+      }
+    }
+
+    requestAnimationFrame(countUpMoney);
 
     setTimeout(() => {
-      balanceText.classList.remove("balance-gain");
-    }, 750);
+      card.classList.add("money-popup-readable-pulse");
+    }, 2600);
 
-    moneyPopupActive = false;
-  }, 6100);
+    setTimeout(() => {
+      card.classList.remove("money-popup-readable-pulse");
+
+      const balanceBox = balanceText.getBoundingClientRect();
+      const cardBox = card.getBoundingClientRect();
+
+      const cardCenterX = cardBox.left + cardBox.width / 2;
+      const cardCenterY = cardBox.top + cardBox.height / 2;
+
+      const targetX = balanceBox.left + balanceBox.width / 2;
+      const targetY = balanceBox.top + balanceBox.height / 2;
+
+      const moveX = targetX - cardCenterX;
+      const moveY = targetY - cardCenterY;
+
+      card.animate(
+        [
+          {
+            transform: "scale(1)",
+            opacity: 1
+          },
+          {
+            transform: "scale(1.08)",
+            opacity: 1,
+            offset: 0.25
+          },
+          {
+            transform: `translate(${moveX}px, ${moveY}px) scale(0.16)`,
+            opacity: 0
+          }
+        ],
+        {
+          duration: 1500,
+          easing: "cubic-bezier(0.16, 0.9, 0.22, 1)",
+          fill: "forwards"
+        }
+      );
+    }, 4500);
+
+    setTimeout(() => {
+      moneyPopupLayer.classList.add("hidden");
+      moneyPopupLayer.innerHTML = "";
+
+      balanceText.classList.remove("balance-gain");
+      void balanceText.offsetWidth;
+      balanceText.classList.add("balance-gain");
+
+      setTimeout(() => {
+        balanceText.classList.remove("balance-gain");
+      }, 750);
+
+      moneyPopupActive = false;
+    }, 6100);
+  }, 6250);
 }
+
 
 
 function isAllInBet(bet) {
@@ -638,59 +671,62 @@ function isAllInBet(bet) {
 function showAllInAnimation(gameName, bet) {
   allInAnimationActive = true;
 
-  let allInLayer = document.getElementById("all-in-layer");
+  queuePopupStep(() => {
+    let allInLayer = document.getElementById("all-in-layer");
 
-  if (!allInLayer) {
-    allInLayer = document.createElement("div");
-    allInLayer.id = "all-in-layer";
-    allInLayer.className = "all-in-layer hidden";
-    document.body.appendChild(allInLayer);
-  }
+    if (!allInLayer) {
+      allInLayer = document.createElement("div");
+      allInLayer.id = "all-in-layer";
+      allInLayer.className = "all-in-layer hidden";
+      document.body.appendChild(allInLayer);
+    }
 
-  allInLayer.classList.remove("hidden");
-  allInLayer.innerHTML = "";
-
-  const card = document.createElement("div");
-  card.classList.add("all-in-card");
-
-  const title = document.createElement("div");
-  title.classList.add("all-in-title");
-  title.textContent = "ALL IN!";
-
-  const subtitle = document.createElement("div");
-  subtitle.classList.add("all-in-subtitle");
-  subtitle.textContent = `${gameName} • $${Number(bet).toFixed(2)}`;
-
-  const sparkles = document.createElement("div");
-  sparkles.classList.add("all-in-sparkles");
-  sparkles.textContent = "✦ ✦ ✦ ✦ ✦";
-
-  card.appendChild(sparkles);
-  card.appendChild(title);
-  card.appendChild(subtitle);
-  allInLayer.appendChild(card);
-
-  document.body.classList.remove("all-in-screen-shake");
-  void document.body.offsetWidth;
-  document.body.classList.add("all-in-screen-shake");
-
-  playTone(220, 0.08, "square", 0.09);
-
-  setTimeout(() => {
-    playTone(440, 0.08, "square", 0.09);
-  }, 110);
-
-  setTimeout(() => {
-    playTone(880, 0.16, "triangle", 0.1);
-  }, 240);
-
-  setTimeout(() => {
-    allInLayer.classList.add("hidden");
+    allInLayer.classList.remove("hidden");
     allInLayer.innerHTML = "";
+
+    const card = document.createElement("div");
+    card.classList.add("all-in-card");
+
+    const title = document.createElement("div");
+    title.classList.add("all-in-title");
+    title.textContent = "ALL IN!";
+
+    const subtitle = document.createElement("div");
+    subtitle.classList.add("all-in-subtitle");
+    subtitle.textContent = `${gameName} • $${Number(bet).toFixed(2)}`;
+
+    const sparkles = document.createElement("div");
+    sparkles.classList.add("all-in-sparkles");
+    sparkles.textContent = "✦ ✦ ✦ ✦ ✦";
+
+    card.appendChild(sparkles);
+    card.appendChild(title);
+    card.appendChild(subtitle);
+    allInLayer.appendChild(card);
+
     document.body.classList.remove("all-in-screen-shake");
-    allInAnimationActive = false;
-  }, 1700);
+    void document.body.offsetWidth;
+    document.body.classList.add("all-in-screen-shake");
+
+    playTone(220, 0.08, "square", 0.09);
+
+    setTimeout(() => {
+      playTone(440, 0.08, "square", 0.09);
+    }, 110);
+
+    setTimeout(() => {
+      playTone(880, 0.16, "triangle", 0.1);
+    }, 240);
+
+    setTimeout(() => {
+      allInLayer.classList.add("hidden");
+      allInLayer.innerHTML = "";
+      document.body.classList.remove("all-in-screen-shake");
+      allInAnimationActive = false;
+    }, 1700);
+  }, 1850);
 }
+
 
 function maybeShowAllInAnimation(gameName, bet) {
   if (isAllInBet(bet)) {
@@ -1055,64 +1091,67 @@ function showItemBreakAnimation(itemId) {
 
   if (!item) return;
 
-  let breakLayer = document.getElementById("item-break-layer");
+  queuePopupStep(() => {
+    let breakLayer = document.getElementById("item-break-layer");
 
-  if (!breakLayer) {
-    breakLayer = document.createElement("div");
-    breakLayer.id = "item-break-layer";
-    breakLayer.className = "item-break-layer";
-    document.body.appendChild(breakLayer);
-  }
-
-  breakLayer.classList.remove("hidden");
-
-  const card = document.createElement("div");
-  card.classList.add("item-break-card");
-
-  const icon = document.createElement("div");
-  icon.classList.add("item-break-icon");
-  icon.textContent = item.icon;
-
-  const crack = document.createElement("div");
-  crack.classList.add("item-break-crack");
-  crack.textContent = "⚡";
-
-  const label = document.createElement("div");
-  label.classList.add("item-break-label");
-  label.textContent = `${item.name} broke!`;
-
-  const shardA = document.createElement("span");
-  shardA.classList.add("item-shard", "shard-a");
-
-  const shardB = document.createElement("span");
-  shardB.classList.add("item-shard", "shard-b");
-
-  const shardC = document.createElement("span");
-  shardC.classList.add("item-shard", "shard-c");
-
-  card.appendChild(shardA);
-  card.appendChild(shardB);
-  card.appendChild(shardC);
-  card.appendChild(icon);
-  card.appendChild(crack);
-  card.appendChild(label);
-
-  breakLayer.appendChild(card);
-
-  playTone(190, 0.09, "square", 0.08);
-
-  setTimeout(() => {
-    playTone(95, 0.14, "sawtooth", 0.07);
-  }, 110);
-
-  setTimeout(() => {
-    card.remove();
-
-    if (breakLayer.children.length === 0) {
-      breakLayer.classList.add("hidden");
+    if (!breakLayer) {
+      breakLayer = document.createElement("div");
+      breakLayer.id = "item-break-layer";
+      breakLayer.className = "item-break-layer";
+      document.body.appendChild(breakLayer);
     }
-  }, 1150);
+
+    breakLayer.classList.remove("hidden");
+
+    const card = document.createElement("div");
+    card.classList.add("item-break-card");
+
+    const icon = document.createElement("div");
+    icon.classList.add("item-break-icon");
+    icon.textContent = item.icon;
+
+    const crack = document.createElement("div");
+    crack.classList.add("item-break-crack");
+    crack.textContent = "⚡";
+
+    const label = document.createElement("div");
+    label.classList.add("item-break-label");
+    label.textContent = `${item.name} broke!`;
+
+    const shardA = document.createElement("span");
+    shardA.classList.add("item-shard", "shard-a");
+
+    const shardB = document.createElement("span");
+    shardB.classList.add("item-shard", "shard-b");
+
+    const shardC = document.createElement("span");
+    shardC.classList.add("item-shard", "shard-c");
+
+    card.appendChild(shardA);
+    card.appendChild(shardB);
+    card.appendChild(shardC);
+    card.appendChild(icon);
+    card.appendChild(crack);
+    card.appendChild(label);
+
+    breakLayer.appendChild(card);
+
+    playTone(190, 0.09, "square", 0.08);
+
+    setTimeout(() => {
+      playTone(95, 0.14, "sawtooth", 0.07);
+    }, 110);
+
+    setTimeout(() => {
+      card.remove();
+
+      if (breakLayer.children.length === 0) {
+        breakLayer.classList.add("hidden");
+      }
+    }, 1150);
+  }, 1300);
 }
+
 
 function removeItemFromInventory(itemId, showBreakAnimation = false) {
   const index = inventory.indexOf(itemId);
@@ -1750,17 +1789,28 @@ function typeMessage(text) {
 }
 
 function showGoalPopup() {
-  if (goalPopupOpen || runEnded) return;
+  if (goalPopupOpen || goalPopupQueued || runEnded) return;
 
-  goalPopupOpen = true;
-  goalPopup.classList.remove("hidden");
+  goalPopupQueued = true;
 
-  playCashSound();
+  queuePopupStep(() => {
+    if (runEnded) {
+      goalPopupQueued = false;
+      return;
+    }
 
-  typeMessage(
-    "AWESOME! You made it! But do you have the guts to keep going?"
-  );
+    goalPopupQueued = false;
+    goalPopupOpen = true;
+    goalPopup.classList.remove("hidden");
+
+    playCashSound();
+
+    typeMessage(
+      "AWESOME! You made it! But do you have the guts to keep going?"
+    );
+  }, 900);
 }
+
 
 function continueRun() {
   goalPopupOpen = false;
@@ -3757,7 +3807,7 @@ horseStartBtn.addEventListener("click", startHorseRace);
 /* ========================= */
 
 function checkGameState() {
-  if (runEnded || goalPopupOpen || coinFlipOpen) return;
+  if (runEnded || goalPopupOpen || goalPopupQueued || coinFlipOpen) return;
 
   if (activePlinkoBalls > 0) {
     return;
@@ -3790,7 +3840,7 @@ function checkGameState() {
 /* ========================= */
 
 setInterval(() => {
-  if (!gameStarted || runEnded || goalPopupOpen || coinFlipOpen || moneyPopupActive || allInAnimationActive) return;
+  if (!gameStarted || runEnded || goalPopupOpen || coinFlipOpen || moneyPopupActive || allInAnimationActive || popupQueueActive) return;
 
   if (timeLeft > 0) {
     timeLeft--;
