@@ -448,8 +448,30 @@ function showMoneyGainPopup(amount, bonusLines = []) {
 
   moneyPopupLayer.appendChild(card);
 
+  card.animate(
+    [
+      {
+        transform: "scale(0.65)",
+        opacity: 0
+      },
+      {
+        transform: "scale(1.12)",
+        opacity: 1
+      },
+      {
+        transform: "scale(1)",
+        opacity: 1
+      }
+    ],
+    {
+      duration: 650,
+      easing: "cubic-bezier(0.16, 0.9, 0.22, 1)",
+      fill: "forwards"
+    }
+  );
+
   let countStartTime = null;
-  const countDuration = 1200;
+  const countDuration = 2500;
 
   function countUpMoney(timestamp) {
     if (!countStartTime) {
@@ -459,7 +481,7 @@ function showMoneyGainPopup(amount, bonusLines = []) {
     const elapsed = timestamp - countStartTime;
     const progress = Math.min(elapsed / countDuration, 1);
 
-    const easedProgress = 1 - Math.pow(1 - progress, 3);
+    const easedProgress = 1 - Math.pow(1 - progress, 4);
     const currentAmount = amount * easedProgress;
 
     mainNumber.textContent = `+$${currentAmount.toFixed(2)}`;
@@ -474,6 +496,12 @@ function showMoneyGainPopup(amount, bonusLines = []) {
   requestAnimationFrame(countUpMoney);
 
   setTimeout(() => {
+    card.classList.add("money-popup-readable-pulse");
+  }, 2600);
+
+  setTimeout(() => {
+    card.classList.remove("money-popup-readable-pulse");
+
     const balanceBox = balanceText.getBoundingClientRect();
     const cardBox = card.getBoundingClientRect();
 
@@ -493,17 +521,22 @@ function showMoneyGainPopup(amount, bonusLines = []) {
           opacity: 1
         },
         {
-          transform: `translate(${moveX}px, ${moveY}px) scale(0.12)`,
+          transform: "scale(1.08)",
+          opacity: 1,
+          offset: 0.25
+        },
+        {
+          transform: `translate(${moveX}px, ${moveY}px) scale(0.16)`,
           opacity: 0
         }
       ],
       {
-        duration: 1200,
+        duration: 1500,
         easing: "cubic-bezier(0.16, 0.9, 0.22, 1)",
         fill: "forwards"
       }
     );
-  }, 1900);
+  }, 4500);
 
   setTimeout(() => {
     moneyPopupLayer.classList.add("hidden");
@@ -518,7 +551,7 @@ function showMoneyGainPopup(amount, bonusLines = []) {
     }, 750);
 
     moneyPopupActive = false;
-  }, 3200);
+  }, 6100);
 }
 
 function changeBalance(amount, bonusLines = []) {
