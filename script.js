@@ -3,6 +3,7 @@ let goal = 300;
 let timeLeft = 120;
 let currentRound = 1;
 let moneyPopupActive = false;
+let allInAnimationActive = false;
 
 let goalPopupOpen = false;
 let runEnded = false;
@@ -628,6 +629,78 @@ function showMoneyGainPopup(amount, bonusLines = []) {
   }, 6100);
 }
 
+
+function isAllInBet(bet) {
+  const maxWholeBalance = Math.max(1, Math.floor(balance));
+  return balance >= 1 && Number(bet) >= maxWholeBalance;
+}
+
+function showAllInAnimation(gameName, bet) {
+  allInAnimationActive = true;
+
+  let allInLayer = document.getElementById("all-in-layer");
+
+  if (!allInLayer) {
+    allInLayer = document.createElement("div");
+    allInLayer.id = "all-in-layer";
+    allInLayer.className = "all-in-layer hidden";
+    document.body.appendChild(allInLayer);
+  }
+
+  allInLayer.classList.remove("hidden");
+  allInLayer.innerHTML = "";
+
+  const card = document.createElement("div");
+  card.classList.add("all-in-card");
+
+  const title = document.createElement("div");
+  title.classList.add("all-in-title");
+  title.textContent = "ALL IN!";
+
+  const subtitle = document.createElement("div");
+  subtitle.classList.add("all-in-subtitle");
+  subtitle.textContent = `${gameName} • $${Number(bet).toFixed(2)}`;
+
+  const sparkles = document.createElement("div");
+  sparkles.classList.add("all-in-sparkles");
+  sparkles.textContent = "✦ ✦ ✦ ✦ ✦";
+
+  card.appendChild(sparkles);
+  card.appendChild(title);
+  card.appendChild(subtitle);
+  allInLayer.appendChild(card);
+
+  document.body.classList.remove("all-in-screen-shake");
+  void document.body.offsetWidth;
+  document.body.classList.add("all-in-screen-shake");
+
+  playTone(220, 0.08, "square", 0.09);
+
+  setTimeout(() => {
+    playTone(440, 0.08, "square", 0.09);
+  }, 110);
+
+  setTimeout(() => {
+    playTone(880, 0.16, "triangle", 0.1);
+  }, 240);
+
+  setTimeout(() => {
+    allInLayer.classList.add("hidden");
+    allInLayer.innerHTML = "";
+    document.body.classList.remove("all-in-screen-shake");
+    allInAnimationActive = false;
+  }, 1700);
+}
+
+function maybeShowAllInAnimation(gameName, bet) {
+  if (isAllInBet(bet)) {
+    showAllInAnimation(gameName, bet);
+    return true;
+  }
+
+  return false;
+}
+
 function changeBalance(amount, bonusLines = []) {
   balance += amount;
 
@@ -676,6 +749,7 @@ function shakeWinBoard() {
 
 playBtn.addEventListener("click", () => {
   resetRunTracking();
+  goal = Math.max(50, Math.ceil(balance * 3));
 
   gameStarted = true;
   runEnded = false;
@@ -1522,6 +1596,7 @@ function resetRunToTitleScreen() {
   timeLeft = 120;
   currentRound = 1;
   moneyPopupActive = false;
+  allInAnimationActive = false;
 
   goalPopupOpen = false;
   runEnded = false;
@@ -1599,6 +1674,15 @@ function resetRunToTitleScreen() {
     moneyPopupLayer.classList.add("hidden");
     moneyPopupLayer.innerHTML = "";
   }
+
+  const allInLayer = document.getElementById("all-in-layer");
+
+  if (allInLayer) {
+    allInLayer.classList.add("hidden");
+    allInLayer.innerHTML = "";
+  }
+
+  document.body.classList.remove("all-in-screen-shake");
 
   coin.classList.remove("flipping", "win", "lose");
   flipCoinBtn.disabled = false;
@@ -1683,7 +1767,7 @@ function continueRun() {
   goalPopup.classList.add("hidden");
 
   currentRound++;
-  goal = Math.ceil(goal * 1.75);
+  goal = Math.max(50, Math.ceil(balance * 3));
   timeLeft = 120;
 
   goalPopupMessage.textContent = "";
@@ -2135,6 +2219,7 @@ plinkoBtn.addEventListener("click", () => {
     return;
   }
 
+  maybeShowAllInAnimation("Plinko", bet);
   changeBalance(-bet);
   trackGamePlayed("Plinko");
 
@@ -2471,6 +2556,7 @@ spinBtn.addEventListener("click", () => {
   }
 
   if (!isFreeVinylSpin) {
+    maybeShowAllInAnimation("Roulette", bet);
     changeBalance(-bet);
   } else {
     showToast(`EJM’s Record Vinyl used! Free max bet spin: $${bet}`);
@@ -2714,6 +2800,7 @@ startCrashBtn.addEventListener("click", () => {
     return;
   }
 
+  maybeShowAllInAnimation("Crash", bet);
   changeBalance(-bet);
   trackGamePlayed("Crash");
 
@@ -3048,6 +3135,7 @@ function startBlackjackRound() {
 
   blackjackMessage.textContent = "Dealing cards...";
 
+  maybeShowAllInAnimation("Blackjack", bet);
   changeBalance(-bet);
   trackGamePlayed("Blackjack");
   updateBlackjackButtonState();
@@ -3303,6 +3391,7 @@ function startFrogRoadRound() {
   frogMessage.textContent = "Step forward. Cash out before the elephant gets swept away!";
   frogMultiplierText.textContent = "Multiplier: 1.00x";
 
+  maybeShowAllInAnimation("Elephant River", bet);
   changeBalance(-bet);
   trackGamePlayed("Elephant River");
 
@@ -3556,6 +3645,7 @@ function startHorseRace() {
 
   horseMessage.textContent = "And they are off!";
 
+  maybeShowAllInAnimation("Horse Race", bet);
   changeBalance(-bet);
   trackGamePlayed("Horse Race");
 
@@ -3700,7 +3790,7 @@ function checkGameState() {
 /* ========================= */
 
 setInterval(() => {
-  if (!gameStarted || runEnded || goalPopupOpen || coinFlipOpen || moneyPopupActive) return;
+  if (!gameStarted || runEnded || goalPopupOpen || coinFlipOpen || moneyPopupActive || allInAnimationActive) return;
 
   if (timeLeft > 0) {
     timeLeft--;
