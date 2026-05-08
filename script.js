@@ -2,360 +2,3509 @@ let balance = 100;
 let goal = 300;
 let timeLeft = 120;
 let currentRound = 1;
-let gameStarted = false;
-let runEnded = false;
+let moneyPopupActive = false;
+
 let goalPopupOpen = false;
+let runEnded = false;
+let gameStarted = false;
+
 let leaderboard = [];
+
 let highestBalance = 100;
 let balanceHistory = [100];
+
 let coinFlipUses = 0;
 let coinFlipOpen = false;
+let coinFlipAnimating = false;
 const maxCoinFlips = 3;
 
-const $ = (id) => document.getElementById(id);
-const titleScreen = $("title-screen");
-const gameWrapper = $("game-wrapper");
-const playBtn = $("play-btn");
-const balanceText = $("balance");
-const goalText = $("goal");
-const timerText = $("timer");
-const dangerFlash = $("danger-flash");
-const toastMessage = $("toast-message");
-let moneyPopupLayer = $("money-popup-layer");
+const toastMessage = document.getElementById("toast-message");
+let moneyPopupLayer = document.getElementById("money-popup-layer");
+let toastTimeout = null;
+
 if (!moneyPopupLayer) {
   moneyPopupLayer = document.createElement("div");
   moneyPopupLayer.id = "money-popup-layer";
   moneyPopupLayer.className = "money-popup-layer hidden";
   document.body.appendChild(moneyPopupLayer);
 }
-let toastTimeout = null;
 
 function showToast(message) {
+  if (!toastMessage) return;
+
   toastMessage.textContent = message;
   toastMessage.classList.remove("hidden");
+
   clearTimeout(toastTimeout);
-  toastTimeout = setTimeout(() => toastMessage.classList.add("hidden"), 2200);
+
+  toastTimeout = setTimeout(() => {
+    toastMessage.classList.add("hidden");
+  }, 2200);
 }
+
+/* ========================= */
+/* SOUND SYSTEM */
+/* ========================= */
 
 let audioContext = null;
+
+let rouletteTickInterval = null;
+let rouletteSpinOscillator = null;
+let rouletteSpinGain = null;
+
+let crashRocketOscillator = null;
+let crashRocketGain = null;
+
+let lowMoneySirenInterval = null;
+let lowMoneySirenOn = false;
+
+let horseGallopInterval = null;
+
 function getAudioContext() {
-  if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  if (!audioContext) {
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  }
+
   return audioContext;
 }
-function playTone(frequency, duration, type = "sine", volume = 0.08) {
-  try {
-    const ctx = getAudioContext();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = type;
-    osc.frequency.value = frequency;
-    gain.gain.setValueAtTime(volume, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.start();
-    osc.stop(ctx.currentTime + duration);
-  } catch (e) {}
-}
-const playButtonClickSound = () => playTone(560, 0.04, "square", 0.05);
-const playCashSound = () => { playTone(720,.08); setTimeout(()=>playTone(980,.09),80); setTimeout(()=>playTone(1240,.12),170); };
-const playLoseSound = () => { playTone(240,.12,"sawtooth",.07); setTimeout(()=>playTone(150,.18,"sawtooth",.06),110); };
-const playPegHitSound = () => playTone(650 + Math.random() * 350, 0.045, "triangle", 0.06);
-const playGameOverSound = () => { playTone(220,.14,"sawtooth",.09); setTimeout(()=>playTone(90,.35,"sawtooth",.08),250); };
 
-document.addEventListener("pointerdown", (e) => { if (e.target.tagName === "BUTTON") playButtonClickSound(); });
+function playTone(frequency, duration, type = "sine", volume = 0.12) {
+  const ctx = getAudioContext();
+
+  const oscillator = ctx.createOscillator();
+  const gain = ctx.createGain();
+
+  oscillator.type = type;
+  oscillator.frequency.value = frequency;
+
+  gain.gain.setValueAtTime(volume, ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+
+  oscillator.connect(gain);
+  gain.connect(ctx.destination);
+
+  oscillator.start();
+  oscillator.stop(ctx.currentTime + duration);
+}
+
+function playButtonClickSound() {
+  playTone(520, 0.04, "square", 0.06);
+
+  setTimeout(() => {
+    playTone(720, 0.035, "square", 0.045);
+  }, 35);
+}
+
+function playPegHitSound() {
+  const pitch = 650 + Math.random() * 350;
+  playTone(pitch, 0.055, "triangle", 0.08);
+}
+
+function playCardDealSound() {
+  playTone(420 + Math.random() * 120, 0.05, "triangle", 0.06);
+}
+
+function playHopSound() {
+  playTone(520, 0.07, "triangle", 0.08);
+
+  setTimeout(() => {
+    playTone(760, 0.06, "triangle", 0.06);
+  }, 65);
+}
+
+function playCarWhooshSound() {
+  playTone(160, 0.08, "sawtooth", 0.035);
+
+  setTimeout(() => {
+    playTone(110, 0.1, "sawtooth", 0.025);
+  }, 55);
+}
+
+function playFrogHitSound() {
+  playTone(120, 0.18, "sawtooth", 0.1);
+
+  setTimeout(() => {
+    playTone(70, 0.24, "sawtooth", 0.08);
+  }, 120);
+}
+
+function playHorseStartSound() {
+  playTone(480, 0.08, "square", 0.08);
+
+  setTimeout(() => {
+    playTone(720, 0.08, "square", 0.07);
+  }, 90);
+
+  setTimeout(() => {
+    playTone(960, 0.12, "square", 0.07);
+  }, 190);
+}
+
+function startHorseGallopSound() {
+  stopHorseGallopSound();
+
+  horseGallopInterval = setInterval(() => {
+    playTone(150 + Math.random() * 40, 0.035, "square", 0.035);
+
+    setTimeout(() => {
+      playTone(120 + Math.random() * 30, 0.035, "square", 0.03);
+    }, 70);
+  }, 170);
+}
+
+function stopHorseGallopSound() {
+  if (horseGallopInterval) {
+    clearInterval(horseGallopInterval);
+    horseGallopInterval = null;
+  }
+}
+
+function playFinishSound() {
+  playTone(880, 0.08, "triangle", 0.08);
+
+  setTimeout(() => {
+    playTone(1180, 0.11, "triangle", 0.08);
+  }, 100);
+}
+
+function playCashSound() {
+  playTone(700, 0.08, "sine", 0.08);
+
+  setTimeout(() => {
+    playTone(950, 0.09, "sine", 0.09);
+  }, 80);
+
+  setTimeout(() => {
+    playTone(1250, 0.12, "sine", 0.08);
+  }, 170);
+}
+
+function playLoseSound() {
+  playTone(260, 0.12, "sawtooth", 0.08);
+
+  setTimeout(() => {
+    playTone(180, 0.18, "sawtooth", 0.07);
+  }, 110);
+}
+
+function playGameOverSound() {
+  playTone(220, 0.14, "sawtooth", 0.1);
+
+  setTimeout(() => {
+    playTone(150, 0.18, "sawtooth", 0.09);
+  }, 140);
+
+  setTimeout(() => {
+    playTone(90, 0.35, "sawtooth", 0.08);
+  }, 300);
+}
+
+function startLowMoneySiren() {
+  if (lowMoneySirenOn) return;
+
+  lowMoneySirenOn = true;
+
+  let highTone = false;
+
+  lowMoneySirenInterval = setInterval(() => {
+    if (!lowMoneySirenOn) return;
+
+    const frequency = highTone ? 620 : 430;
+
+    playTone(frequency, 0.22, "sine", 0.025);
+
+    highTone = !highTone;
+  }, 520);
+}
+
+function stopLowMoneySiren() {
+  lowMoneySirenOn = false;
+
+  if (lowMoneySirenInterval) {
+    clearInterval(lowMoneySirenInterval);
+    lowMoneySirenInterval = null;
+  }
+}
+
+function startRouletteSpinSound() {
+  const ctx = getAudioContext();
+
+  stopRouletteSpinSound();
+
+  rouletteSpinOscillator = ctx.createOscillator();
+  rouletteSpinGain = ctx.createGain();
+
+  rouletteSpinOscillator.type = "sawtooth";
+  rouletteSpinOscillator.frequency.setValueAtTime(140, ctx.currentTime);
+  rouletteSpinOscillator.frequency.exponentialRampToValueAtTime(
+    70,
+    ctx.currentTime + 4
+  );
+
+  rouletteSpinGain.gain.setValueAtTime(0.055, ctx.currentTime);
+  rouletteSpinGain.gain.exponentialRampToValueAtTime(
+    0.001,
+    ctx.currentTime + 4
+  );
+
+  rouletteSpinOscillator.connect(rouletteSpinGain);
+  rouletteSpinGain.connect(ctx.destination);
+
+  rouletteSpinOscillator.start();
+
+  let tickSpeed = 55;
+
+  rouletteTickInterval = setInterval(() => {
+    playTone(900 + Math.random() * 200, 0.025, "square", 0.035);
+
+    tickSpeed += 7;
+
+    clearInterval(rouletteTickInterval);
+
+    rouletteTickInterval = setInterval(() => {
+      playTone(900 + Math.random() * 200, 0.025, "square", 0.035);
+    }, tickSpeed);
+  }, tickSpeed);
+}
+
+function stopRouletteSpinSound() {
+  if (rouletteTickInterval) {
+    clearInterval(rouletteTickInterval);
+    rouletteTickInterval = null;
+  }
+
+  if (rouletteSpinOscillator) {
+    try {
+      rouletteSpinOscillator.stop();
+    } catch (error) {
+      // Already stopped
+    }
+
+    rouletteSpinOscillator = null;
+  }
+
+  rouletteSpinGain = null;
+}
+
+function startCrashRocketSound() {
+  const ctx = getAudioContext();
+
+  stopCrashRocketSound();
+
+  crashRocketOscillator = ctx.createOscillator();
+  crashRocketGain = ctx.createGain();
+
+  crashRocketOscillator.type = "sawtooth";
+  crashRocketOscillator.frequency.setValueAtTime(90, ctx.currentTime);
+
+  crashRocketGain.gain.setValueAtTime(0.035, ctx.currentTime);
+
+  crashRocketOscillator.connect(crashRocketGain);
+  crashRocketGain.connect(ctx.destination);
+
+  crashRocketOscillator.start();
+}
+
+function updateCrashRocketSound(multiplier) {
+  if (!crashRocketOscillator || !crashRocketGain || !audioContext) return;
+
+  const pitch = Math.min(90 + multiplier * 55, 520);
+  const volume = Math.min(0.035 + multiplier * 0.008, 0.12);
+
+  crashRocketOscillator.frequency.setTargetAtTime(
+    pitch,
+    audioContext.currentTime,
+    0.08
+  );
+
+  crashRocketGain.gain.setTargetAtTime(
+    volume,
+    audioContext.currentTime,
+    0.08
+  );
+}
+
+function stopCrashRocketSound() {
+  if (crashRocketGain && audioContext) {
+    crashRocketGain.gain.setTargetAtTime(0.001, audioContext.currentTime, 0.05);
+  }
+
+  if (crashRocketOscillator) {
+    setTimeout(() => {
+      try {
+        crashRocketOscillator.stop();
+      } catch (error) {
+        // Already stopped
+      }
+
+      crashRocketOscillator = null;
+      crashRocketGain = null;
+    }, 120);
+  }
+}
+
+document.addEventListener("pointerdown", (event) => {
+  if (event.target.tagName === "BUTTON") {
+    playButtonClickSound();
+  }
+});
+
+/* ========================= */
+/* BASIC UI */
+/* ========================= */
+
+const titleScreen = document.getElementById("title-screen");
+const gameWrapper = document.getElementById("game-wrapper");
+const playBtn = document.getElementById("play-btn");
+const dangerFlash = document.getElementById("danger-flash");
+
+const balanceText = document.getElementById("balance");
+const goalText = document.getElementById("goal");
+const timerText = document.getElementById("timer");
+
+function updateUI() {
+  balanceText.textContent = `Balance: $${balance.toFixed(2)}`;
+  goalText.textContent = `Goal: $${goal}`;
+  timerText.textContent = `Time: ${timeLeft}`;
+
+  updateBetSliders();
+  updateDangerFlash();
+}
+
+function updateDangerFlash() {
+  if (balance <= 10 && balance > 0 && !runEnded && gameStarted && !coinFlipOpen) {
+    dangerFlash.classList.remove("hidden");
+    startLowMoneySiren();
+  } else {
+    dangerFlash.classList.add("hidden");
+    stopLowMoneySiren();
+  }
+}
 
 function recordBalancePoint() {
   highestBalance = Math.max(highestBalance, balance);
   balanceHistory.push(Math.max(0, balance));
 }
+
 function animateBalanceChange(type) {
-  balanceText.classList.remove("balance-gain", "balance-loss");
+  balanceText.classList.remove("balance-gain");
+  balanceText.classList.remove("balance-loss");
+
   void balanceText.offsetWidth;
-  balanceText.classList.add(type === "gain" ? "balance-gain" : "balance-loss");
-  setTimeout(() => balanceText.classList.remove("balance-gain", "balance-loss"), 750);
+
+  if (type === "gain") {
+    balanceText.classList.add("balance-gain");
+  }
+
+  if (type === "loss") {
+    balanceText.classList.add("balance-loss");
+  }
+
+  setTimeout(() => {
+    balanceText.classList.remove("balance-gain");
+    balanceText.classList.remove("balance-loss");
+  }, 750);
 }
-function showMoneyGainPopup(amount, lines = []) {
-  if (amount <= 0) return;
+
+function showMoneyGainPopup(amount, bonusLines = []) {
+  if (!moneyPopupLayer || amount <= 0) return;
+
+  moneyPopupActive = true;
+
   moneyPopupLayer.classList.remove("hidden");
   moneyPopupLayer.innerHTML = "";
+
   const card = document.createElement("div");
-  card.className = "money-popup-card";
-  card.innerHTML = `<div class="money-popup-main">+$${amount.toFixed(2)}</div>`;
-  if (lines.length) {
-    const wrap = document.createElement("div");
-    wrap.className = "money-popup-lines";
-    lines.forEach((line) => {
-      const el = document.createElement("div");
-      el.className = `money-popup-line ${line.type === "base" ? "base-win" : "item-bonus"}`;
-      el.textContent = line.text;
-      wrap.appendChild(el);
-    });
-    card.appendChild(wrap);
+  card.classList.add("money-popup-card");
+
+  const mainNumber = document.createElement("div");
+  mainNumber.classList.add("money-popup-main");
+  mainNumber.textContent = "+$0.00";
+
+  const linesWrapper = document.createElement("div");
+  linesWrapper.classList.add("money-popup-lines");
+
+  bonusLines.forEach((line) => {
+    const lineElement = document.createElement("div");
+    lineElement.classList.add("money-popup-line");
+
+    if (line.type === "base") {
+      lineElement.classList.add("base-win");
+    }
+
+    if (line.type === "bonus") {
+      lineElement.classList.add("item-bonus");
+    }
+
+    lineElement.textContent = line.text;
+    linesWrapper.appendChild(lineElement);
+  });
+
+  card.appendChild(mainNumber);
+
+  if (bonusLines.length > 0) {
+    card.appendChild(linesWrapper);
   }
+
   moneyPopupLayer.appendChild(card);
-  const bal = balanceText.getBoundingClientRect();
-  const cardBox = card.getBoundingClientRect();
-  const moveX = bal.left + bal.width / 2 - (cardBox.left + cardBox.width / 2);
-  const moveY = bal.top + bal.height / 2 - (cardBox.top + cardBox.height / 2);
-  card.animate([
-    { transform: "scale(1.45)", opacity: 0 },
-    { transform: "scale(1.08)", opacity: 1, offset: 0.18 },
-    { transform: "scale(1)", opacity: 1, offset: 0.55 },
-    { transform: `translate(${moveX}px, ${moveY}px) scale(0.12)`, opacity: 0 }
-  ], { duration: 1350, easing: "cubic-bezier(0.16, 0.9, 0.22, 1)", fill: "forwards" });
+
+  let countStartTime = null;
+  const countDuration = 1200;
+
+  function countUpMoney(timestamp) {
+    if (!countStartTime) {
+      countStartTime = timestamp;
+    }
+
+    const elapsed = timestamp - countStartTime;
+    const progress = Math.min(elapsed / countDuration, 1);
+
+    const easedProgress = 1 - Math.pow(1 - progress, 3);
+    const currentAmount = amount * easedProgress;
+
+    mainNumber.textContent = `+$${currentAmount.toFixed(2)}`;
+
+    if (progress < 1) {
+      requestAnimationFrame(countUpMoney);
+    } else {
+      mainNumber.textContent = `+$${amount.toFixed(2)}`;
+    }
+  }
+
+  requestAnimationFrame(countUpMoney);
+
+  setTimeout(() => {
+    const balanceBox = balanceText.getBoundingClientRect();
+    const cardBox = card.getBoundingClientRect();
+
+    const cardCenterX = cardBox.left + cardBox.width / 2;
+    const cardCenterY = cardBox.top + cardBox.height / 2;
+
+    const targetX = balanceBox.left + balanceBox.width / 2;
+    const targetY = balanceBox.top + balanceBox.height / 2;
+
+    const moveX = targetX - cardCenterX;
+    const moveY = targetY - cardCenterY;
+
+    card.animate(
+      [
+        {
+          transform: "scale(1)",
+          opacity: 1
+        },
+        {
+          transform: `translate(${moveX}px, ${moveY}px) scale(0.12)`,
+          opacity: 0
+        }
+      ],
+      {
+        duration: 1200,
+        easing: "cubic-bezier(0.16, 0.9, 0.22, 1)",
+        fill: "forwards"
+      }
+    );
+  }, 1900);
+
   setTimeout(() => {
     moneyPopupLayer.classList.add("hidden");
     moneyPopupLayer.innerHTML = "";
-    animateBalanceChange("gain");
-  }, 1380);
+
+    balanceText.classList.remove("balance-gain");
+    void balanceText.offsetWidth;
+    balanceText.classList.add("balance-gain");
+
+    setTimeout(() => {
+      balanceText.classList.remove("balance-gain");
+    }, 750);
+
+    moneyPopupActive = false;
+  }, 3200);
 }
-function changeBalance(amount, lines = []) {
+
+function changeBalance(amount, bonusLines = []) {
   balance += amount;
-  if (balance < 0) balance = 0;
+
+  if (balance < 0) {
+    balance = 0;
+  }
+
   recordBalancePoint();
-  if (amount > 0) { showMoneyGainPopup(amount, lines); playCashSound(); }
-  if (amount < 0) { animateBalanceChange("loss"); playLoseSound(); }
+
+  if (amount > 0) {
+    showMoneyGainPopup(amount, bonusLines);
+    playCashSound();
+  }
+
+  if (amount < 0) {
+    animateBalanceChange("loss");
+    playLoseSound();
+  }
+
   updateUI();
 }
-function updateUI() {
-  balanceText.textContent = `Balance: $${balance.toFixed(2)}`;
-  goalText.textContent = `Goal: $${goal}`;
-  timerText.textContent = `Time: ${timeLeft}`;
-  updateBetSliders();
-  dangerFlash.classList.toggle("hidden", !(balance <= 10 && balance > 0 && gameStarted && !runEnded && !coinFlipOpen));
-}
+
 function shakeWinBoard() {
-  const active = document.querySelector(".active-screen");
-  if (!active) return;
-  const target = active.querySelector("#board,#wheel-container,.crash-card,#blackjack-board,#frog-board,#horse-board,.shop-card") || active;
+  const activeScreen = document.querySelector(".active-screen");
+
+  if (!activeScreen) return;
+
+  const target =
+    activeScreen.querySelector("#board") ||
+    activeScreen.querySelector("#wheel-container") ||
+    activeScreen.querySelector(".crash-card") ||
+    activeScreen.querySelector("#blackjack-board") ||
+    activeScreen.querySelector("#frog-board") ||
+    activeScreen.querySelector("#horse-board") ||
+    activeScreen.querySelector(".shop-card") ||
+    activeScreen;
+
   target.classList.remove("win-shake");
   void target.offsetWidth;
   target.classList.add("win-shake");
-  setTimeout(() => target.classList.remove("win-shake"), 500);
+
+  setTimeout(() => {
+    target.classList.remove("win-shake");
+  }, 500);
 }
 
-const sliders = [
-  ["plinko"], ["roulette"], ["crash"], ["blackjack"], ["frog"], ["horse"]
-].map(([name]) => ({
-  slider: $(`${name}-bet-slider`), display: $(`${name}-bet-display`), maxDisplay: $(`${name}-max-display`)
-}));
-function updateBetSliders() {
-  const max = Math.max(1, Math.floor(balance));
-  sliders.forEach(({slider, display, maxDisplay}) => {
-    slider.max = max;
-    if (+slider.value > max) slider.value = max;
-    display.textContent = `$${(+slider.value).toFixed(0)}`;
-    maxDisplay.textContent = `Max: $${max}`;
+playBtn.addEventListener("click", () => {
+  gameStarted = true;
+  runEnded = false;
+
+  titleScreen.classList.add("hidden");
+  gameWrapper.classList.remove("hidden");
+
+  generateShopRotation();
+  renderShop();
+  renderInventory();
+
+  updateUI();
+
+  updateBlackjackButtonState();
+  updateFrogButtons();
+  updateHorseButtons();
+
+  requestAnimationFrame(() => {
+    createPegs();
+
+    requestAnimationFrame(() => {
+      createPegs();
+    });
   });
-}
-function resetBetSliderToOne(slider) { slider.value = 1; updateBetSliders(); }
-sliders.forEach((item) => item.slider.addEventListener("input", () => updateBetSliders()));
+});
 
-const navButtons = document.querySelectorAll(".nav-btn");
-const screens = document.querySelectorAll(".screen");
-navButtons.forEach((button) => button.addEventListener("click", () => {
-  navButtons.forEach((b) => b.classList.remove("active"));
-  screens.forEach((s) => s.classList.remove("active-screen"));
-  button.classList.add("active");
-  $(button.dataset.screen).classList.add("active-screen");
-  if (button.dataset.screen === "plinko-screen") requestAnimationFrame(createPegs);
-}));
+/* ========================= */
+/* SHOP SYSTEM */
+/* ========================= */
 
-/* SHOP */
-const shopItemsContainer = $("shop-items");
-const inventoryIcons = $("inventory-icons");
-const activeItemTimers = $("active-item-timers");
-const itemPopup = $("item-popup");
-let selectedInventoryItemId = null;
-let inventory = [];
+const shopItemsContainer = document.getElementById("shop-items");
+const inventoryIcons = document.getElementById("inventory-icons");
+const activeItemTimers = document.getElementById("active-item-timers");
+
+const itemPopup = document.getElementById("item-popup");
+const itemPopupIcon = document.getElementById("item-popup-icon");
+const itemPopupName = document.getElementById("item-popup-name");
+const itemPopupType = document.getElementById("item-popup-type");
+const itemPopupDescription = document.getElementById("item-popup-description");
+const useItemBtn = document.getElementById("use-item-btn");
+const closeItemPopupBtn = document.getElementById("close-item-popup-btn");
+
 let currentShopSlots = [];
-let activeRouletteMagnet = false, activeFrogSneakers = 0, activeGoldenHorseshoe = 0, activeWeightedBall = 0;
-let cashbackActiveUntil = 0, activeJesterHatUntil = 0, roseKatPlinkoBoosts = 0, activeFreeRouletteMaxSpin = 0;
+let inventory = [];
+let selectedInventoryItemId = null;
+
+let activeRouletteMagnet = false;
+let activeFrogSneakers = 0;
+let activeGoldenHorseshoe = 0;
+let activeWeightedBall = 0;
+let cashbackActiveUntil = 0;
+
+let activeJesterHatUntil = 0;
+let roseKatPlinkoBoosts = 0;
+let activeFreeRouletteMaxSpin = 0;
+
 const horseNames = ["Dingo", "Vas", "HisterBlue", "The Horse"];
+
 const shopItemData = [
-  {id:"doubleHeadedCoin",icon:"🪙",name:"Double-Headed Coin",type:"Trigger",price:75,description:"Guarantees your next emergency coin flip will be a win."},
-  {id:"luckyHulaGirl",icon:"🌺",name:"Lucky Hula Girl",type:"Passive",price:100,description:"Adds +10% extra profit to every winning bet. This stacks."},
-  {id:"timeBottle",icon:"⏳",name:"Time in a Bottle",type:"Consumable",price:45,description:"Use it to add 30 seconds to the timer."},
-  {id:"rouletteMagnet",icon:"🧲",name:"Roulette Magnet",type:"Consumable",price:60,description:"Use it before Roulette to improve your next spin odds."},
-  {id:"frogSneakers",icon:"🛟",name:"Pool Floaties",type:"Consumable",price:55,description:"Use it to lower danger for Elephant River. This stacks."},
-  {id:"insuranceTicket",icon:"🎟️",name:"Insurance Ticket",type:"Trigger",price:70,description:"Refunds 50% of a fully lost bet. Up to 2 can trigger at once."},
-  {id:"secondWindSoda",icon:"🥤",name:"Second Wind Soda",type:"Trigger",price:85,description:"If your balance hits $0, restores you to $25 once."},
-  {id:"goalCutter",icon:"🎯",name:"Goal Cutter",type:"Consumable",price:90,description:"Use it to lower your current money goal by 10%."},
-  {id:"dealerPeek",icon:"👀",name:"Dealer’s Peek Card",type:"Consumable",price:40,description:"Use it during Blackjack to reveal the dealer’s hidden card."},
-  {id:"goldenHorseshoe",icon:"🐎",name:"Golden Horseshoe",type:"Consumable",price:50,description:"Use it before Horse Race. Each one adds +0.5x payout."},
-  {id:"weightedBall",icon:"⚪",name:"Weighted Ball",type:"Consumable",price:55,description:"Use it before Plinko to improve your next ball result. This stacks."},
-  {id:"cashbackCoupon",icon:"💸",name:"Cashback Coupon",type:"Timed",price:80,description:"5% cashback on full losses for 60 seconds. Extra coupons add time."},
-  {id:"thottiesJesterHat",icon:"🎭",name:"Thottie’s Jester Hat",type:"Timed",price:95,description:"Blocks the dealer from getting 21 for 60 seconds. Extra hats add time."},
-  {id:"roseKatMagnumOpus",icon:"🖼️",name:"RoseKat’s Magnum Opus",type:"Consumable",price:110,description:"Next 2 winning Plinko drops add 4x the profit as bonus money."},
-  {id:"ejmRecordVinyl",icon:"💿",name:"EJM’s Record Vinyl",type:"Consumable",price:125,description:"One free Roulette spin at max bet. Extra vinyls add free spins."}
+  {
+    id: "doubleHeadedCoin",
+    icon: "🪙",
+    name: "Double-Headed Coin",
+    type: "Trigger",
+    price: 75,
+    description: "Guarantees your next emergency coin flip will be a win."
+  },
+  {
+    id: "luckyHulaGirl",
+    icon: "🌺",
+    name: "Lucky Hula Girl",
+    type: "Passive",
+    price: 100,
+    description: "Adds +10% extra profit to every winning bet. This stacks."
+  },
+  {
+    id: "timeBottle",
+    icon: "⏳",
+    name: "Time in a Bottle",
+    type: "Consumable",
+    price: 45,
+    description: "Use it to add 30 seconds to the current timer."
+  },
+  {
+    id: "rouletteMagnet",
+    icon: "🧲",
+    name: "Roulette Magnet",
+    type: "Consumable",
+    price: 60,
+    description: "Use it before Roulette to improve your next spin odds."
+  },
+  {
+    id: "frogSneakers",
+    icon: "🛟",
+    name: "Pool Floaties",
+    type: "Consumable",
+    price: 55,
+    description: "Use it to lower the danger chance for your next Elephant River crossing. This stacks."
+  },
+  {
+    id: "insuranceTicket",
+    icon: "🎟️",
+    name: "Insurance Ticket",
+    type: "Trigger",
+    price: 70,
+    description: "Refunds 50% of a fully lost bet. Up to 2 can trigger at once."
+  },
+  {
+    id: "secondWindSoda",
+    icon: "🥤",
+    name: "Second Wind Soda",
+    type: "Trigger",
+    price: 85,
+    description: "If your balance hits $0, automatically restores you to $25 once."
+  },
+  {
+    id: "goalCutter",
+    icon: "🎯",
+    name: "Goal Cutter",
+    type: "Consumable",
+    price: 90,
+    description: "Use it to lower your current money goal by 10%."
+  },
+  {
+    id: "dealerPeek",
+    icon: "👀",
+    name: "Dealer’s Peek Card",
+    type: "Consumable",
+    price: 40,
+    description: "Use it during Blackjack to reveal the dealer’s hidden card."
+  },
+  {
+    id: "goldenHorseshoe",
+    icon: "🐎",
+    name: "Golden Horseshoe",
+    type: "Consumable",
+    price: 50,
+    description: "Use it before Horse Race. Each one adds +0.5x payout."
+  },
+  {
+    id: "weightedBall",
+    icon: "⚪",
+    name: "Weighted Ball",
+    type: "Consumable",
+    price: 55,
+    description: "Use it before Plinko to improve your next ball result. This stacks."
+  },
+  {
+    id: "cashbackCoupon",
+    icon: "💸",
+    name: "Cashback Coupon",
+    type: "Timed Consumable",
+    price: 80,
+    description: "Use it to get 5% cashback on fully lost bets for 60 seconds. Extra coupons add more time."
+  },
+  {
+    id: "thottiesJesterHat",
+    icon: "🎭",
+    name: "Thottie’s Jester Hat",
+    type: "Timed Consumable",
+    price: 95,
+    description: "Use it to block the dealer from getting 21 for 60 seconds. Extra hats add more time."
+  },
+  {
+    id: "roseKatMagnumOpus",
+    icon: "🖼️",
+    name: "RoseKat’s Magnum Opus",
+    type: "Consumable",
+    price: 110,
+    description: "Your next 2 winning Plinko drops add 4x the profit as bonus money."
+  },
+  {
+    id: "ejmRecordVinyl",
+    icon: "💿",
+    name: "EJM’s Record Vinyl",
+    type: "Consumable",
+    price: 125,
+    description: "Use it to get one free Roulette spin at max bet. Extra vinyls add more free spins."
+  }
 ];
-function getItemData(id) { return shopItemData.find((i) => i.id === id); }
-function countItem(id) { return inventory.filter((x) => x === id).length; }
-function hasItem(id) { return inventory.includes(id); }
-function getRoundPrice(base) { return Math.ceil((base * (1 + (currentRound - 1) * 0.18)) / 5) * 5; }
-function addItemToInventory(id) { inventory.push(id); renderInventory(); }
-function removeItemFromInventory(id) { const i = inventory.indexOf(id); if (i >= 0) inventory.splice(i, 1); renderInventory(); }
-function generateShopRotation() {
-  const eggIds = ["thottiesJesterHat", "roseKatMagnumOpus", "ejmRecordVinyl"];
-  const eggs = shopItemData.filter((i) => eggIds.includes(i.id));
-  const normal = shopItemData.filter((i) => !eggIds.includes(i.id)).sort(() => Math.random() - 0.5);
-  currentShopSlots = [eggs[Math.floor(Math.random()*eggs.length)], ...normal.slice(0,3)].sort(() => Math.random()-0.5).map((item) => ({itemId:item.id,sold:false}));
+
+function getItemData(itemId) {
+  return shopItemData.find((item) => item.id === itemId);
 }
+
+function getRoundPrice(basePrice) {
+  const roundMultiplier = 1 + (currentRound - 1) * 0.18;
+  const rawPrice = basePrice * roundMultiplier;
+
+  return Math.ceil(rawPrice / 5) * 5;
+}
+
+function getRoundPriceText(basePrice) {
+  return `$${getRoundPrice(basePrice)}`;
+}
+
+function generateShopRotation() {
+  const easterEggItemIds = [
+    "thottiesJesterHat",
+    "roseKatMagnumOpus",
+    "ejmRecordVinyl"
+  ];
+
+  const easterEggItems = shopItemData.filter((item) => {
+    return easterEggItemIds.includes(item.id);
+  });
+
+  const normalItems = shopItemData.filter((item) => {
+    return !easterEggItemIds.includes(item.id);
+  });
+
+  const pickedItems = [];
+
+  const guaranteedEasterEgg =
+    easterEggItems[Math.floor(Math.random() * easterEggItems.length)];
+
+  pickedItems.push(guaranteedEasterEgg);
+
+  const shuffledNormalItems = [...normalItems].sort(() => Math.random() - 0.5);
+
+  pickedItems.push(...shuffledNormalItems.slice(0, 3));
+
+  currentShopSlots = pickedItems
+    .sort(() => Math.random() - 0.5)
+    .map((item) => {
+      return {
+        itemId: item.id,
+        sold: false
+      };
+    });
+}
+
 function renderShop() {
   shopItemsContainer.innerHTML = "";
-  currentShopSlots.forEach((slot, idx) => {
-    const item = getItemData(slot.itemId), price = getRoundPrice(item.price);
+
+  currentShopSlots.forEach((slot, index) => {
+    const item = getItemData(slot.itemId);
+
     const card = document.createElement("div");
-    card.className = `shop-item ${slot.sold ? "sold" : ""}`;
-    card.innerHTML = `<div class="shop-item-top"><div class="shop-item-icon">${item.icon}</div><div><h3>${item.name}</h3><p class="shop-item-type">${item.type} • $${price}</p></div></div><p class="shop-item-desc">${item.description}</p><button class="shop-buy-btn" ${slot.sold ? "disabled" : ""}>${slot.sold ? "SOLD OUT" : `BUY FOR $${price}`}</button>`;
-    card.querySelector("button").addEventListener("click", () => buyShopItem(idx));
+    card.classList.add("shop-item");
+
+    if (slot.sold) {
+      card.classList.add("sold");
+    }
+
+    card.innerHTML = `
+      <div class="shop-item-top">
+        <div class="shop-item-icon">${item.icon}</div>
+        <div>
+          <h3>${item.name}</h3>
+          <p class="shop-item-type">${item.type} • ${getRoundPriceText(item.price)}</p>
+        </div>
+      </div>
+
+      <p class="shop-item-desc">${item.description}</p>
+
+      <button class="shop-buy-btn" ${slot.sold ? "disabled" : ""}>
+        ${slot.sold ? "SOLD OUT" : `BUY FOR ${getRoundPriceText(item.price)}`}
+      </button>
+    `;
+
+    const buyButton = card.querySelector(".shop-buy-btn");
+
+    buyButton.addEventListener("click", () => {
+      buyShopItem(index);
+    });
+
     shopItemsContainer.appendChild(card);
   });
 }
-function buyShopItem(idx) {
-  const slot = currentShopSlots[idx]; if (!slot || slot.sold) return;
-  const item = getItemData(slot.itemId); const price = getRoundPrice(item.price);
-  if (balance < price) return showToast("Not enough money.");
-  changeBalance(-price); slot.sold = true; addItemToInventory(item.id); renderShop(); checkGameState();
+
+function buyShopItem(slotIndex) {
+  const slot = currentShopSlots[slotIndex];
+
+  if (!slot || slot.sold) return;
+
+  const item = getItemData(slot.itemId);
+  const itemPrice = getRoundPrice(item.price);
+
+  if (balance < itemPrice) {
+    showToast("Not enough money.");
+    return;
+  }
+
+  changeBalance(-itemPrice);
+
+  slot.sold = true;
+
+  addItemToInventory(item.id);
+
+  renderShop();
+  renderInventory();
+
+  checkGameState();
 }
+
+function addItemToInventory(itemId) {
+  inventory.push(itemId);
+}
+
+function removeItemFromInventory(itemId) {
+  const index = inventory.indexOf(itemId);
+
+  if (index >= 0) {
+    inventory.splice(index, 1);
+  }
+
+  renderInventory();
+}
+
+function hasItem(itemId) {
+  return inventory.includes(itemId);
+}
+
+function countItem(itemId) {
+  return inventory.filter((id) => id === itemId).length;
+}
+
 function renderInventory() {
   inventoryIcons.innerHTML = "";
-  [...new Set(inventory)].forEach((id) => {
-    const item = getItemData(id), count = countItem(id);
-    const wrap = document.createElement("div");
-    wrap.innerHTML = `<button class="inventory-item-icon" title="${item.name}">${item.icon}</button>${count > 1 ? `<span class="inventory-count">${count}</span>` : ""}`;
-    wrap.querySelector("button").addEventListener("click", () => openItemPopup(id));
-    inventoryIcons.appendChild(wrap);
+
+  const uniqueItems = [...new Set(inventory)];
+
+  uniqueItems.forEach((itemId) => {
+    const item = getItemData(itemId);
+    const count = countItem(itemId);
+
+    const wrapper = document.createElement("div");
+
+    const button = document.createElement("button");
+    button.classList.add("inventory-item-icon");
+    button.textContent = item.icon;
+    button.title = item.name;
+
+    button.addEventListener("click", () => {
+      openItemPopup(itemId);
+    });
+
+    wrapper.appendChild(button);
+
+    if (count > 1) {
+      const badge = document.createElement("span");
+      badge.classList.add("inventory-count");
+      badge.textContent = count;
+      wrapper.appendChild(badge);
+    }
+
+    inventoryIcons.appendChild(wrapper);
   });
 }
-function openItemPopup(id) {
-  const item = getItemData(id); selectedInventoryItemId = id;
-  $("item-popup-icon").textContent = item.icon; $("item-popup-name").textContent = item.name;
-  $("item-popup-type").textContent = `Type: ${item.type}`; $("item-popup-description").textContent = item.description;
-  $("use-item-btn").classList.toggle("hidden", !["timeBottle","rouletteMagnet","frogSneakers","goalCutter","dealerPeek","goldenHorseshoe","weightedBall","cashbackCoupon","thottiesJesterHat","roseKatMagnumOpus","ejmRecordVinyl"].includes(id));
+
+function canUseItem(itemId) {
+  return [
+    "timeBottle",
+    "rouletteMagnet",
+    "frogSneakers",
+    "goalCutter",
+    "dealerPeek",
+    "goldenHorseshoe",
+    "weightedBall",
+    "cashbackCoupon",
+    "thottiesJesterHat",
+    "roseKatMagnumOpus",
+    "ejmRecordVinyl"
+  ].includes(itemId);
+}
+
+function openItemPopup(itemId) {
+  const item = getItemData(itemId);
+
+  selectedInventoryItemId = itemId;
+
+  itemPopupIcon.textContent = item.icon;
+  itemPopupName.textContent = item.name;
+  itemPopupType.textContent = `Type: ${item.type}`;
+  itemPopupDescription.textContent = item.description;
+
+  if (canUseItem(itemId)) {
+    useItemBtn.classList.remove("hidden");
+  } else {
+    useItemBtn.classList.add("hidden");
+  }
+
   itemPopup.classList.remove("hidden");
 }
-function closeItemPopup(){ selectedInventoryItemId = null; itemPopup.classList.add("hidden"); }
-$("close-item-popup-btn").addEventListener("click", closeItemPopup);
-$("use-item-btn").addEventListener("click", () => selectedInventoryItemId && useInventoryItem(selectedInventoryItemId));
-function useInventoryItem(id) {
-  if (!hasItem(id)) return;
-  if (id === "timeBottle") { timeLeft += 30; removeItemFromInventory(id); showToast("+30 seconds!"); }
-  if (id === "rouletteMagnet") { activeRouletteMagnet = true; removeItemFromInventory(id); showToast("Roulette Magnet ready."); }
-  if (id === "frogSneakers") { activeFrogSneakers++; removeItemFromInventory(id); showToast(`Pool Floaties stacked: ${activeFrogSneakers}`); }
-  if (id === "goalCutter") { goal = Math.max(50, Math.ceil(goal * .9)); removeItemFromInventory(id); showToast("Goal lowered by 10%."); }
-  if (id === "dealerPeek") { if (!blackjackRoundActive || !blackjackDealerHidden) return showToast("Use this during Blackjack while dealer has hidden card."); blackjackDealerHidden = false; renderBlackjackHands(); removeItemFromInventory(id); }
-  if (id === "goldenHorseshoe") { activeGoldenHorseshoe++; removeItemFromInventory(id); showToast(`Horseshoes stacked: ${activeGoldenHorseshoe}`); }
-  if (id === "weightedBall") { activeWeightedBall++; removeItemFromInventory(id); showToast(`Weighted Balls stacked: ${activeWeightedBall}`); }
-  if (id === "cashbackCoupon") { cashbackActiveUntil = Math.max(Date.now(), cashbackActiveUntil) + 60000; removeItemFromInventory(id); showToast("Cashback +60 seconds."); }
-  if (id === "thottiesJesterHat") { activeJesterHatUntil = Math.max(Date.now(), activeJesterHatUntil) + 60000; removeItemFromInventory(id); showToast("Jester Hat +60 seconds."); }
-  if (id === "roseKatMagnumOpus") { roseKatPlinkoBoosts += 2; removeItemFromInventory(id); showToast(`RoseKat boosts: ${roseKatPlinkoBoosts}`); }
-  if (id === "ejmRecordVinyl") { activeFreeRouletteMaxSpin++; removeItemFromInventory(id); showToast(`Free max spins: ${activeFreeRouletteMaxSpin}`); }
-  closeItemPopup(); updateUI();
+
+function closeItemPopup() {
+  selectedInventoryItemId = null;
+  itemPopup.classList.add("hidden");
 }
-function renderActiveItemTimers(){
+
+function useSelectedItem() {
+  if (!selectedInventoryItemId) return;
+
+  useInventoryItem(selectedInventoryItemId);
+}
+
+function useInventoryItem(itemId) {
+  if (!hasItem(itemId)) return;
+
+  if (itemId === "timeBottle") {
+    timeLeft += 30;
+    removeItemFromInventory(itemId);
+    updateUI();
+    closeItemPopup();
+    showToast("Time in a Bottle used! +30 seconds.");
+    return;
+  }
+
+  if (itemId === "rouletteMagnet") {
+    activeRouletteMagnet = true;
+    removeItemFromInventory(itemId);
+    closeItemPopup();
+    showToast("Roulette Magnet activated for your next Roulette spin.");
+    return;
+  }
+
+  if (itemId === "frogSneakers") {
+    activeFrogSneakers++;
+    removeItemFromInventory(itemId);
+    closeItemPopup();
+    showToast(`Pool Floaties activated! Floaties stacked: ${activeFrogSneakers}.`);
+    return;
+  }
+
+  if (itemId === "goalCutter") {
+    goal = Math.max(50, Math.ceil(goal * 0.9));
+    removeItemFromInventory(itemId);
+    updateUI();
+    closeItemPopup();
+    showToast("Goal Cutter used! Current goal lowered by 10%.");
+    return;
+  }
+
+  if (itemId === "dealerPeek") {
+    if (!blackjackRoundActive || !blackjackDealerHidden) {
+      showToast("Use this during Blackjack while the dealer has a hidden card.");
+      return;
+    }
+
+    blackjackDealerHidden = false;
+    renderBlackjackHands();
+    blackjackMessage.textContent = "Dealer’s Peek Card used. Hidden card revealed!";
+    removeItemFromInventory(itemId);
+    closeItemPopup();
+    return;
+  }
+
+  if (itemId === "goldenHorseshoe") {
+    activeGoldenHorseshoe++;
+    removeItemFromInventory(itemId);
+    closeItemPopup();
+    showToast(`Golden Horseshoe activated! Horseshoes stacked: ${activeGoldenHorseshoe}.`);
+    return;
+  }
+
+  if (itemId === "weightedBall") {
+    activeWeightedBall++;
+    removeItemFromInventory(itemId);
+    closeItemPopup();
+    showToast(`Weighted Ball activated! Weighted Balls stacked: ${activeWeightedBall}.`);
+    return;
+  }
+
+  if (itemId === "cashbackCoupon") {
+    const now = Date.now();
+
+    if (cashbackActiveUntil > now) {
+      cashbackActiveUntil += 60000;
+    } else {
+      cashbackActiveUntil = now + 60000;
+    }
+
+    removeItemFromInventory(itemId);
+    closeItemPopup();
+    showToast("Cashback Coupon activated! +60 seconds added.");
+    renderActiveItemTimers();
+    return;
+  }
+
+  if (itemId === "thottiesJesterHat") {
+    const now = Date.now();
+
+    if (activeJesterHatUntil > now) {
+      activeJesterHatUntil += 60000;
+    } else {
+      activeJesterHatUntil = now + 60000;
+    }
+
+    removeItemFromInventory(itemId);
+    closeItemPopup();
+    showToast("Thottie’s Jester Hat activated! +60 seconds added.");
+    renderActiveItemTimers();
+    return;
+  }
+
+  if (itemId === "roseKatMagnumOpus") {
+    roseKatPlinkoBoosts += 2;
+    removeItemFromInventory(itemId);
+    closeItemPopup();
+    showToast(`RoseKat’s Magnum Opus activated! Plinko boosts stacked: ${roseKatPlinkoBoosts}.`);
+    return;
+  }
+
+  if (itemId === "ejmRecordVinyl") {
+    activeFreeRouletteMaxSpin++;
+    removeItemFromInventory(itemId);
+    closeItemPopup();
+    showToast(`EJM’s Record Vinyl activated! Free max spins stacked: ${activeFreeRouletteMaxSpin}.`);
+    return;
+  }
+}
+
+function getSecondsLeft(endTime) {
+  return Math.max(0, Math.ceil((endTime - Date.now()) / 1000));
+}
+
+function renderActiveItemTimers() {
+  if (!activeItemTimers) return;
+
   activeItemTimers.innerHTML = "";
-  const add = (icon, until) => { const s = Math.max(0, Math.ceil((until-Date.now())/1000)); if(s>0){ const d=document.createElement("div"); d.className="active-item-timer"; d.textContent=`${icon} ${s}s`; activeItemTimers.appendChild(d);} };
-  add("🎭", activeJesterHatUntil); add("💸", cashbackActiveUntil);
+
+  const jesterSeconds = getSecondsLeft(activeJesterHatUntil);
+  const cashbackSeconds = getSecondsLeft(cashbackActiveUntil);
+
+  if (jesterSeconds > 0) {
+    const timer = document.createElement("div");
+    timer.classList.add("active-item-timer");
+    timer.textContent = `🎭 ${jesterSeconds}s`;
+    activeItemTimers.appendChild(timer);
+  }
+
+  if (cashbackSeconds > 0) {
+    const timer = document.createElement("div");
+    timer.classList.add("active-item-timer");
+    timer.textContent = `💸 ${cashbackSeconds}s`;
+    activeItemTimers.appendChild(timer);
+  }
 }
+
 setInterval(renderActiveItemTimers, 250);
-function applyWinBonus(payout, bet, lines=[]) {
-  const n = countItem("luckyHulaGirl");
-  if (n <= 0) return {payout, lines};
-  const bonus = Math.max(0, payout - bet) * 0.1 * n;
-  if (bonus > 0) lines.push({type:"bonus", text:`+$${bonus.toFixed(2)} Lucky Hula Girl Bonus`});
-  return {payout: payout + bonus, lines};
-}
-function processFullLoss(bet){
-  let refund=0, parts=[];
-  const tickets=Math.min(countItem("insuranceTicket"),2);
-  if(tickets){ refund += bet*.5*tickets; for(let i=0;i<tickets;i++) removeItemFromInventory("insuranceTicket"); parts.push(`${tickets} Insurance Ticket${tickets>1?"s":""} refunded $${(bet*.5*tickets).toFixed(2)}.`); }
-  if(Date.now()<cashbackActiveUntil){ refund += bet*.05; parts.push(`Cashback returned $${(bet*.05).toFixed(2)}.`); }
-  if(refund>0) changeBalance(refund, [{type:"bonus", text:`+$${refund.toFixed(2)} Refund Bonus`}]); else updateUI();
-  return parts.join(" ");
-}
-function tryUseSecondWindSoda(){ if(balance<=0 && hasItem("secondWindSoda")){ removeItemFromInventory("secondWindSoda"); balance=25; recordBalancePoint(); showMoneyGainPopup(25,[{type:"bonus",text:"+$25.00 Second Wind Soda"}]); updateUI(); return true;} return false; }
 
+function applyWinBonus(payout, bet, bonusLines = []) {
+  const hulaGirlCount = countItem("luckyHulaGirl");
+
+  if (hulaGirlCount <= 0) {
+    return {
+      payout,
+      bonusLines
+    };
+  }
+
+  const profit = Math.max(0, payout - bet);
+  const bonusRate = 0.1 * hulaGirlCount;
+  const bonus = profit * bonusRate;
+
+  if (bonus > 0) {
+    bonusLines.push({
+      type: "bonus",
+      text: `+$${bonus.toFixed(2)} Lucky Hula Girl Bonus`
+    });
+  }
+
+  return {
+    payout: payout + bonus,
+    bonusLines
+  };
+}
+
+function processFullLoss(bet) {
+  let refund = 0;
+  let messageParts = [];
+
+  const insuranceCount = countItem("insuranceTicket");
+
+  if (insuranceCount > 0) {
+    const ticketsToUse = Math.min(insuranceCount, 2);
+    const insuranceRefund = bet * 0.5 * ticketsToUse;
+
+    refund += insuranceRefund;
+
+    for (let i = 0; i < ticketsToUse; i++) {
+      removeItemFromInventory("insuranceTicket");
+    }
+
+    messageParts.push(
+      `${ticketsToUse} Insurance Ticket${ticketsToUse > 1 ? "s" : ""} refunded $${insuranceRefund.toFixed(2)}.`
+    );
+  }
+
+  if (Date.now() < cashbackActiveUntil) {
+    const cashbackRefund = bet * 0.05;
+    refund += cashbackRefund;
+    messageParts.push(`Cashback returned $${cashbackRefund.toFixed(2)}.`);
+  }
+
+  if (refund > 0) {
+    changeBalance(refund, [
+      {
+        type: "bonus",
+        text: `+$${refund.toFixed(2)} Refund Bonus`
+      }
+    ]);
+  } else {
+    updateUI();
+  }
+
+  return messageParts.join(" ");
+}
+
+function tryUseSecondWindSoda() {
+  if (balance <= 0 && hasItem("secondWindSoda")) {
+    removeItemFromInventory("secondWindSoda");
+
+    balance = 25;
+    recordBalancePoint();
+
+    playCashSound();
+    animateBalanceChange("gain");
+    updateUI();
+
+    showToast("Second Wind Soda saved you! Balance restored to $25.");
+
+    return true;
+  }
+
+  return false;
+}
+
+closeItemPopupBtn.addEventListener("click", closeItemPopup);
+useItemBtn.addEventListener("click", useSelectedItem);
+
+/* ========================= */
+/* GAME OVER SCREEN */
+/* ========================= */
+
+const gameOverPopup = document.getElementById("game-over-popup");
+const gameOverSummary = document.getElementById("game-over-summary");
+const finalBalanceText = document.getElementById("final-balance-text");
+const highestBalanceText = document.getElementById("highest-balance-text");
+const gameOverGraph = document.getElementById("game-over-graph");
+const gameOverCtx = gameOverGraph.getContext("2d");
+const tryAgainBtn = document.getElementById("try-again-btn");
+
+function showGameOverScreen() {
+  runEnded = true;
+  gameStarted = false;
+
+  stopCrashRocketSound();
+  stopRouletteSpinSound();
+  stopLowMoneySiren();
+  stopHorseGallopSound();
+  playGameOverSound();
+
+  document.querySelectorAll(".game-action-btn").forEach((button) => {
+    button.disabled = true;
+  });
+
+  cashoutBtn.disabled = true;
+  startCrashBtn.disabled = true;
+
+  updateDangerFlash();
+
+  gameOverSummary.textContent = "You lost it all. Here is how your run went.";
+  finalBalanceText.textContent = `Final Balance: $${balance.toFixed(2)}`;
+  highestBalanceText.textContent = `Highest Balance: $${highestBalance.toFixed(2)}`;
+
+  gameOverPopup.classList.remove("hidden");
+
+  animateGameOverGraph();
+}
+
+function drawGameOverGraph(progress = 1) {
+  const width = gameOverGraph.width;
+  const height = gameOverGraph.height;
+
+  gameOverCtx.clearRect(0, 0, width, height);
+
+  gameOverCtx.fillStyle = "#021920";
+  gameOverCtx.fillRect(0, 0, width, height);
+
+  gameOverCtx.strokeStyle = "rgba(255, 209, 102, 0.22)";
+  gameOverCtx.lineWidth = 1;
+
+  for (let i = 0; i < 5; i++) {
+    const y = 20 + i * ((height - 40) / 4);
+
+    gameOverCtx.beginPath();
+    gameOverCtx.moveTo(20, y);
+    gameOverCtx.lineTo(width - 20, y);
+    gameOverCtx.stroke();
+  }
+
+  if (balanceHistory.length < 2) return;
+
+  const maxValue = Math.max(...balanceHistory, 100);
+  const minValue = 0;
+
+  const points = balanceHistory.map((value, index) => {
+    const x = 20 + (index / (balanceHistory.length - 1)) * (width - 40);
+    const y =
+      height - 20 -
+      ((value - minValue) / (maxValue - minValue || 1)) * (height - 40);
+
+    return { x, y, value };
+  });
+
+  const visibleCount = Math.max(2, Math.floor(points.length * progress));
+  const visiblePoints = points.slice(0, visibleCount);
+
+  for (let i = 1; i < visiblePoints.length; i++) {
+    const previous = visiblePoints[i - 1];
+    const current = visiblePoints[i];
+
+    gameOverCtx.beginPath();
+    gameOverCtx.moveTo(previous.x, previous.y);
+    gameOverCtx.lineTo(current.x, current.y);
+
+    gameOverCtx.strokeStyle =
+      current.value >= previous.value ? "#06d6a0" : "#ef476f";
+
+    gameOverCtx.lineWidth = 4;
+    gameOverCtx.lineCap = "round";
+    gameOverCtx.stroke();
+  }
+
+  const lastPoint = visiblePoints[visiblePoints.length - 1];
+
+  gameOverCtx.beginPath();
+  gameOverCtx.arc(lastPoint.x, lastPoint.y, 6, 0, Math.PI * 2);
+  gameOverCtx.fillStyle = "#ffd166";
+  gameOverCtx.shadowColor = "#ffd166";
+  gameOverCtx.shadowBlur = 14;
+  gameOverCtx.fill();
+  gameOverCtx.shadowBlur = 0;
+
+  gameOverCtx.fillStyle = "white";
+  gameOverCtx.font = "bold 13px Arial";
+  gameOverCtx.fillText(`High $${highestBalance.toFixed(0)}`, 20, 18);
+}
+
+function animateGameOverGraph() {
+  let startTime = null;
+
+  function animate(timestamp) {
+    if (!startTime) {
+      startTime = timestamp;
+    }
+
+    const elapsed = timestamp - startTime;
+    const progress = Math.min(elapsed / 3600, 1);
+
+    drawGameOverGraph(progress);
+
+    if (progress < 1) {
+      requestAnimationFrame(animate);
+    }
+  }
+
+  requestAnimationFrame(animate);
+}
+
+function resetRunToTitleScreen() {
+  balance = 100;
+  goal = 300;
+  timeLeft = 120;
+  currentRound = 1;
+  moneyPopupActive = false;
+
+  goalPopupOpen = false;
+  runEnded = false;
+  gameStarted = false;
+
+  highestBalance = 100;
+  balanceHistory = [100];
+
+  coinFlipUses = 0;
+  coinFlipOpen = false;
+  coinFlipAnimating = false;
+
+  activePlinkoBalls = 0;
+
+  inventory = [];
+  currentShopSlots = [];
+
+  activeRouletteMagnet = false;
+  activeFrogSneakers = 0;
+  activeGoldenHorseshoe = 0;
+  activeWeightedBall = 0;
+  cashbackActiveUntil = 0;
+
+  activeJesterHatUntil = 0;
+  roseKatPlinkoBoosts = 0;
+  activeFreeRouletteMaxSpin = 0;
+
+  renderActiveItemTimers();
+
+  crashRunning = false;
+  crashCashedOut = false;
+  crashBet = 0;
+  crashMultiplier = 1;
+  crashPoint = 0;
+
+  resetBlackjack();
+  resetFrogRoad();
+  resetHorseRace();
+
+  cancelAnimationFrame(crashAnimationFrame);
+  stopCrashRocketSound();
+  stopRouletteSpinSound();
+  stopLowMoneySiren();
+  stopHorseGallopSound();
+
+  document.querySelectorAll(".game-action-btn").forEach((button) => {
+    button.disabled = false;
+  });
+
+  cashoutBtn.disabled = true;
+  startCrashBtn.disabled = false;
+  updateBlackjackButtonState();
+  updateFrogButtons();
+  updateHorseButtons();
+
+  goalPopup.classList.add("hidden");
+  namePopup.classList.add("hidden");
+  gameOverPopup.classList.add("hidden");
+  coinFlipPopup.classList.add("hidden");
+  itemPopup.classList.add("hidden");
+  dangerFlash.classList.add("hidden");
+
+  if (moneyPopupLayer) {
+    moneyPopupLayer.classList.add("hidden");
+    moneyPopupLayer.innerHTML = "";
+  }
+
+  coin.classList.remove("flipping", "win", "lose");
+  flipCoinBtn.disabled = false;
+
+  gameWrapper.classList.add("hidden");
+  titleScreen.classList.remove("hidden");
+
+  rouletteResultText.textContent = "Result: -";
+  crashStatusText.textContent = "Place your bet and start.";
+  crashMultiplierText.textContent = "1.00x";
+  updateCrashGlow(1);
+  drawCrashGraph(1);
+
+  document.querySelectorAll(".ball").forEach((ball) => {
+    ball.remove();
+  });
+
+  renderInventory();
+  renderShop();
+  updateUI();
+}
+
+tryAgainBtn.addEventListener("click", resetRunToTitleScreen);
+
+/* ========================= */
+/* GOAL POPUP */
+/* ========================= */
+
+const goalPopup = document.getElementById("goal-popup");
+const goalPopupMessage = document.getElementById("goal-popup-message");
+const keepGoingBtn = document.getElementById("keep-going-btn");
+const cashOutRunBtn = document.getElementById("cash-out-run-btn");
+
+const namePopup = document.getElementById("name-popup");
+const playerNameInput = document.getElementById("player-name-input");
+const submitScoreBtn = document.getElementById("submit-score-btn");
+const leaderboardList = document.getElementById("leaderboard-list");
+
+let typewriterInterval = null;
+
+function typeMessage(text) {
+  goalPopupMessage.textContent = "";
+
+  let index = 0;
+
+  clearInterval(typewriterInterval);
+
+  typewriterInterval = setInterval(() => {
+    if (index < text.length) {
+      goalPopupMessage.textContent += text[index];
+
+      if (text[index] !== " ") {
+        playTone(520 + Math.random() * 120, 0.025, "triangle", 0.025);
+      }
+
+      index++;
+    } else {
+      clearInterval(typewriterInterval);
+    }
+  }, 45);
+}
+
+function showGoalPopup() {
+  if (goalPopupOpen || runEnded) return;
+
+  goalPopupOpen = true;
+  goalPopup.classList.remove("hidden");
+
+  playCashSound();
+
+  typeMessage(
+    "AWESOME! You made it! But do you have the guts to keep going?"
+  );
+}
+
+function continueRun() {
+  goalPopupOpen = false;
+  goalPopup.classList.add("hidden");
+
+  currentRound++;
+  goal = Math.ceil(goal * 1.75);
+  timeLeft = 120;
+
+  goalPopupMessage.textContent = "";
+
+  generateShopRotation();
+  renderShop();
+
+  updateUI();
+
+  setTimeout(() => {
+    showToast(`Round ${currentRound}! New goal: $${goal}. Timer reset to 120 seconds! Shop refreshed!`);
+  }, 150);
+}
+
+function cashOutRun() {
+  goalPopupOpen = false;
+  runEnded = true;
+
+  goalPopup.classList.add("hidden");
+  namePopup.classList.remove("hidden");
+
+  playerNameInput.value = "";
+  playerNameInput.focus();
+
+  document.querySelectorAll(".game-action-btn").forEach((button) => {
+    button.disabled = true;
+  });
+
+  cashoutBtn.disabled = true;
+  startCrashBtn.disabled = true;
+  updateBlackjackButtonState();
+  updateFrogButtons();
+  updateHorseButtons();
+
+  updateDangerFlash();
+}
+
+function submitScore() {
+  let name = playerNameInput.value.trim();
+
+  if (name === "") {
+    name = "Player";
+  }
+
+  leaderboard.push({
+    name,
+    score: balance
+  });
+
+  leaderboard.sort((a, b) => b.score - a.score);
+  leaderboard = leaderboard.slice(0, 10);
+
+  renderLeaderboard();
+
+  namePopup.classList.add("hidden");
+}
+
+function renderLeaderboard() {
+  leaderboardList.innerHTML = "";
+
+  if (leaderboard.length === 0) {
+    const emptyItem = document.createElement("li");
+    emptyItem.textContent = "No scores yet.";
+    leaderboardList.appendChild(emptyItem);
+    return;
+  }
+
+  leaderboard.forEach((entry) => {
+    const item = document.createElement("li");
+    item.textContent = `${entry.name} - $${entry.score.toFixed(2)}`;
+    leaderboardList.appendChild(item);
+  });
+}
+
+keepGoingBtn.addEventListener("click", continueRun);
+cashOutRunBtn.addEventListener("click", cashOutRun);
+submitScoreBtn.addEventListener("click", submitScore);
+
+playerNameInput.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") {
+    submitScore();
+  }
+});
+
+/* ========================= */
+/* COIN FLIP SYSTEM */
+/* ========================= */
+
+const coinFlipPopup = document.getElementById("coin-flip-popup");
+const coinFlipMessage = document.getElementById("coin-flip-message");
+const coinFlipsLeftText = document.getElementById("coin-flips-left");
+const coin = document.getElementById("coin");
+const flipCoinBtn = document.getElementById("flip-coin-btn");
+
+function disableGameButtons() {
+  document.querySelectorAll(".game-action-btn").forEach((button) => {
+    button.disabled = true;
+  });
+
+  cashoutBtn.disabled = true;
+}
+
+function enableGameButtonsAfterCoinFlip() {
+  document.querySelectorAll(".game-action-btn").forEach((button) => {
+    button.disabled = false;
+  });
+
+  if (!crashRunning) {
+    cashoutBtn.disabled = true;
+    startCrashBtn.disabled = false;
+  }
+
+  updateBlackjackButtonState();
+  updateFrogButtons();
+  updateHorseButtons();
+}
+
+function showCoinFlipPopup() {
+  if (coinFlipOpen || coinFlipAnimating || runEnded) return;
+
+  if (activePlinkoBalls > 0) {
+    return;
+  }
+
+  if (coinFlipUses >= maxCoinFlips) {
+    showGameOverScreen();
+    return;
+  }
+
+  coinFlipOpen = true;
+  coinFlipAnimating = false;
+
+  stopLowMoneySiren();
+
+  coinFlipPopup.classList.remove("hidden");
+
+  coin.classList.remove("flipping", "win", "lose");
+
+  coinFlipsLeftText.textContent =
+    `Coin flips left: ${maxCoinFlips - coinFlipUses}`;
+
+  coinFlipMessage.textContent =
+    `You dropped under $1. Flip the coin. Win and get $${(goal * 0.2).toFixed(2)}. Lose and the run ends.`;
+
+  flipCoinBtn.disabled = false;
+
+  disableGameButtons();
+
+  playTone(320, 0.12, "triangle", 0.08);
+
+  setTimeout(() => {
+    playTone(520, 0.12, "triangle", 0.07);
+  }, 130);
+}
+
+function flipRescueCoin() {
+  if (!coinFlipOpen || coinFlipAnimating) return;
+
+  coinFlipAnimating = true;
+  flipCoinBtn.disabled = true;
+
+  coinFlipUses++;
+
+  let playerWins = Math.random() < 0.5;
+
+  if (hasItem("doubleHeadedCoin")) {
+    playerWins = true;
+    removeItemFromInventory("doubleHeadedCoin");
+  }
+
+  coin.classList.remove("flipping", "win", "lose");
+
+  void coin.offsetWidth;
+
+  coin.classList.add("flipping");
+
+  playTone(680, 0.08, "square", 0.06);
+
+  setTimeout(() => {
+    playTone(820, 0.08, "square", 0.06);
+  }, 250);
+
+  setTimeout(() => {
+    playTone(980, 0.08, "square", 0.06);
+  }, 500);
+
+  setTimeout(() => {
+    coin.classList.remove("flipping");
+
+    if (playerWins) {
+      coin.classList.add("win");
+
+      const rescueAmount = goal * 0.2;
+
+      balance = rescueAmount;
+      recordBalancePoint();
+
+      coinFlipMessage.textContent =
+        `HEADS! You survived. Your balance has been restored to $${rescueAmount.toFixed(2)}.`;
+
+      playCashSound();
+
+      updateUI();
+
+      setTimeout(() => {
+        coinFlipPopup.classList.add("hidden");
+
+        coinFlipOpen = false;
+        coinFlipAnimating = false;
+
+        enableGameButtonsAfterCoinFlip();
+
+        updateUI();
+      }, 1400);
+    } else {
+      coin.classList.add("lose");
+
+      coinFlipMessage.textContent =
+        "TAILS! The casino takes everything.";
+
+      playGameOverSound();
+
+      setTimeout(() => {
+        coinFlipPopup.classList.add("hidden");
+
+        coinFlipOpen = false;
+        coinFlipAnimating = false;
+
+        showGameOverScreen();
+      }, 1500);
+    }
+  }, 1450);
+}
+
+flipCoinBtn.addEventListener("click", flipRescueCoin);
+
+/* ========================= */
+/* BET SLIDERS */
+/* ========================= */
+
+const plinkoBetSlider = document.getElementById("plinko-bet-slider");
+const plinkoBetDisplay = document.getElementById("plinko-bet-display");
+const plinkoMaxDisplay = document.getElementById("plinko-max-display");
+
+const rouletteBetSlider = document.getElementById("roulette-bet-slider");
+const rouletteBetDisplay = document.getElementById("roulette-bet-display");
+const rouletteMaxDisplay = document.getElementById("roulette-max-display");
+
+const crashBetSlider = document.getElementById("crash-bet-slider");
+const crashBetDisplay = document.getElementById("crash-bet-display");
+const crashMaxDisplay = document.getElementById("crash-max-display");
+
+const blackjackBetSlider = document.getElementById("blackjack-bet-slider");
+const blackjackBetDisplay = document.getElementById("blackjack-bet-display");
+const blackjackMaxDisplay = document.getElementById("blackjack-max-display");
+
+const frogBetSlider = document.getElementById("frog-bet-slider");
+const frogBetDisplay = document.getElementById("frog-bet-display");
+const frogMaxDisplay = document.getElementById("frog-max-display");
+
+const horseBetSlider = document.getElementById("horse-bet-slider");
+const horseBetDisplay = document.getElementById("horse-bet-display");
+const horseMaxDisplay = document.getElementById("horse-max-display");
+
+const betSliders = [
+  {
+    slider: plinkoBetSlider,
+    display: plinkoBetDisplay,
+    maxDisplay: plinkoMaxDisplay
+  },
+  {
+    slider: rouletteBetSlider,
+    display: rouletteBetDisplay,
+    maxDisplay: rouletteMaxDisplay
+  },
+  {
+    slider: crashBetSlider,
+    display: crashBetDisplay,
+    maxDisplay: crashMaxDisplay
+  },
+  {
+    slider: blackjackBetSlider,
+    display: blackjackBetDisplay,
+    maxDisplay: blackjackMaxDisplay
+  },
+  {
+    slider: frogBetSlider,
+    display: frogBetDisplay,
+    maxDisplay: frogMaxDisplay
+  },
+  {
+    slider: horseBetSlider,
+    display: horseBetDisplay,
+    maxDisplay: horseMaxDisplay
+  }
+];
+
+function updateSingleBetSlider(item) {
+  const maxBet = Math.max(1, Math.floor(balance));
+
+  item.slider.max = maxBet;
+
+  if (Number(item.slider.value) > maxBet) {
+    item.slider.value = maxBet;
+  }
+
+  item.display.textContent = `$${Number(item.slider.value).toFixed(0)}`;
+  item.maxDisplay.textContent = `Max: $${maxBet}`;
+}
+
+function updateBetSliders() {
+  betSliders.forEach(updateSingleBetSlider);
+}
+
+function resetBetSliderToOne(slider) {
+  slider.value = 1;
+  updateBetSliders();
+}
+
+betSliders.forEach((item) => {
+  item.slider.addEventListener("input", () => {
+    updateSingleBetSlider(item);
+    playTone(350 + Number(item.slider.value) * 3, 0.025, "triangle", 0.025);
+  });
+});
+
+/* ========================= */
+/* NAVIGATION */
+/* ========================= */
+
+const navButtons = document.querySelectorAll(".nav-btn");
+const screens = document.querySelectorAll(".screen");
+
+navButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    navButtons.forEach((btn) => btn.classList.remove("active"));
+    screens.forEach((screen) => screen.classList.remove("active-screen"));
+
+    button.classList.add("active");
+
+    const screenId = button.dataset.screen;
+    document.getElementById(screenId).classList.add("active-screen");
+
+    if (screenId === "plinko-screen") {
+      requestAnimationFrame(() => {
+        createPegs();
+      });
+    }
+  });
+});
+
+/* ========================= */
 /* PLINKO */
-const board=$("board"), pegsContainer=document.querySelector(".pegs"), plinkoBtn=$("plinko-btn");
-let pegs=[], activePlinkoBalls=0; const plinkoMultipliers=[0,.5,1,2,5];
-function createPegs(){ if(!board||board.clientWidth<100)return; pegsContainer.innerHTML=""; pegs=[]; const rows=8,cols=6,w=board.clientWidth,left=45,right=45,top=70,sx=(w-left-right)/(cols-1),sy=40; for(let r=0;r<rows;r++){ const off=r%2?sx/2:0; for(let c=0;c<cols;c++){ const x=left+c*sx+off,y=top+r*sy; if(x>w-right+8)continue; const el=document.createElement("div"); el.className="peg"; el.style.left=`${x}px`; el.style.top=`${y}px`; pegsContainer.appendChild(el); pegs.push({x,y,radius:6.5,element:el}); } } }
-window.addEventListener("resize", createPegs);
-plinkoBtn.addEventListener("click",()=>{ if(!canPlay())return; createPegs(); const bet=+$("plinko-bet-slider").value; if(bet>balance)return showToast("Not enough money."); changeBalance(-bet); activePlinkoBalls++; dropPlinkoBall(bet); });
-function dropPlinkoBall(bet){ const ball=document.createElement("div"); ball.className="ball"; board.appendChild(ball); const br=9; let x=board.clientWidth/2+(Math.random()-.5)*10,y=26,vx=(Math.random()-.5)*1.8,vy=0; const floor=board.clientHeight-42-br; function step(){ vy+=.22; x+=vx; y+=vy; if(x-br<0){x=br;vx=Math.abs(vx)*.8} if(x+br>board.clientWidth){x=board.clientWidth-br;vx=-Math.abs(vx)*.8} pegs.forEach(p=>{ const dx=x-p.x,dy=y-p.y,d=Math.sqrt(dx*dx+dy*dy),min=br+p.radius; if(d<min&&d>.001){ const nx=dx/d,ny=dy/d,over=min-d; x+=nx*over; y+=ny*over; const dot=vx*nx+vy*ny; if(dot<0){vx-=(1+.72)*dot*nx; vy-=(1+.72)*dot*ny;} vx+=nx*.45+(Math.random()-.5)*.45; vy+=ny*.25; playPegHitSound(); p.element.classList.add("hit"); setTimeout(()=>p.element.classList.remove("hit"),90); } }); vx*=.995; ball.style.left=`${x-br}px`; ball.style.top=`${y-br}px`; if(y>=floor) return finishPlinkoBall(ball,x,bet); requestAnimationFrame(step);} requestAnimationFrame(step); }
-function finishPlinkoBall(ball,x,bet){ let idx=Math.floor(x/(board.clientWidth/plinkoMultipliers.length)); idx=Math.max(0,Math.min(idx,plinkoMultipliers.length-1)); if(activeWeightedBall>0){ idx=Math.min(idx+activeWeightedBall+Math.floor(Math.random()*2),plinkoMultipliers.length-1); activeWeightedBall=0; } const mult=plinkoMultipliers[idx]; let normal=bet*mult, winnings=normal; const lines=[]; if(normal>0) lines.push({type:"base",text:`+$${normal.toFixed(2)} Plinko ${mult}x Payout`}); const profit=Math.max(0,normal-bet); if(profit>0 && roseKatPlinkoBoosts>0){ const bonus=profit*4; winnings+=bonus; roseKatPlinkoBoosts--; lines.push({type:"bonus",text:`+$${bonus.toFixed(2)} RoseKat’s Magnum Opus Bonus`}); } if(winnings>bet){ const res=applyWinBonus(winnings,bet,lines); winnings=res.payout; } if(winnings>0) changeBalance(winnings,lines); else { const t=processFullLoss(bet); resetBetSliderToOne($("plinko-bet-slider")); if(t)showToast(t); } if(winnings>bet) shakeWinBoard(); ball.remove(); activePlinkoBalls--; if(activePlinkoBalls===0)checkGameState(); }
+/* ========================= */
 
+const board = document.getElementById("board");
+const pegsContainer = document.querySelector(".pegs");
+const plinkoBtn = document.getElementById("plinko-btn");
+
+let pegs = [];
+let activePlinkoBalls = 0;
+
+const plinkoMultipliers = [0, 0.5, 1, 2, 5];
+
+function createPegs() {
+  if (!board || !pegsContainer) return;
+  if (board.clientWidth < 100 || board.clientHeight < 100) return;
+
+  pegsContainer.innerHTML = "";
+  pegs = [];
+
+  const rows = 8;
+  const cols = 6;
+
+  const boardWidth = board.clientWidth;
+
+  const leftPadding = 45;
+  const rightPadding = 45;
+  const topPadding = 70;
+
+  const usableWidth = boardWidth - leftPadding - rightPadding;
+  const spacingX = usableWidth / (cols - 1);
+  const spacingY = 40;
+
+  for (let row = 0; row < rows; row++) {
+    const rowOffset = row % 2 === 0 ? 0 : spacingX / 2;
+
+    for (let col = 0; col < cols; col++) {
+      const x = leftPadding + col * spacingX + rowOffset;
+      const y = topPadding + row * spacingY;
+
+      if (x > boardWidth - rightPadding + 8) {
+        continue;
+      }
+
+      const pegElement = document.createElement("div");
+      pegElement.classList.add("peg");
+      pegElement.style.left = `${x}px`;
+      pegElement.style.top = `${y}px`;
+
+      pegsContainer.appendChild(pegElement);
+
+      pegs.push({
+        x,
+        y,
+        radius: 6.5,
+        element: pegElement
+      });
+    }
+  }
+}
+
+window.addEventListener("resize", () => {
+  createPegs();
+});
+
+plinkoBtn.addEventListener("click", () => {
+  if (runEnded || goalPopupOpen || coinFlipOpen || !gameStarted) return;
+
+  if (pegs.length === 0) {
+    createPegs();
+  }
+
+  if (pegs.length === 0) {
+    showToast("Plinko board is still loading. Try again.");
+    return;
+  }
+
+  const bet = Number(plinkoBetSlider.value);
+
+  if (!Number.isFinite(bet) || bet <= 0) {
+    showToast("Enter a valid bet.");
+    return;
+  }
+
+  if (bet > balance) {
+    showToast("Not enough money.");
+    return;
+  }
+
+  changeBalance(-bet);
+
+  activePlinkoBalls++;
+
+  dropPlinkoBall(bet);
+});
+
+function dropPlinkoBall(bet) {
+  const ball = document.createElement("div");
+  ball.classList.add("ball");
+  board.appendChild(ball);
+
+  const ballRadius = 9;
+
+  let x = board.clientWidth / 2 + (Math.random() - 0.5) * 10;
+  let y = 26;
+
+  let vx = (Math.random() - 0.5) * 1.8;
+  let vy = 0;
+
+  const gravity = 0.22;
+  const bounce = 0.72;
+  const friction = 0.995;
+
+  const boardWidth = board.clientWidth;
+  const boardHeight = board.clientHeight;
+  const slotHeight = 42;
+  const floorY = boardHeight - slotHeight - ballRadius;
+
+  function physicsStep() {
+    vy += gravity;
+
+    x += vx;
+    y += vy;
+
+    if (x - ballRadius < 0) {
+      x = ballRadius;
+      vx = Math.abs(vx) * 0.8;
+    }
+
+    if (x + ballRadius > boardWidth) {
+      x = boardWidth - ballRadius;
+      vx = -Math.abs(vx) * 0.8;
+    }
+
+    for (const peg of pegs) {
+      const dx = x - peg.x;
+      const dy = y - peg.y;
+
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      const minDistance = ballRadius + peg.radius;
+
+      if (distance < minDistance && distance > 0.001) {
+        const nx = dx / distance;
+        const ny = dy / distance;
+
+        const overlap = minDistance - distance;
+
+        x += nx * overlap;
+        y += ny * overlap;
+
+        const velocityDotNormal = vx * nx + vy * ny;
+
+        if (velocityDotNormal < 0) {
+          vx -= (1 + bounce) * velocityDotNormal * nx;
+          vy -= (1 + bounce) * velocityDotNormal * ny;
+        }
+
+        vx += nx * 0.45;
+        vy += ny * 0.25;
+        vx += (Math.random() - 0.5) * 0.45;
+
+        playPegHitSound();
+
+        peg.element.classList.add("hit");
+
+        setTimeout(() => {
+          peg.element.classList.remove("hit");
+        }, 90);
+      }
+    }
+
+    vx *= friction;
+
+    ball.style.left = `${x - ballRadius}px`;
+    ball.style.top = `${y - ballRadius}px`;
+
+    if (y >= floorY) {
+      finishPlinkoBall(ball, x, bet);
+      return;
+    }
+
+    requestAnimationFrame(physicsStep);
+  }
+
+  requestAnimationFrame(physicsStep);
+}
+
+function finishPlinkoBall(ball, x, bet) {
+  const slotWidth = board.clientWidth / plinkoMultipliers.length;
+
+  let slotIndex = Math.floor(x / slotWidth);
+
+  if (slotIndex < 0) slotIndex = 0;
+  if (slotIndex >= plinkoMultipliers.length) {
+    slotIndex = plinkoMultipliers.length - 1;
+  }
+
+  if (activeWeightedBall > 0) {
+    const weightedBoost = activeWeightedBall;
+
+    slotIndex = Math.min(
+      slotIndex + weightedBoost + Math.floor(Math.random() * 2),
+      plinkoMultipliers.length - 1
+    );
+
+    activeWeightedBall = 0;
+  }
+
+  const multiplier = plinkoMultipliers[slotIndex];
+  let normalPayout = bet * multiplier;
+  let winnings = normalPayout;
+
+  const bonusLines = [];
+
+  if (normalPayout > 0) {
+    bonusLines.push({
+      type: "base",
+      text: `+$${normalPayout.toFixed(2)} Plinko ${multiplier}x Payout`
+    });
+  }
+
+  const profit = Math.max(0, normalPayout - bet);
+
+  if (profit > 0 && roseKatPlinkoBoosts > 0) {
+    const roseKatBonus = profit * 4;
+
+    winnings += roseKatBonus;
+    roseKatPlinkoBoosts--;
+
+    bonusLines.push({
+      type: "bonus",
+      text: `+$${roseKatBonus.toFixed(2)} RoseKat’s Magnum Opus Bonus`
+    });
+
+    showToast(`RoseKat’s Magnum Opus added 4x profit! Boosts left: ${roseKatPlinkoBoosts}`);
+  }
+
+  if (winnings > bet) {
+    const bonusResult = applyWinBonus(winnings, bet, bonusLines);
+    winnings = bonusResult.payout;
+  }
+
+  if (winnings > 0) {
+    changeBalance(winnings, bonusLines);
+  } else {
+    const lossText = processFullLoss(bet);
+
+    resetBetSliderToOne(plinkoBetSlider);
+
+    if (lossText) {
+      showToast(lossText);
+    }
+  }
+
+  if (winnings > bet) {
+    shakeWinBoard();
+  }
+
+  ball.remove();
+
+  activePlinkoBalls--;
+
+  if (activePlinkoBalls < 0) {
+    activePlinkoBalls = 0;
+  }
+
+  if (activePlinkoBalls === 0) {
+    checkGameState();
+  }
+}
+
+/* ========================= */
 /* ROULETTE */
-const rouletteCanvas=$("roulette-canvas"), rouletteCtx=rouletteCanvas.getContext("2d"); let selectedRouletteBet=null, rouletteSpinning=false, rouletteSpinCount=0; const redNumbers=new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
-function getRouletteColor(n){return n===0?"green":redNumbers.has(n)?"red":"black"} function drawRouletteWheel(){ const c=150,r=146,step=Math.PI*2/37; rouletteCtx.clearRect(0,0,300,300); for(let n=0;n<37;n++){ const col=getRouletteColor(n),a=-Math.PI/2-step/2+n*step; rouletteCtx.beginPath(); rouletteCtx.moveTo(c,c); rouletteCtx.arc(c,c,r,a,a+step); rouletteCtx.closePath(); rouletteCtx.fillStyle=col==="green"?"#06d6a0":col==="red"?"#ef476f":"#073b4c"; rouletteCtx.fill(); rouletteCtx.strokeStyle="#ffd166"; rouletteCtx.stroke(); const tx=c+Math.cos(a+step/2)*108,ty=c+Math.sin(a+step/2)*108; rouletteCtx.save(); rouletteCtx.translate(tx,ty); rouletteCtx.rotate(a+step/2+Math.PI/2); rouletteCtx.fillStyle="white"; rouletteCtx.font="bold 10px Arial"; rouletteCtx.textAlign="center"; rouletteCtx.fillText(n,0,0); rouletteCtx.restore(); } rouletteCtx.beginPath(); rouletteCtx.arc(c,c,38,0,Math.PI*2); rouletteCtx.fillStyle="#073b4c"; rouletteCtx.fill(); rouletteCtx.strokeStyle="#ffd166"; rouletteCtx.lineWidth=3; rouletteCtx.stroke(); }
+/* ========================= */
+
+const rouletteCanvas = document.getElementById("roulette-canvas");
+const rouletteCtx = rouletteCanvas.getContext("2d");
+
+const spinBtn = document.getElementById("spin-btn");
+const rouletteResultText = document.getElementById("roulette-result");
+
+const betRedBtn = document.getElementById("bet-red");
+const betBlackBtn = document.getElementById("bet-black");
+const betGreenBtn = document.getElementById("bet-green");
+
+let selectedRouletteBet = null;
+let rouletteSpinning = false;
+let rouletteSpinCount = 0;
+
+const redNumbers = new Set([
+  1, 3, 5, 7, 9,
+  12, 14, 16, 18,
+  19, 21, 23, 25, 27,
+  30, 32, 34, 36
+]);
+
+function getRouletteColor(number) {
+  if (number === 0) return "green";
+  return redNumbers.has(number) ? "red" : "black";
+}
+
+function getRandomRouletteNumberForColor(color) {
+  const options = [];
+
+  for (let i = 0; i <= 36; i++) {
+    if (getRouletteColor(i) === color) {
+      options.push(i);
+    }
+  }
+
+  return options[Math.floor(Math.random() * options.length)];
+}
+
+function drawRouletteWheel() {
+  const canvas = rouletteCanvas;
+  const ctx = rouletteCtx;
+
+  const size = canvas.width;
+  const center = size / 2;
+  const radius = size / 2 - 4;
+
+  const totalNumbers = 37;
+  const angleStep = (Math.PI * 2) / totalNumbers;
+
+  ctx.clearRect(0, 0, size, size);
+
+  for (let number = 0; number < totalNumbers; number++) {
+    const color = getRouletteColor(number);
+
+    const startAngle = -Math.PI / 2 - angleStep / 2 + number * angleStep;
+    const endAngle = startAngle + angleStep;
+
+    ctx.beginPath();
+    ctx.moveTo(center, center);
+    ctx.arc(center, center, radius, startAngle, endAngle);
+    ctx.closePath();
+
+    if (color === "green") {
+      ctx.fillStyle = "#06d6a0";
+    } else if (color === "red") {
+      ctx.fillStyle = "#ef476f";
+    } else {
+      ctx.fillStyle = "#073b4c";
+    }
+
+    ctx.fill();
+
+    ctx.strokeStyle = "#ffd166";
+    ctx.lineWidth = 0.8;
+    ctx.stroke();
+
+    const textAngle = startAngle + angleStep / 2;
+    const textRadius = radius * 0.75;
+
+    const textX = center + Math.cos(textAngle) * textRadius;
+    const textY = center + Math.sin(textAngle) * textRadius;
+
+    ctx.save();
+    ctx.translate(textX, textY);
+    ctx.rotate(textAngle + Math.PI / 2);
+    ctx.fillStyle = "white";
+    ctx.font = "bold 10px Arial";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(number.toString(), 0, 0);
+    ctx.restore();
+  }
+
+  ctx.beginPath();
+  ctx.arc(center, center, 38, 0, Math.PI * 2);
+  ctx.fillStyle = "#073b4c";
+  ctx.fill();
+  ctx.strokeStyle = "#ffd166";
+  ctx.lineWidth = 3;
+  ctx.stroke();
+}
+
 drawRouletteWheel();
-["red","black","green"].forEach(color=>$("bet-"+color).addEventListener("click",()=>{selectedRouletteBet=color; ["red","black","green"].forEach(c=>$("bet-"+c).classList.remove("selected")); $("bet-"+color).classList.add("selected");}));
-$("spin-btn").addEventListener("click",()=>{ if(!canPlay()||rouletteSpinning)return; if(!selectedRouletteBet)return showToast("Pick Red, Black, or Green first."); let bet=+$("roulette-bet-slider").value, free=false; if(activeFreeRouletteMaxSpin>0){bet=Math.max(1,Math.floor(balance));free=true;activeFreeRouletteMaxSpin--;} if(!free&&bet>balance)return showToast("Not enough money."); if(!free)changeBalance(-bet); else showToast(`EJM free max spin: $${bet}`); rouletteSpinning=true; let result=(activeRouletteMagnet&&Math.random()<.55)?randomForColor(selectedRouletteBet):Math.floor(Math.random()*37); activeRouletteMagnet=false; rouletteSpinCount++; rouletteCanvas.style.transform=`rotate(${rouletteSpinCount*360*6+(360-result*(360/37))}deg)`; setTimeout(()=>{rouletteSpinning=false; finishRouletteSpin(result,bet,free);},4100); });
-function randomForColor(color){ const arr=[]; for(let i=0;i<=36;i++) if(getRouletteColor(i)===color) arr.push(i); return arr[Math.floor(Math.random()*arr.length)]; }
-function finishRouletteSpin(num,bet,free){ const color=getRouletteColor(num); let winnings=0,lines=[]; if(selectedRouletteBet===color){ winnings=bet*(color==="green"?14:2); lines.push({type:"base",text:`+$${winnings.toFixed(2)} Roulette Payout`}); winnings=applyWinBonus(winnings,bet,lines).payout; } if(winnings>0){ changeBalance(winnings,lines); shakeWinBoard(); } else if(!free){ const t=processFullLoss(bet); resetBetSliderToOne($("roulette-bet-slider")); if(t)showToast(t); } $("roulette-result").textContent=`Result: ${num} (${color})${free&&winnings<=0?" — free spin lost, paid $0":""}`; checkGameState(); }
 
+function selectRouletteBet(color) {
+  selectedRouletteBet = color;
+
+  betRedBtn.classList.remove("selected");
+  betBlackBtn.classList.remove("selected");
+  betGreenBtn.classList.remove("selected");
+
+  if (color === "red") betRedBtn.classList.add("selected");
+  if (color === "black") betBlackBtn.classList.add("selected");
+  if (color === "green") betGreenBtn.classList.add("selected");
+}
+
+betRedBtn.addEventListener("click", () => selectRouletteBet("red"));
+betBlackBtn.addEventListener("click", () => selectRouletteBet("black"));
+betGreenBtn.addEventListener("click", () => selectRouletteBet("green"));
+
+spinBtn.addEventListener("click", () => {
+  if (runEnded || goalPopupOpen || coinFlipOpen || !gameStarted) return;
+  if (rouletteSpinning) return;
+
+  let bet = Number(rouletteBetSlider.value);
+  let isFreeVinylSpin = false;
+
+  if (activeFreeRouletteMaxSpin > 0) {
+    bet = Math.max(1, Math.floor(balance));
+    isFreeVinylSpin = true;
+    activeFreeRouletteMaxSpin--;
+  }
+
+  if (!selectedRouletteBet) {
+    showToast("Pick Red, Black, or Green first.");
+    return;
+  }
+
+  if (!Number.isFinite(bet) || bet <= 0) {
+    showToast("Enter a valid bet.");
+    return;
+  }
+
+  if (!isFreeVinylSpin && bet > balance) {
+    showToast("Not enough money.");
+    return;
+  }
+
+  if (!isFreeVinylSpin) {
+    changeBalance(-bet);
+  } else {
+    showToast(`EJM’s Record Vinyl used! Free max bet spin: $${bet}`);
+  }
+
+  spinRoulette(bet, isFreeVinylSpin);
+});
+
+function spinRoulette(bet, isFreeVinylSpin = false) {
+  rouletteSpinning = true;
+
+  startRouletteSpinSound();
+
+  let result;
+
+  if (activeRouletteMagnet && Math.random() < 0.55) {
+    result = getRandomRouletteNumberForColor(selectedRouletteBet);
+    activeRouletteMagnet = false;
+  } else {
+    result = Math.floor(Math.random() * 37);
+    activeRouletteMagnet = false;
+  }
+
+  const segmentAngle = 360 / 37;
+
+  rouletteSpinCount++;
+
+  const finalRotation =
+    rouletteSpinCount * 360 * 6 +
+    (360 - result * segmentAngle);
+
+  rouletteCanvas.style.transform = `rotate(${finalRotation}deg)`;
+
+  setTimeout(() => {
+    stopRouletteSpinSound();
+
+    playTone(420, 0.14, "square", 0.08);
+
+    finishRouletteSpin(result, bet, isFreeVinylSpin);
+    rouletteSpinning = false;
+  }, 4100);
+}
+
+function finishRouletteSpin(result, bet, isFreeVinylSpin = false) {
+  const resultColor = getRouletteColor(result);
+
+  let winnings = 0;
+  let bonusLines = [];
+
+  if (selectedRouletteBet === resultColor) {
+    if (resultColor === "green") {
+      winnings = bet * 14;
+    } else {
+      winnings = bet * 2;
+    }
+
+    bonusLines.push({
+      type: "base",
+      text: `+$${winnings.toFixed(2)} Roulette Payout`
+    });
+
+    const bonusResult = applyWinBonus(winnings, bet, bonusLines);
+    winnings = bonusResult.payout;
+  }
+
+  if (winnings > 0) {
+    changeBalance(winnings, bonusLines);
+    shakeWinBoard();
+    rouletteResultText.textContent = `Result: ${result} (${resultColor})`;
+  } else {
+    if (isFreeVinylSpin) {
+      rouletteResultText.textContent =
+        `Result: ${result} (${resultColor}) — EJM’s free spin lost, but you paid $0.`;
+    } else {
+      const lossText = processFullLoss(bet);
+
+      resetBetSliderToOne(rouletteBetSlider);
+
+      rouletteResultText.textContent = `Result: ${result} (${resultColor})`;
+
+      if (lossText) {
+        rouletteResultText.textContent += ` — ${lossText}`;
+      }
+    }
+  }
+
+  checkGameState();
+}
+
+/* ========================= */
 /* CRASH */
-const crashCanvas=$("crash-canvas"), crashCtx=crashCanvas.getContext("2d"); let crashRunning=false,crashBet=0,crashMultiplier=1,crashPoint=0,crashStart=0,crashFrame=null;
-function drawCrashGraph(mult=1,crashed=false){ const w=360,h=220; crashCtx.clearRect(0,0,w,h); crashCtx.fillStyle="#021920"; crashCtx.fillRect(0,0,w,h); const p=Math.min((mult-1)/9,1),ex=20+p*(w-40),ey=h-20-p*(h-50); crashCtx.beginPath(); crashCtx.moveTo(20,h-20); crashCtx.quadraticCurveTo(ex*.55,h-20,ex,ey); crashCtx.strokeStyle=crashed?"#ef476f":"#06d6a0"; crashCtx.lineWidth=5; crashCtx.stroke(); crashCtx.beginPath(); crashCtx.arc(ex,ey,Math.min(5+mult*.35,10),0,Math.PI*2); crashCtx.fillStyle="white"; crashCtx.shadowBlur=Math.min(10+mult*4,42); crashCtx.shadowColor="white"; crashCtx.fill(); crashCtx.shadowBlur=0; }
-function updateCrashGlow(mult,crashed=false){ $("crash-multiplier").style.color=crashed?"#ef476f":"#06d6a0"; }
-drawCrashGraph();
-$("start-crash-btn").addEventListener("click",()=>{ if(!canPlay()||crashRunning)return; const bet=+$("crash-bet-slider").value; if(bet>balance)return showToast("Not enough money."); changeBalance(-bet); crashBet=bet; crashMultiplier=1; crashPoint=Math.random()<.5?1+Math.random()*1.5:Math.random()<.85?2.5+Math.random()*3:5.5+Math.random()*8; crashRunning=true; crashStart=performance.now(); $("cashout-btn").disabled=false; $("start-crash-btn").disabled=true; runCrash(); });
-function runCrash(){ const e=(performance.now()-crashStart)/1000; crashMultiplier=1+e*e*.55; $("crash-multiplier").textContent=`${crashMultiplier.toFixed(2)}x`; drawCrashGraph(crashMultiplier); if(crashMultiplier>=crashPoint)return crashGameOver(); crashFrame=requestAnimationFrame(runCrash); }
-$("cashout-btn").addEventListener("click",()=>{ if(!crashRunning)return; crashRunning=false; cancelAnimationFrame(crashFrame); let winnings=crashBet*crashMultiplier; const lines=[{type:"base",text:`+$${winnings.toFixed(2)} Crash Cash Out`}]; winnings=applyWinBonus(winnings,crashBet,lines).payout; changeBalance(winnings,lines); $("crash-status").textContent=`Cashed out at ${crashMultiplier.toFixed(2)}x. Won $${winnings.toFixed(2)}.`; $("cashout-btn").disabled=true; $("start-crash-btn").disabled=false; shakeWinBoard(); checkGameState(); });
-function crashGameOver(){ crashRunning=false; cancelAnimationFrame(crashFrame); $("crash-multiplier").textContent="CRASHED"; updateCrashGlow(crashPoint,true); drawCrashGraph(crashPoint,true); const t=processFullLoss(crashBet); resetBetSliderToOne($("crash-bet-slider")); $("crash-status").textContent=`Crashed at ${crashPoint.toFixed(2)}x. ${t}`; $("cashout-btn").disabled=true; $("start-crash-btn").disabled=false; checkGameState(); }
+/* ========================= */
 
+const startCrashBtn = document.getElementById("start-crash-btn");
+const cashoutBtn = document.getElementById("cashout-btn");
+const crashMultiplierText = document.getElementById("crash-multiplier");
+const crashStatusText = document.getElementById("crash-status");
+const crashCanvas = document.getElementById("crash-canvas");
+const crashCtx = crashCanvas.getContext("2d");
+
+let crashRunning = false;
+let crashCashedOut = false;
+let crashBet = 0;
+let crashMultiplier = 1;
+let crashPoint = 0;
+let crashStartTime = 0;
+let crashAnimationFrame = null;
+
+function generateCrashPoint() {
+  const random = Math.random();
+
+  if (random < 0.5) {
+    return 1 + Math.random() * 1.5;
+  }
+
+  if (random < 0.85) {
+    return 2.5 + Math.random() * 3;
+  }
+
+  return 5.5 + Math.random() * 8;
+}
+
+function updateCrashGlow(multiplier, crashed = false) {
+  if (crashed) {
+    crashMultiplierText.style.color = "#ef476f";
+    crashMultiplierText.style.textShadow =
+      "0 0 8px rgba(239, 71, 111, 0.85), 0 0 18px rgba(239, 71, 111, 0.55)";
+    return;
+  }
+
+  const glowA = Math.min(8 + multiplier * 3, 22);
+  const glowB = Math.min(18 + multiplier * 5, 42);
+
+  crashMultiplierText.style.color = "#06d6a0";
+  crashMultiplierText.style.textShadow =
+    `0 0 ${glowA}px rgba(6, 214, 160, 0.9), 0 0 ${glowB}px rgba(6, 214, 160, 0.55)`;
+}
+
+function drawCrashGraph(multiplier, crashed = false) {
+  const width = crashCanvas.width;
+  const height = crashCanvas.height;
+
+  crashCtx.clearRect(0, 0, width, height);
+
+  crashCtx.fillStyle = "#021920";
+  crashCtx.fillRect(0, 0, width, height);
+
+  crashCtx.strokeStyle = "rgba(255, 209, 102, 0.22)";
+  crashCtx.lineWidth = 1;
+
+  for (let i = 0; i < 5; i++) {
+    const y = 20 + i * ((height - 40) / 4);
+
+    crashCtx.beginPath();
+    crashCtx.moveTo(20, y);
+    crashCtx.lineTo(width - 20, y);
+    crashCtx.stroke();
+  }
+
+  for (let i = 0; i < 6; i++) {
+    const x = 20 + i * ((width - 40) / 5);
+
+    crashCtx.beginPath();
+    crashCtx.moveTo(x, 20);
+    crashCtx.lineTo(x, height - 20);
+    crashCtx.stroke();
+  }
+
+  const maxVisualMultiplier = 10;
+  const progress = Math.min((multiplier - 1) / (maxVisualMultiplier - 1), 1);
+
+  const startX = 20;
+  const endX = 20 + progress * (width - 40);
+
+  const startY = height - 20;
+  const riseHeight = progress * (height - 50);
+
+  const points = [];
+  const steps = 80;
+
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+
+    const x = startX + t * (endX - startX);
+    const curve = Math.pow(t, 1.9);
+    const y = startY - curve * riseHeight;
+
+    points.push({ x, y });
+  }
+
+  crashCtx.beginPath();
+  crashCtx.moveTo(points[0].x, points[0].y);
+
+  for (let i = 1; i < points.length; i++) {
+    crashCtx.lineTo(points[i].x, points[i].y);
+  }
+
+  crashCtx.strokeStyle = crashed ? "#ef476f" : "#06d6a0";
+  crashCtx.lineWidth = 5;
+  crashCtx.lineCap = "round";
+  crashCtx.lineJoin = "round";
+  crashCtx.stroke();
+
+  const ballPoint = points[points.length - 1];
+
+  const glowStrength = Math.min(10 + multiplier * 4, 42);
+  const ballRadius = Math.min(5 + multiplier * 0.35, 10);
+
+  crashCtx.save();
+  crashCtx.shadowColor = "rgba(255, 255, 255, 0.95)";
+  crashCtx.shadowBlur = glowStrength;
+  crashCtx.fillStyle = "#ffffff";
+
+  crashCtx.beginPath();
+  crashCtx.arc(ballPoint.x, ballPoint.y, ballRadius, 0, Math.PI * 2);
+  crashCtx.fill();
+  crashCtx.restore();
+
+  crashCtx.fillStyle = crashed ? "#ef476f" : "#06d6a0";
+  crashCtx.font = "bold 16px Arial";
+  crashCtx.fillText(`${multiplier.toFixed(2)}x`, 15, 18);
+}
+
+drawCrashGraph(1);
+updateCrashGlow(1);
+
+startCrashBtn.addEventListener("click", () => {
+  if (runEnded || goalPopupOpen || coinFlipOpen || !gameStarted) return;
+  if (crashRunning) return;
+
+  const bet = Number(crashBetSlider.value);
+
+  if (!Number.isFinite(bet) || bet <= 0) {
+    showToast("Enter a valid bet.");
+    return;
+  }
+
+  if (bet > balance) {
+    showToast("Not enough money.");
+    return;
+  }
+
+  changeBalance(-bet);
+
+  crashBet = bet;
+  crashMultiplier = 1;
+  crashPoint = generateCrashPoint();
+  crashRunning = true;
+  crashCashedOut = false;
+  crashStartTime = performance.now();
+
+  crashMultiplierText.textContent = "1.00x";
+  updateCrashGlow(1);
+  crashStatusText.textContent = "Multiplier rising...";
+  cashoutBtn.disabled = false;
+  startCrashBtn.disabled = true;
+
+  drawCrashGraph(1);
+
+  startCrashRocketSound();
+
+  runCrash();
+});
+
+function runCrash() {
+  const now = performance.now();
+  const elapsed = (now - crashStartTime) / 1000;
+
+  crashMultiplier = 1 + elapsed * elapsed * 0.55;
+
+  crashMultiplierText.textContent = `${crashMultiplier.toFixed(2)}x`;
+  updateCrashGlow(crashMultiplier);
+  updateCrashRocketSound(crashMultiplier);
+  drawCrashGraph(crashMultiplier);
+
+  if (crashMultiplier >= crashPoint) {
+    crashGameOver();
+    return;
+  }
+
+  crashAnimationFrame = requestAnimationFrame(runCrash);
+}
+
+cashoutBtn.addEventListener("click", () => {
+  if (!crashRunning || crashCashedOut) return;
+
+  crashCashedOut = true;
+  crashRunning = false;
+
+  cancelAnimationFrame(crashAnimationFrame);
+
+  stopCrashRocketSound();
+
+  let winnings = crashBet * crashMultiplier;
+
+  const bonusLines = [
+    {
+      type: "base",
+      text: `+$${winnings.toFixed(2)} Crash Cash Out`
+    }
+  ];
+
+  const bonusResult = applyWinBonus(winnings, crashBet, bonusLines);
+  winnings = bonusResult.payout;
+
+  changeBalance(winnings, bonusLines);
+
+  crashStatusText.textContent =
+    `Cashed out at ${crashMultiplier.toFixed(2)}x. Won $${winnings.toFixed(2)}.`;
+
+  crashMultiplierText.style.color = "#ffd166";
+  crashMultiplierText.style.textShadow =
+    "0 0 8px rgba(255, 209, 102, 0.85), 0 0 18px rgba(255, 209, 102, 0.5)";
+
+  cashoutBtn.disabled = true;
+  startCrashBtn.disabled = false;
+
+  if (winnings > crashBet) {
+    shakeWinBoard();
+  }
+
+  checkGameState();
+});
+
+function crashGameOver() {
+  crashRunning = false;
+
+  cancelAnimationFrame(crashAnimationFrame);
+
+  stopCrashRocketSound();
+
+  playTone(180, 0.12, "sawtooth", 0.09);
+
+  setTimeout(() => {
+    playTone(95, 0.28, "sawtooth", 0.09);
+  }, 100);
+
+  crashMultiplierText.textContent = "CRASHED";
+  updateCrashGlow(crashPoint, true);
+
+  const lossText = processFullLoss(crashBet);
+
+  resetBetSliderToOne(crashBetSlider);
+
+  crashStatusText.textContent =
+    `Crashed at ${crashPoint.toFixed(2)}x. You lost $${crashBet.toFixed(2)}. ${lossText}`;
+
+  drawCrashGraph(crashPoint, true);
+
+  cashoutBtn.disabled = true;
+  startCrashBtn.disabled = false;
+
+  checkGameState();
+  updateUI();
+}
+
+/* ========================= */
 /* BLACKJACK */
-let blackjackDeck=[],blackjackPlayerHand=[],blackjackDealerHand=[],blackjackBet=0,blackjackRoundActive=false,blackjackDealerHidden=true,blackjackBusy=false;
-function createBlackjackDeck(){ const suits=["♠","♥","♦","♣"],ranks=["A","2","3","4","5","6","7","8","9","10","J","Q","K"],d=[]; suits.forEach(s=>ranks.forEach(r=>d.push({rank:r,suit:s}))); return d.sort(()=>Math.random()-.5); }
-function cardValue(c){return c.rank==="A"?11:["J","Q","K"].includes(c.rank)?10:+c.rank} function handValue(h){let t=0,a=0; h.forEach(c=>{t+=cardValue(c); if(c.rank==="A")a++;}); while(t>21&&a){t-=10;a--;} return t;} function drawCard(){ if(blackjackDeck.length<10)blackjackDeck=createBlackjackDeck(); return blackjackDeck.pop(); }
-function cardEl(c,hidden=false){ const el=document.createElement("div"); el.className=`playing-card ${hidden?"hidden-card":""} ${c&&!hidden&&["♥","♦"].includes(c.suit)?"red-card":""}`; el.innerHTML=hidden?"?":`<div class="card-rank">${c.rank}</div><div class="card-suit">${c.suit}</div>`; return el; }
-function renderBlackjackHands(){ $("dealer-hand").innerHTML=""; $("player-hand").innerHTML=""; blackjackDealerHand.forEach((c,i)=>$("dealer-hand").appendChild(cardEl(c,blackjackDealerHidden&&i===1))); blackjackPlayerHand.forEach(c=>$("player-hand").appendChild(cardEl(c))); $("player-total").textContent=`Total: ${handValue(blackjackPlayerHand)}`; $("dealer-total").textContent=blackjackDealerHidden?"Total: ?":`Total: ${getDealerTotal()}`; }
-function getDealerTotal(){ const total=handValue(blackjackDealerHand); return Date.now()<activeJesterHatUntil&&total===21?20:total; }
-function updateBlackjackButtonState(){ const off=!gameStarted||runEnded||goalPopupOpen||coinFlipOpen; $("blackjack-deal-btn").disabled=off||blackjackRoundActive||blackjackBusy; $("blackjack-hit-btn").disabled=off||!blackjackRoundActive||blackjackBusy; $("blackjack-stand-btn").disabled=off||!blackjackRoundActive||blackjackBusy; }
-function resetBlackjack(){ blackjackDeck=createBlackjackDeck(); blackjackPlayerHand=[]; blackjackDealerHand=[]; blackjackRoundActive=false; blackjackDealerHidden=true; blackjackBusy=false; renderBlackjackHands(); $("blackjack-message").textContent="Press DEAL to start."; updateBlackjackButtonState(); }
-$("blackjack-deal-btn").addEventListener("click",()=>{ if(!canPlay()||blackjackRoundActive)return; const bet=+$("blackjack-bet-slider").value; if(bet>balance)return showToast("Not enough money."); blackjackBet=bet; changeBalance(-bet); blackjackRoundActive=true; blackjackDealerHidden=true; blackjackPlayerHand=[drawCard(),drawCard()]; blackjackDealerHand=[drawCard(),drawCard()]; renderBlackjackHands(); $("blackjack-message").textContent="Hit or Stand?"; updateBlackjackButtonState(); if(handValue(blackjackPlayerHand)===21)finishBlackjack("blackjack"); });
-$("blackjack-hit-btn").addEventListener("click",()=>{ blackjackPlayerHand.push(drawCard()); renderBlackjackHands(); if(handValue(blackjackPlayerHand)>21)finishBlackjack("bust"); });
-$("blackjack-stand-btn").addEventListener("click",()=>{ blackjackDealerHidden=false; while(getDealerTotal()<17) blackjackDealerHand.push(drawCard()); finishBlackjack("compare"); });
-function finishBlackjack(reason){ blackjackRoundActive=false; blackjackDealerHidden=false; let payout=0,msg="",lines=[]; const player=handValue(blackjackPlayerHand),dealer=getDealerTotal(); if(reason==="blackjack"){payout=blackjackBet*2.5; msg="BLACKJACK!";} else if(reason==="bust"){msg=`BUST! You had ${player}.`; } else if(dealer>21||player>dealer){payout=blackjackBet*2; msg=dealer>21?"Dealer busts!":"You win!";} else if(player===dealer){payout=blackjackBet; msg="Push! Your bet is returned.";} else msg=`Dealer wins. ${dealer} beats ${player}.`; if(payout>0){lines.push({type:"base",text:`+$${payout.toFixed(2)} Blackjack Payout`}); if(payout>blackjackBet)payout=applyWinBonus(payout,blackjackBet,lines).payout; changeBalance(payout,lines); if(payout>blackjackBet)shakeWinBoard();} else {const t=processFullLoss(blackjackBet); resetBetSliderToOne($("blackjack-bet-slider")); msg+=` ${t}`;} $("blackjack-message").textContent=msg; renderBlackjackHands(); updateBlackjackButtonState(); checkGameState(); }
+/* ========================= */
 
-/* ELEPHANT */
-let frogRoundActive=false,frogBet=0,frogLane=0,frogMultiplier=1; const frogLaneBottoms=[8,78,148,218,288,358];
-function updateFrogButtons(){ const off=!gameStarted||runEnded||goalPopupOpen||coinFlipOpen; $("frog-start-btn").disabled=off||frogRoundActive; $("frog-hop-btn").disabled=off||!frogRoundActive; $("frog-cashout-btn").disabled=off||!frogRoundActive||frogLane<=0; }
-function resetFrogRoad(){ frogRoundActive=false; frogBet=0; frogLane=0; frogMultiplier=1; $("frog-player").className="frog-player elephant-player"; $("frog-player").style.bottom=`${frogLaneBottoms[0]}px`; $("frog-message").textContent="Press START CROSSING to help the pink elephant cross the river."; $("frog-multiplier").textContent="Multiplier: 1.00x"; updateFrogButtons(); }
-$("frog-start-btn").addEventListener("click",()=>{ if(!canPlay())return; const bet=+$("frog-bet-slider").value; if(bet>balance)return showToast("Not enough money."); frogBet=bet; frogLane=0; frogMultiplier=1; frogRoundActive=true; changeBalance(-bet); $("frog-message").textContent="Step forward. Cash out before the elephant gets swept away!"; updateFrogButtons(); });
-$("frog-hop-btn").addEventListener("click",()=>{ if(!frogRoundActive)return; frogLane++; frogMultiplier=1+frogLane*.45+frogLane*frogLane*.06; $("frog-player").classList.add("hopping"); $("frog-player").style.bottom=`${frogLaneBottoms[Math.min(frogLane,5)]}px`; $("frog-multiplier").textContent=`Multiplier: ${frogMultiplier.toFixed(2)}x`; setTimeout(()=>{ $("frog-player").classList.remove("hopping"); let chance=Math.min(.12+frogLane*.08,.55); if(activeFrogSneakers>0)chance*=Math.max(.2,1-activeFrogSneakers*.45); if(Math.random()<chance)return loseFrog(); if(frogLane>=5)$("frog-message").textContent="The pink elephant reached the safe shore! Cash out now!"; updateFrogButtons(); },520); });
-$("frog-cashout-btn").addEventListener("click",()=>{ if(!frogRoundActive||frogLane<=0)return; frogRoundActive=false; activeFrogSneakers=0; let payout=frogBet*frogMultiplier; const lines=[{type:"base",text:`+$${payout.toFixed(2)} Elephant River Payout`}]; payout=applyWinBonus(payout,frogBet,lines).payout; changeBalance(payout,lines); shakeWinBoard(); $("frog-message").textContent=`Cashed out at ${frogMultiplier.toFixed(2)}x. Won $${payout.toFixed(2)}.`; resetBetLater("frog"); checkGameState(); });
-function loseFrog(){ frogRoundActive=false; activeFrogSneakers=0; $("frog-player").classList.add("hit"); const t=processFullLoss(frogBet); resetBetSliderToOne($("frog-bet-slider")); $("frog-message").textContent=`SPLASH! You lost $${frogBet.toFixed(2)}. ${t}`; setTimeout(()=>{resetFrogRoad();checkGameState();},1000); }
-function resetBetLater(name){ setTimeout(()=>{ if(name==="frog")resetFrogRoad(); },800); }
+const blackjackBoard = document.getElementById("blackjack-board");
+const dealerHandElement = document.getElementById("dealer-hand");
+const playerHandElement = document.getElementById("player-hand");
+const dealerTotalText = document.getElementById("dealer-total");
+const playerTotalText = document.getElementById("player-total");
+const blackjackMessage = document.getElementById("blackjack-message");
+const blackjackDealBtn = document.getElementById("blackjack-deal-btn");
+const blackjackHitBtn = document.getElementById("blackjack-hit-btn");
+const blackjackStandBtn = document.getElementById("blackjack-stand-btn");
 
-/* HORSE */
-const horseRunners=[$("horse-0"),$("horse-1"),$("horse-2"),$("horse-3")]; let selectedHorse=0,horseRaceActive=false,horseBet=0,horseWinner=0,horseFrame=null,horseStart=0;
-function updateHorseButtons(){ const off=!gameStarted||runEnded||goalPopupOpen||coinFlipOpen; $("horse-start-btn").disabled=off||horseRaceActive; document.querySelectorAll(".horse-choice").forEach(b=>b.disabled=off||horseRaceActive); }
-document.querySelectorAll(".horse-choice").forEach(btn=>btn.addEventListener("click",()=>{ if(horseRaceActive)return; selectedHorse=+btn.dataset.horse; document.querySelectorAll(".horse-choice").forEach(b=>b.classList.remove("selected")); btn.classList.add("selected"); $("horse-message").textContent=`${horseNames[selectedHorse]} selected.`; }));
-function resetHorseRace(){ horseRaceActive=false; horseRunners.forEach(h=>{h.style.left="88px";h.classList.remove("racing","winner")}); $("horse-message").textContent="Pick a horse and start the race."; updateHorseButtons(); }
-$("horse-start-btn").addEventListener("click",()=>{ if(!canPlay()||horseRaceActive)return; const bet=+$("horse-bet-slider").value; if(bet>balance)return showToast("Not enough money."); horseBet=bet; horseWinner=Math.floor(Math.random()*4); horseRaceActive=true; changeBalance(-bet); horseRunners.forEach(h=>{h.style.left="88px";h.classList.add("racing");h.classList.remove("winner")}); horseStart=performance.now(); updateHorseButtons(); horseFrame=requestAnimationFrame(runHorseRace); });
-function runHorseRace(ts){ const p=Math.min((ts-horseStart)/4200,1),start=88,finish=$("horse-board").clientWidth-88; horseRunners.forEach((h,i)=>{ let prog=i===horseWinner?Math.min(p*1.08+.03,1):Math.min(p*(.78+i*.025)+Math.sin(p*Math.PI*5+i)*.035,.9); if(p>=1&&i===horseWinner)prog=1; h.style.left=`${start+prog*(finish-start)}px`; }); if(p<1)horseFrame=requestAnimationFrame(runHorseRace); else finishHorseRace(); }
-function finishHorseRace(){ horseRaceActive=false; horseRunners.forEach(h=>h.classList.remove("racing")); horseRunners[horseWinner].classList.add("winner"); if(horseWinner===selectedHorse){ let mult=4+activeGoldenHorseshoe*.5; let payout=horseBet*mult; activeGoldenHorseshoe=0; const lines=[{type:"base",text:`+$${payout.toFixed(2)} Horse Race Payout`}]; payout=applyWinBonus(payout,horseBet,lines).payout; changeBalance(payout,lines); shakeWinBoard(); $("horse-message").textContent=`${horseNames[horseWinner]} wins! You won $${payout.toFixed(2)}.`; } else { activeGoldenHorseshoe=0; const t=processFullLoss(horseBet); resetBetSliderToOne($("horse-bet-slider")); $("horse-message").textContent=`${horseNames[horseWinner]} wins! Your horse lost. ${t}`; } updateHorseButtons(); checkGameState(); }
+let blackjackDeck = [];
+let blackjackPlayerHand = [];
+let blackjackDealerHand = [];
+let blackjackBet = 0;
+let blackjackRoundActive = false;
+let blackjackDealerHidden = true;
+let blackjackBusy = false;
 
-/* POPUPS / STATE */
-const goalPopup=$("goal-popup"), namePopup=$("name-popup"), gameOverPopup=$("game-over-popup"), coinFlipPopup=$("coin-flip-popup"), coin=$("coin"); let typewriterInterval=null;
-function canPlay(){ return gameStarted && !runEnded && !goalPopupOpen && !coinFlipOpen; }
-function typeMessage(text){ $("goal-popup-message").textContent=""; let i=0; clearInterval(typewriterInterval); typewriterInterval=setInterval(()=>{ if(i<text.length)$("goal-popup-message").textContent+=text[i++]; else clearInterval(typewriterInterval); },45); }
-function showGoalPopup(){ if(goalPopupOpen||runEnded)return; goalPopupOpen=true; goalPopup.classList.remove("hidden"); typeMessage("AWESOME! You made it! But do you have the guts to keep going?"); }
-$("keep-going-btn").addEventListener("click",()=>{ goalPopupOpen=false; goalPopup.classList.add("hidden"); currentRound++; goal=Math.ceil(goal*1.75); timeLeft=120; generateShopRotation(); renderShop(); updateUI(); showToast(`Round ${currentRound}! Timer reset. Shop refreshed!`); });
-$("cash-out-run-btn").addEventListener("click",()=>{ goalPopupOpen=false; runEnded=true; goalPopup.classList.add("hidden"); namePopup.classList.remove("hidden"); });
-$("submit-score-btn").addEventListener("click",()=>{ const name=$("player-name-input").value.trim()||"Player"; leaderboard.push({name,score:balance}); leaderboard.sort((a,b)=>b.score-a.score); leaderboard=leaderboard.slice(0,10); renderLeaderboard(); namePopup.classList.add("hidden"); });
-function renderLeaderboard(){ const list=$("leaderboard-list"); list.innerHTML=""; if(!leaderboard.length){list.innerHTML="<li>No scores yet.</li>";return;} leaderboard.forEach(e=>{const li=document.createElement("li");li.textContent=`${e.name} - $${e.score.toFixed(2)}`;list.appendChild(li);}); }
-function showCoinFlipPopup(){ if(coinFlipOpen||runEnded||activePlinkoBalls>0)return; if(coinFlipUses>=maxCoinFlips)return showGameOverScreen(); coinFlipOpen=true; coinFlipPopup.classList.remove("hidden"); coin.className="coin"; $("coin-flips-left").textContent=`Coin flips left: ${maxCoinFlips-coinFlipUses}`; $("coin-flip-message").textContent=`You dropped under $1. Flip the coin. Win and get $${(goal*.2).toFixed(2)}. Lose and the run ends.`; }
-$("flip-coin-btn").addEventListener("click",()=>{ if(!coinFlipOpen)return; coinFlipUses++; let win=Math.random()<.5; if(hasItem("doubleHeadedCoin")){win=true;removeItemFromInventory("doubleHeadedCoin");} coin.className="coin flipping"; setTimeout(()=>{ coin.classList.remove("flipping"); if(win){ coin.classList.add("win"); balance=goal*.2; recordBalancePoint(); showMoneyGainPopup(balance,[{type:"bonus",text:`+$${balance.toFixed(2)} Coin Flip Rescue`}]); setTimeout(()=>{coinFlipPopup.classList.add("hidden");coinFlipOpen=false;updateUI();},1300); } else { coin.classList.add("lose"); setTimeout(()=>{coinFlipPopup.classList.add("hidden");coinFlipOpen=false;showGameOverScreen();},1200); } },1450); });
-function showGameOverScreen(){ runEnded=true; gameStarted=false; playGameOverSound(); $("final-balance-text").textContent=`Final Balance: $${balance.toFixed(2)}`; $("highest-balance-text").textContent=`Highest Balance: $${highestBalance.toFixed(2)}`; gameOverPopup.classList.remove("hidden"); drawGameOverGraph(); }
-function drawGameOverGraph(){ const canvas=$("game-over-graph"),ctx=canvas.getContext("2d"),w=360,h=220; ctx.clearRect(0,0,w,h); ctx.fillStyle="#021920"; ctx.fillRect(0,0,w,h); if(balanceHistory.length<2)return; const max=Math.max(...balanceHistory,100); let pts=balanceHistory.map((v,i)=>({x:20+i/(balanceHistory.length-1)*(w-40),y:h-20-(v/max)*(h-40),v})); for(let i=1;i<pts.length;i++){ctx.beginPath();ctx.moveTo(pts[i-1].x,pts[i-1].y);ctx.lineTo(pts[i].x,pts[i].y);ctx.strokeStyle=pts[i].v>=pts[i-1].v?"#06d6a0":"#ef476f";ctx.lineWidth=4;ctx.stroke();}}
-$("try-again-btn").addEventListener("click",resetRunToTitleScreen);
-function resetRunToTitleScreen(){ balance=100; goal=300; timeLeft=120; currentRound=1; gameStarted=false; runEnded=false; goalPopupOpen=false; coinFlipOpen=false; highestBalance=100; balanceHistory=[100]; coinFlipUses=0; inventory=[]; currentShopSlots=[]; activeRouletteMagnet=false; activeFrogSneakers=0; activeGoldenHorseshoe=0; activeWeightedBall=0; cashbackActiveUntil=0; activeJesterHatUntil=0; roseKatPlinkoBoosts=0; activeFreeRouletteMaxSpin=0; activePlinkoBalls=0; resetBlackjack(); resetFrogRoad(); resetHorseRace(); [goalPopup,namePopup,gameOverPopup,coinFlipPopup,itemPopup].forEach(p=>p.classList.add("hidden")); gameWrapper.classList.add("hidden"); titleScreen.classList.remove("hidden"); document.querySelectorAll(".ball").forEach(b=>b.remove()); renderInventory(); renderShop(); updateUI(); }
-function checkGameState(){ if(runEnded||goalPopupOpen||coinFlipOpen||activePlinkoBalls>0)return; if(timeLeft<=0)return showGameOverScreen(); if(balance>=goal)return showGoalPopup(); if(balance<1){ if(tryUseSecondWindSoda())return; showCoinFlipPopup(); return;} updateUI(); }
-setInterval(()=>{ if(!gameStarted||runEnded||goalPopupOpen||coinFlipOpen)return; timeLeft--; if(timeLeft<=0){timeLeft=0; updateUI(); if(activePlinkoBalls===0)showGameOverScreen();} else updateUI(); },1000);
+function createBlackjackDeck() {
+  const suits = ["♠", "♥", "♦", "♣"];
+  const ranks = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
 
-playBtn.addEventListener("click",()=>{ gameStarted=true; runEnded=false; titleScreen.classList.add("hidden"); gameWrapper.classList.remove("hidden"); generateShopRotation(); renderShop(); renderInventory(); updateUI(); updateBlackjackButtonState(); updateFrogButtons(); updateHorseButtons(); requestAnimationFrame(()=>{createPegs(); requestAnimationFrame(createPegs);}); });
+  const deck = [];
 
-resetBlackjack(); resetFrogRoad(); resetHorseRace(); renderLeaderboard(); renderInventory(); generateShopRotation(); renderShop(); renderActiveItemTimers(); updateUI();
+  suits.forEach((suit) => {
+    ranks.forEach((rank) => {
+      deck.push({ rank, suit });
+    });
+  });
+
+  for (let i = deck.length - 1; i > 0; i--) {
+    const randomIndex = Math.floor(Math.random() * (i + 1));
+    const temp = deck[i];
+
+    deck[i] = deck[randomIndex];
+    deck[randomIndex] = temp;
+  }
+
+  return deck;
+}
+
+function getCardValue(card) {
+  if (card.rank === "A") return 11;
+  if (["J", "Q", "K"].includes(card.rank)) return 10;
+  return Number(card.rank);
+}
+
+function getHandValue(hand) {
+  let total = 0;
+  let aces = 0;
+
+  hand.forEach((card) => {
+    total += getCardValue(card);
+
+    if (card.rank === "A") {
+      aces++;
+    }
+  });
+
+  while (total > 21 && aces > 0) {
+    total -= 10;
+    aces--;
+  }
+
+  return total;
+}
+
+function isBlackjack(hand) {
+  return hand.length === 2 && getHandValue(hand) === 21;
+}
+
+function isJesterHatActive() {
+  return Date.now() < activeJesterHatUntil;
+}
+
+function getProtectedDealerTotal() {
+  const total = getHandValue(blackjackDealerHand);
+
+  if (isJesterHatActive() && total === 21) {
+    return 20;
+  }
+
+  return total;
+}
+
+function drawBlackjackCard() {
+  if (blackjackDeck.length <= 10) {
+    blackjackDeck = createBlackjackDeck();
+  }
+
+  return blackjackDeck.pop();
+}
+
+function createCardElement(card, hidden = false) {
+  const cardElement = document.createElement("div");
+  cardElement.classList.add("playing-card");
+
+  if (hidden) {
+    cardElement.classList.add("hidden-card");
+    cardElement.textContent = "?";
+    return cardElement;
+  }
+
+  if (card.suit === "♥" || card.suit === "♦") {
+    cardElement.classList.add("red-card");
+  }
+
+  const rankElement = document.createElement("div");
+  rankElement.classList.add("card-rank");
+  rankElement.textContent = card.rank;
+
+  const suitElement = document.createElement("div");
+  suitElement.classList.add("card-suit");
+  suitElement.textContent = card.suit;
+
+  cardElement.appendChild(rankElement);
+  cardElement.appendChild(suitElement);
+
+  return cardElement;
+}
+
+function renderBlackjackHands() {
+  dealerHandElement.innerHTML = "";
+  playerHandElement.innerHTML = "";
+
+  blackjackDealerHand.forEach((card, index) => {
+    const hidden = blackjackDealerHidden && index === 1;
+    dealerHandElement.appendChild(createCardElement(card, hidden));
+  });
+
+  blackjackPlayerHand.forEach((card) => {
+    playerHandElement.appendChild(createCardElement(card));
+  });
+
+  const playerTotal = getHandValue(blackjackPlayerHand);
+  playerTotalText.textContent = `Total: ${playerTotal}`;
+
+  if (blackjackDealerHidden) {
+    dealerTotalText.textContent = "Total: ?";
+  } else {
+    dealerTotalText.textContent = `Total: ${getProtectedDealerTotal()}`;
+  }
+}
+
+function updateBlackjackButtonState() {
+  if (runEnded || coinFlipOpen || goalPopupOpen || !gameStarted) {
+    blackjackDealBtn.disabled = true;
+    blackjackHitBtn.disabled = true;
+    blackjackStandBtn.disabled = true;
+    return;
+  }
+
+  blackjackDealBtn.disabled = blackjackRoundActive || blackjackBusy;
+  blackjackHitBtn.disabled = !blackjackRoundActive || blackjackBusy;
+  blackjackStandBtn.disabled = !blackjackRoundActive || blackjackBusy;
+}
+
+function resetBlackjack() {
+  blackjackDeck = createBlackjackDeck();
+  blackjackPlayerHand = [];
+  blackjackDealerHand = [];
+  blackjackBet = 0;
+  blackjackRoundActive = false;
+  blackjackDealerHidden = true;
+  blackjackBusy = false;
+
+  if (dealerHandElement && playerHandElement) {
+    dealerHandElement.innerHTML = "";
+    playerHandElement.innerHTML = "";
+  }
+
+  if (dealerTotalText && playerTotalText && blackjackMessage) {
+    dealerTotalText.textContent = "Total: ?";
+    playerTotalText.textContent = "Total: 0";
+    blackjackMessage.textContent = "Press DEAL to start.";
+  }
+}
+
+function dealCardWithDelay(targetHand, callback, delay = 300) {
+  setTimeout(() => {
+    targetHand.push(drawBlackjackCard());
+    renderBlackjackHands();
+    playCardDealSound();
+
+    if (callback) {
+      callback();
+    }
+  }, delay);
+}
+
+function startBlackjackRound() {
+  if (runEnded || goalPopupOpen || coinFlipOpen || !gameStarted) return;
+  if (blackjackRoundActive || blackjackBusy) return;
+
+  const bet = Number(blackjackBetSlider.value);
+
+  if (!Number.isFinite(bet) || bet <= 0) {
+    showToast("Enter a valid bet.");
+    return;
+  }
+
+  if (bet > balance) {
+    showToast("Not enough money.");
+    return;
+  }
+
+  blackjackBet = bet;
+  blackjackRoundActive = true;
+  blackjackDealerHidden = true;
+  blackjackBusy = true;
+  blackjackPlayerHand = [];
+  blackjackDealerHand = [];
+
+  blackjackMessage.textContent = "Dealing cards...";
+
+  changeBalance(-bet);
+  updateBlackjackButtonState();
+
+  dealCardWithDelay(blackjackPlayerHand, () => {
+    dealCardWithDelay(blackjackDealerHand, () => {
+      dealCardWithDelay(blackjackPlayerHand, () => {
+        dealCardWithDelay(blackjackDealerHand, () => {
+          blackjackBusy = false;
+          renderBlackjackHands();
+
+          if (isBlackjack(blackjackPlayerHand)) {
+            finishBlackjackRound("blackjack");
+            return;
+          }
+
+          blackjackMessage.textContent = "Hit or Stand?";
+          updateBlackjackButtonState();
+        });
+      });
+    });
+  });
+}
+
+function blackjackHit() {
+  if (!blackjackRoundActive || blackjackBusy) return;
+
+  blackjackBusy = true;
+  updateBlackjackButtonState();
+
+  dealCardWithDelay(blackjackPlayerHand, () => {
+    blackjackBusy = false;
+
+    const playerTotal = getHandValue(blackjackPlayerHand);
+
+    if (playerTotal > 21) {
+      finishBlackjackRound("playerBust");
+      return;
+    }
+
+    blackjackMessage.textContent = "Hit or Stand?";
+    updateBlackjackButtonState();
+  });
+}
+
+function blackjackStand() {
+  if (!blackjackRoundActive || blackjackBusy) return;
+
+  blackjackBusy = true;
+  blackjackDealerHidden = false;
+  blackjackMessage.textContent = "Dealer is playing...";
+  renderBlackjackHands();
+  updateBlackjackButtonState();
+
+  playCardDealSound();
+
+  setTimeout(dealerPlayBlackjack, 500);
+}
+
+function dealerPlayBlackjack() {
+  const dealerTotal = getProtectedDealerTotal();
+
+  if (dealerTotal < 17) {
+    dealCardWithDelay(blackjackDealerHand, () => {
+      setTimeout(dealerPlayBlackjack, 350);
+    }, 350);
+
+    return;
+  }
+
+  finishBlackjackRound("compare");
+}
+
+function finishBlackjackRound(reason) {
+  blackjackRoundActive = false;
+  blackjackBusy = false;
+  blackjackDealerHidden = false;
+
+  renderBlackjackHands();
+
+  const playerTotal = getHandValue(blackjackPlayerHand);
+  const dealerTotal = getProtectedDealerTotal();
+
+  let payout = 0;
+  let message = "";
+  const bonusLines = [];
+
+  if (reason === "blackjack") {
+    payout = blackjackBet * 2.5;
+
+    bonusLines.push({
+      type: "base",
+      text: `+$${payout.toFixed(2)} Blackjack Payout`
+    });
+
+    const bonusResult = applyWinBonus(payout, blackjackBet, bonusLines);
+    payout = bonusResult.payout;
+
+    message = `BLACKJACK! You won $${(payout - blackjackBet).toFixed(2)} profit.`;
+  } else if (reason === "playerBust") {
+    payout = 0;
+    const lossText = processFullLoss(blackjackBet);
+
+    resetBetSliderToOne(blackjackBetSlider);
+
+    message = `BUST! You had ${playerTotal}. You lost $${blackjackBet.toFixed(2)}. ${lossText}`;
+  } else if (dealerTotal > 21) {
+    payout = blackjackBet * 2;
+
+    bonusLines.push({
+      type: "base",
+      text: `+$${payout.toFixed(2)} Blackjack Payout`
+    });
+
+    const bonusResult = applyWinBonus(payout, blackjackBet, bonusLines);
+    payout = bonusResult.payout;
+
+    message = `Dealer busts! You win $${(payout - blackjackBet).toFixed(2)} profit.`;
+  } else if (playerTotal > dealerTotal) {
+    payout = blackjackBet * 2;
+
+    bonusLines.push({
+      type: "base",
+      text: `+$${payout.toFixed(2)} Blackjack Payout`
+    });
+
+    const bonusResult = applyWinBonus(payout, blackjackBet, bonusLines);
+    payout = bonusResult.payout;
+
+    message = `You win! ${playerTotal} beats ${dealerTotal}.`;
+  } else if (playerTotal === dealerTotal) {
+    payout = blackjackBet;
+
+    bonusLines.push({
+      type: "base",
+      text: `+$${payout.toFixed(2)} Blackjack Push Return`
+    });
+
+    message = `Push! You tied at ${playerTotal}. Your bet is returned.`;
+  } else {
+    payout = 0;
+    const lossText = processFullLoss(blackjackBet);
+
+    resetBetSliderToOne(blackjackBetSlider);
+
+    message = `Dealer wins. ${dealerTotal} beats ${playerTotal}. ${lossText}`;
+  }
+
+  if (isJesterHatActive() && getHandValue(blackjackDealerHand) === 21) {
+    message += " Thottie’s Jester Hat blocked the dealer’s 21!";
+  }
+
+  blackjackMessage.textContent = message;
+
+  if (payout > 0) {
+    changeBalance(payout, bonusLines);
+  } else {
+    updateUI();
+  }
+
+  if (payout > blackjackBet) {
+    shakeWinBoard();
+  }
+
+  blackjackBet = 0;
+
+  updateBlackjackButtonState();
+  checkGameState();
+}
+
+blackjackDealBtn.addEventListener("click", startBlackjackRound);
+blackjackHitBtn.addEventListener("click", blackjackHit);
+blackjackStandBtn.addEventListener("click", blackjackStand);
+
+/* ========================= */
+/* ELEPHANT RIVER */
+/* ========================= */
+
+const frogBoard = document.getElementById("frog-board");
+const frogPlayer = document.getElementById("frog-player");
+const frogMessage = document.getElementById("frog-message");
+const frogMultiplierText = document.getElementById("frog-multiplier");
+const frogStartBtn = document.getElementById("frog-start-btn");
+const frogHopBtn = document.getElementById("frog-hop-btn");
+const frogCashoutBtn = document.getElementById("frog-cashout-btn");
+
+let frogRoundActive = false;
+let frogBusy = false;
+let frogBet = 0;
+let frogLane = 0;
+let frogMultiplier = 1;
+
+const frogLaneBottoms = [8, 78, 148, 218, 288, 358];
+
+function resetFrogRoad() {
+  frogRoundActive = false;
+  frogBusy = false;
+  frogBet = 0;
+  frogLane = 0;
+  frogMultiplier = 1;
+
+  if (frogPlayer) {
+    frogPlayer.classList.remove("hopping", "hit");
+    frogPlayer.style.bottom = `${frogLaneBottoms[0]}px`;
+  }
+
+  if (frogMessage && frogMultiplierText) {
+    frogMessage.textContent = "Press START CROSSING to help the pink elephant cross the river.";
+    frogMultiplierText.textContent = "Multiplier: 1.00x";
+  }
+
+  updateFrogButtons();
+}
+
+function updateFrogButtons() {
+  if (!gameStarted || runEnded || goalPopupOpen || coinFlipOpen) {
+    frogStartBtn.disabled = true;
+    frogHopBtn.disabled = true;
+    frogCashoutBtn.disabled = true;
+    return;
+  }
+
+  frogStartBtn.disabled = frogRoundActive || frogBusy;
+  frogHopBtn.disabled = !frogRoundActive || frogBusy;
+  frogCashoutBtn.disabled = !frogRoundActive || frogBusy || frogLane <= 0;
+}
+
+function startFrogRoadRound() {
+  if (runEnded || goalPopupOpen || coinFlipOpen || !gameStarted) return;
+  if (frogRoundActive || frogBusy) return;
+
+  const bet = Number(frogBetSlider.value);
+
+  if (!Number.isFinite(bet) || bet <= 0) {
+    showToast("Enter a valid bet.");
+    return;
+  }
+
+  if (bet > balance) {
+    showToast("Not enough money.");
+    return;
+  }
+
+  frogBet = bet;
+  frogLane = 0;
+  frogMultiplier = 1;
+  frogRoundActive = true;
+  frogBusy = false;
+
+  frogPlayer.classList.remove("hopping", "hit");
+  frogPlayer.style.bottom = `${frogLaneBottoms[0]}px`;
+
+  frogMessage.textContent = "Step forward. Cash out before the elephant gets swept away!";
+  frogMultiplierText.textContent = "Multiplier: 1.00x";
+
+  changeBalance(-bet);
+
+  updateFrogButtons();
+}
+
+function getFrogCrashChance(lane) {
+  let chance = Math.min(0.12 + lane * 0.08, 0.55);
+
+  if (activeFrogSneakers > 0) {
+    const protectionMultiplier = Math.max(0.2, 1 - activeFrogSneakers * 0.45);
+    chance *= protectionMultiplier;
+  }
+
+  return chance;
+}
+
+function hopFrogForward() {
+  if (!frogRoundActive || frogBusy) return;
+
+  frogBusy = true;
+  updateFrogButtons();
+
+  frogLane++;
+
+  playHopSound();
+  playCarWhooshSound();
+
+  frogPlayer.classList.add("hopping");
+  frogPlayer.style.bottom = `${frogLaneBottoms[Math.min(frogLane, 5)]}px`;
+
+  frogMultiplier = 1 + frogLane * 0.45 + frogLane * frogLane * 0.06;
+  frogMultiplierText.textContent = `Multiplier: ${frogMultiplier.toFixed(2)}x`;
+  frogMessage.textContent = `River lane ${frogLane}. Potential cash out: $${(frogBet * frogMultiplier).toFixed(2)}`;
+
+  setTimeout(() => {
+    frogPlayer.classList.remove("hopping");
+
+    const crashChance = getFrogCrashChance(frogLane);
+    const frogHit = Math.random() < crashChance;
+
+    if (frogHit) {
+      loseFrogRoadRound();
+      return;
+    }
+
+    if (frogLane >= 5) {
+      activeFrogSneakers = 0;
+      frogMessage.textContent = "The pink elephant reached the safe shore! Cash out now!";
+      frogBusy = false;
+      updateFrogButtons();
+      return;
+    }
+
+    frogBusy = false;
+    updateFrogButtons();
+  }, 520);
+}
+
+function loseFrogRoadRound() {
+  frogRoundActive = false;
+  frogBusy = true;
+  activeFrogSneakers = 0;
+
+  frogPlayer.classList.add("hit");
+
+  playFrogHitSound();
+
+  const lossText = processFullLoss(frogBet);
+
+  resetBetSliderToOne(frogBetSlider);
+
+  frogMessage.textContent = `SPLASH! The pink elephant got swept away. You lost $${frogBet.toFixed(2)}. ${lossText}`;
+
+  setTimeout(() => {
+    frogBusy = false;
+    frogBet = 0;
+    frogLane = 0;
+    frogMultiplier = 1;
+
+    frogPlayer.classList.remove("hit");
+    frogPlayer.style.bottom = `${frogLaneBottoms[0]}px`;
+
+    frogMultiplierText.textContent = "Multiplier: 1.00x";
+
+    updateFrogButtons();
+    updateUI();
+    checkGameState();
+  }, 1100);
+}
+
+function cashOutFrogRoad() {
+  if (!frogRoundActive || frogBusy || frogLane <= 0) return;
+
+  frogRoundActive = false;
+  frogBusy = true;
+  activeFrogSneakers = 0;
+
+  let payout = frogBet * frogMultiplier;
+
+  const bonusLines = [
+    {
+      type: "base",
+      text: `+$${payout.toFixed(2)} Elephant River Payout`
+    }
+  ];
+
+  const bonusResult = applyWinBonus(payout, frogBet, bonusLines);
+  payout = bonusResult.payout;
+
+  changeBalance(payout, bonusLines);
+  shakeWinBoard();
+
+  frogMessage.textContent =
+    `Cashed out at ${frogMultiplier.toFixed(2)}x. Won $${payout.toFixed(2)}.`;
+
+  playCashSound();
+
+  setTimeout(() => {
+    frogBusy = false;
+    frogBet = 0;
+    frogLane = 0;
+    frogMultiplier = 1;
+
+    frogPlayer.style.bottom = `${frogLaneBottoms[0]}px`;
+    frogMultiplierText.textContent = "Multiplier: 1.00x";
+
+    updateFrogButtons();
+    checkGameState();
+  }, 900);
+}
+
+frogStartBtn.addEventListener("click", startFrogRoadRound);
+frogHopBtn.addEventListener("click", hopFrogForward);
+frogCashoutBtn.addEventListener("click", cashOutFrogRoad);
+
+/* ========================= */
+/* HORSE RACE */
+/* ========================= */
+
+const horseBoard = document.getElementById("horse-board");
+const horseMessage = document.getElementById("horse-message");
+const horseStartBtn = document.getElementById("horse-start-btn");
+const horseChoiceButtons = document.querySelectorAll(".horse-choice");
+const horseRunners = [
+  document.getElementById("horse-0"),
+  document.getElementById("horse-1"),
+  document.getElementById("horse-2"),
+  document.getElementById("horse-3")
+];
+
+let selectedHorse = 0;
+let horseRaceActive = false;
+let horseRaceBusy = false;
+let horseBet = 0;
+let horseWinner = 0;
+let horseRaceAnimationFrame = null;
+let horseRaceStartTime = 0;
+let horsePositions = [0, 0, 0, 0];
+
+function updateHorseButtons() {
+  if (!gameStarted || runEnded || goalPopupOpen || coinFlipOpen) {
+    horseStartBtn.disabled = true;
+
+    horseChoiceButtons.forEach((button) => {
+      button.disabled = true;
+    });
+
+    return;
+  }
+
+  horseStartBtn.disabled = horseRaceActive || horseRaceBusy;
+
+  horseChoiceButtons.forEach((button) => {
+    button.disabled = horseRaceActive || horseRaceBusy;
+  });
+}
+
+function selectHorse(horseIndex) {
+  if (horseRaceActive || horseRaceBusy) return;
+
+  selectedHorse = horseIndex;
+
+  horseChoiceButtons.forEach((button) => {
+    button.classList.remove("selected");
+  });
+
+  horseChoiceButtons[horseIndex].classList.add("selected");
+
+  horseMessage.textContent = `${horseNames[horseIndex]} selected. Start the race!`;
+}
+
+horseChoiceButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    selectHorse(Number(button.dataset.horse));
+  });
+});
+
+function resetHorseRace() {
+  horseRaceActive = false;
+  horseRaceBusy = false;
+  horseBet = 0;
+  horseWinner = 0;
+  horseRaceStartTime = 0;
+  horsePositions = [0, 0, 0, 0];
+
+  cancelAnimationFrame(horseRaceAnimationFrame);
+  stopHorseGallopSound();
+
+  horseRunners.forEach((horse) => {
+    if (!horse) return;
+
+    horse.style.left = "88px";
+    horse.classList.remove("racing", "winner");
+  });
+
+  if (horseMessage) {
+    horseMessage.textContent = "Pick a horse and start the race.";
+  }
+
+  updateHorseButtons();
+}
+
+function startHorseRace() {
+  if (runEnded || goalPopupOpen || coinFlipOpen || !gameStarted) return;
+  if (horseRaceActive || horseRaceBusy) return;
+
+  const bet = Number(horseBetSlider.value);
+
+  if (!Number.isFinite(bet) || bet <= 0) {
+    showToast("Enter a valid bet.");
+    return;
+  }
+
+  if (bet > balance) {
+    showToast("Not enough money.");
+    return;
+  }
+
+  horseBet = bet;
+  horseRaceActive = true;
+  horseRaceBusy = true;
+  horseWinner = Math.floor(Math.random() * 4);
+  horsePositions = [0, 0, 0, 0];
+
+  horseRunners.forEach((horse) => {
+    horse.style.left = "88px";
+    horse.classList.remove("winner");
+    horse.classList.add("racing");
+  });
+
+  horseMessage.textContent = "And they are off!";
+
+  changeBalance(-bet);
+
+  playHorseStartSound();
+  startHorseGallopSound();
+
+  updateHorseButtons();
+
+  horseRaceStartTime = performance.now();
+
+  horseRaceAnimationFrame = requestAnimationFrame(runHorseRaceAnimation);
+}
+
+function runHorseRaceAnimation(timestamp) {
+  const elapsed = timestamp - horseRaceStartTime;
+  const duration = 4200;
+  const progress = Math.min(elapsed / duration, 1);
+
+  const boardWidth = horseBoard.clientWidth;
+  const startX = 88;
+  const finishX = boardWidth - 88;
+
+  for (let i = 0; i < 4; i++) {
+    let laneBoost = i === horseWinner ? 0.18 : 0;
+    let wobble = Math.sin(progress * Math.PI * 5 + i) * 0.035;
+    let baseProgress = progress * (0.78 + i * 0.025 + laneBoost) + wobble;
+
+    if (i === horseWinner) {
+      baseProgress = Math.min(progress * 1.08 + 0.03, 1);
+    }
+
+    if (progress >= 1 && i === horseWinner) {
+      baseProgress = 1;
+    }
+
+    if (progress >= 1 && i !== horseWinner) {
+      baseProgress = Math.min(baseProgress, 0.84 + Math.random() * 0.08);
+    }
+
+    horsePositions[i] = Math.max(0, Math.min(baseProgress, 1));
+
+    const x = startX + horsePositions[i] * (finishX - startX);
+    horseRunners[i].style.left = `${x}px`;
+  }
+
+  if (progress < 1) {
+    horseRaceAnimationFrame = requestAnimationFrame(runHorseRaceAnimation);
+    return;
+  }
+
+  finishHorseRace();
+}
+
+function finishHorseRace() {
+  horseRaceActive = false;
+  horseRaceBusy = false;
+
+  stopHorseGallopSound();
+  playFinishSound();
+
+  horseRunners.forEach((horse) => {
+    horse.classList.remove("racing");
+  });
+
+  horseRunners[horseWinner].classList.add("winner");
+
+  if (horseWinner === selectedHorse) {
+    let multiplier = 4 + activeGoldenHorseshoe * 0.5;
+    let payout = horseBet * multiplier;
+
+    activeGoldenHorseshoe = 0;
+
+    const bonusLines = [
+      {
+        type: "base",
+        text: `+$${payout.toFixed(2)} Horse Race Payout`
+      }
+    ];
+
+    const bonusResult = applyWinBonus(payout, horseBet, bonusLines);
+    payout = bonusResult.payout;
+
+    horseMessage.textContent =
+      `${horseNames[horseWinner]} wins! You picked right and won $${payout.toFixed(2)}.`;
+
+    changeBalance(payout, bonusLines);
+    shakeWinBoard();
+  } else {
+    activeGoldenHorseshoe = 0;
+
+    const lossText = processFullLoss(horseBet);
+
+    resetBetSliderToOne(horseBetSlider);
+
+    horseMessage.textContent =
+      `${horseNames[horseWinner]} wins! Your horse lost. ${lossText}`;
+  }
+
+  horseBet = 0;
+
+  updateHorseButtons();
+  checkGameState();
+}
+
+horseStartBtn.addEventListener("click", startHorseRace);
+
+/* ========================= */
+/* GAME STATE */
+/* ========================= */
+
+function checkGameState() {
+  if (runEnded || goalPopupOpen || coinFlipOpen) return;
+
+  if (activePlinkoBalls > 0) {
+    return;
+  }
+
+  if (timeLeft <= 0) {
+    showGameOverScreen();
+    return;
+  }
+
+  if (balance >= goal) {
+    showGoalPopup();
+    return;
+  }
+
+  if (balance < 1) {
+    if (tryUseSecondWindSoda()) {
+      return;
+    }
+
+    showCoinFlipPopup();
+    return;
+  }
+
+  updateDangerFlash();
+}
+
+/* ========================= */
+/* TIMER */
+/* ========================= */
+
+setInterval(() => {
+  if (!gameStarted || runEnded || goalPopupOpen || coinFlipOpen || moneyPopupActive) return;
+
+  if (timeLeft > 0) {
+    timeLeft--;
+    updateUI();
+  }
+
+  if (timeLeft <= 0) {
+    timeLeft = 0;
+    updateUI();
+
+    if (activePlinkoBalls > 0) {
+      return;
+    }
+
+    showGameOverScreen();
+  }
+}, 1000);
+
+resetBlackjack();
+resetFrogRoad();
+resetHorseRace();
+renderLeaderboard();
+renderInventory();
+renderShop();
+renderActiveItemTimers();
+updateUI();
