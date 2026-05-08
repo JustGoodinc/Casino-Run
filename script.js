@@ -3,6 +3,8 @@ let goal = 300;
 let timeLeft = 120;
 let currentRound = 1;
 let moneyPopupActive = false;
+let devUEasterEggClicks = 0;
+let devUEasterEggUnlocked = false;
 let allInAnimationActive = false;
 let popupQueueActive = false;
 let popupQueue = Promise.resolve();
@@ -966,6 +968,59 @@ const shopItemData = [
     description: "Use it to get one free Roulette spin at max bet. Extra vinyls add more free spins."
   }
 ];
+
+function spinDevU(element) {
+  if (!element) return;
+
+  element.classList.remove("dev-u-spin");
+  void element.offsetWidth;
+  element.classList.add("dev-u-spin");
+
+  setTimeout(() => {
+    element.classList.remove("dev-u-spin");
+  }, 620);
+}
+
+function unlockDevItemEasterEgg() {
+  if (devUEasterEggUnlocked) {
+    showToast("Dev stash already unlocked.");
+    return;
+  }
+
+  devUEasterEggUnlocked = true;
+
+  shopItemData.forEach((item) => {
+    inventory.push(item.id);
+  });
+
+  renderInventory();
+  playCashSound();
+  showToast("DEV MODE UNLOCKED — ALL ITEMS ADDED!");
+}
+
+function setupDevUEasterEgg() {
+  const devULetters = document.querySelectorAll(".dev-u");
+
+  devULetters.forEach((letter) => {
+    letter.addEventListener("click", (event) => {
+      event.stopPropagation();
+
+      spinDevU(letter);
+      playTone(740 + devUEasterEggClicks * 90, 0.08, "triangle", 0.06);
+
+      if (devUEasterEggUnlocked) {
+        showToast("Dev stash already unlocked.");
+        return;
+      }
+
+      devUEasterEggClicks++;
+
+      if (devUEasterEggClicks >= 3) {
+        unlockDevItemEasterEgg();
+      }
+    });
+  });
+}
 
 function getItemData(itemId) {
   return shopItemData.find((item) => item.id === itemId);
@@ -3866,4 +3921,5 @@ renderLeaderboard();
 renderInventory();
 renderShop();
 renderActiveItemTimers();
+setupDevUEasterEgg();
 updateUI();
