@@ -13,7 +13,7 @@
   <meta name="apple-mobile-web-app-title" content="Casino Run" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 
-  <link rel="stylesheet" href="./style.css?v=12" />
+  <link rel="stylesheet" href="./style.css?v=13" />
 </head>
 <body>
 
@@ -350,6 +350,13 @@
 
       <p>You cashed out! Add your name to the leaderboard.</p>
 
+      <div class="run-stats cashout-summary-card">
+        <p id="cashout-final-balance-text">Final Balance: $0.00</p>
+        <p id="cashout-highest-balance-text">Highest Balance: $100.00</p>
+        <p id="cashout-favorite-game-text">Favorite Game: -</p>
+        <p id="cashout-time-played-text">Time Played: 0:00</p>
+      </div>
+
       <input id="player-name-input" class="name-input" type="text" maxlength="12" placeholder="Your name" />
 
       <button id="submit-score-btn" class="submit-score-btn">SUBMIT SCORE</button>
@@ -367,6 +374,8 @@
       <div class="run-stats">
         <p id="final-balance-text">Final Balance: $0.00</p>
         <p id="highest-balance-text">Highest Balance: $100.00</p>
+        <p id="favorite-game-text">Favorite Game: -</p>
+        <p id="time-played-text">Time Played: 0:00</p>
       </div>
 
       <canvas id="game-over-graph" width="360" height="220"></canvas>
@@ -434,7 +443,7 @@
     }
   </script>
 
-  <script src="./script.js?v=12"></script>
+  <script src="./script.js?v=13"></script>
 
 </body>
 </html>

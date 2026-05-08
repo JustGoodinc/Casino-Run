@@ -1363,6 +1363,18 @@ h1 {
   font-weight: bold;
 }
 
+.cashout-summary-card {
+  margin: 14px 0;
+}
+
+#favorite-game-text,
+#time-played-text,
+#cashout-favorite-game-text,
+#cashout-time-played-text {
+  color: var(--yellow);
+  text-shadow: 0 0 8px rgba(255, 209, 102, 0.42);
+}
+
 .coin-area {
   height: 150px;
   display: flex;

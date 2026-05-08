@@ -13,6 +13,17 @@ let leaderboard = [];
 let highestBalance = 100;
 let balanceHistory = [100];
 
+let runStartTime = null;
+let runEndTime = null;
+let gamePlayCounts = {
+  Plinko: 0,
+  Roulette: 0,
+  Crash: 0,
+  Blackjack: 0,
+  "Elephant River": 0,
+  "Horse Race": 0
+};
+
 let coinFlipUses = 0;
 let coinFlipOpen = false;
 let coinFlipAnimating = false;
@@ -386,6 +397,69 @@ function recordBalancePoint() {
   balanceHistory.push(Math.max(0, balance));
 }
 
+function resetRunTracking() {
+  runStartTime = Date.now();
+  runEndTime = null;
+
+  gamePlayCounts = {
+    Plinko: 0,
+    Roulette: 0,
+    Crash: 0,
+    Blackjack: 0,
+    "Elephant River": 0,
+    "Horse Race": 0
+  };
+}
+
+function trackGamePlayed(gameName) {
+  if (!gamePlayCounts[gameName]) {
+    gamePlayCounts[gameName] = 0;
+  }
+
+  gamePlayCounts[gameName]++;
+}
+
+function getFavoriteGame() {
+  let favoriteGame = "None Yet";
+  let highestCount = 0;
+
+  Object.entries(gamePlayCounts).forEach(([gameName, count]) => {
+    if (count > highestCount) {
+      favoriteGame = gameName;
+      highestCount = count;
+    }
+  });
+
+  if (highestCount === 0) {
+    return "None Yet";
+  }
+
+  return `${favoriteGame} (${highestCount} play${highestCount === 1 ? "" : "s"})`;
+}
+
+function getRunSeconds() {
+  if (!runStartTime) {
+    return 0;
+  }
+
+  const endTime = runEndTime || Date.now();
+  return Math.max(0, Math.floor((endTime - runStartTime) / 1000));
+}
+
+function formatRunTime(totalSeconds) {
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+
+  return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+}
+
+function getRunSummary() {
+  return {
+    favoriteGame: getFavoriteGame(),
+    timePlayed: formatRunTime(getRunSeconds())
+  };
+}
+
 function animateBalanceChange(type) {
   balanceText.classList.remove("balance-gain");
   balanceText.classList.remove("balance-loss");
@@ -601,6 +675,8 @@ function shakeWinBoard() {
 }
 
 playBtn.addEventListener("click", () => {
+  resetRunTracking();
+
   gameStarted = true;
   runEnded = false;
 
@@ -1240,11 +1316,17 @@ const gameOverPopup = document.getElementById("game-over-popup");
 const gameOverSummary = document.getElementById("game-over-summary");
 const finalBalanceText = document.getElementById("final-balance-text");
 const highestBalanceText = document.getElementById("highest-balance-text");
+const favoriteGameText = document.getElementById("favorite-game-text");
+const timePlayedText = document.getElementById("time-played-text");
 const gameOverGraph = document.getElementById("game-over-graph");
 const gameOverCtx = gameOverGraph.getContext("2d");
 const tryAgainBtn = document.getElementById("try-again-btn");
 
 function showGameOverScreen() {
+  if (!runEndTime) {
+    runEndTime = Date.now();
+  }
+
   runEnded = true;
   gameStarted = false;
 
@@ -1263,9 +1345,13 @@ function showGameOverScreen() {
 
   updateDangerFlash();
 
+  const runSummary = getRunSummary();
+
   gameOverSummary.textContent = "You lost it all. Here is how your run went.";
   finalBalanceText.textContent = `Final Balance: $${balance.toFixed(2)}`;
   highestBalanceText.textContent = `Highest Balance: $${highestBalance.toFixed(2)}`;
+  favoriteGameText.textContent = `Favorite Game: ${runSummary.favoriteGame}`;
+  timePlayedText.textContent = `Time Played: ${runSummary.timePlayed}`;
 
   gameOverPopup.classList.remove("hidden");
 
@@ -1376,6 +1462,17 @@ function resetRunToTitleScreen() {
   highestBalance = 100;
   balanceHistory = [100];
 
+  runStartTime = null;
+  runEndTime = null;
+  gamePlayCounts = {
+    Plinko: 0,
+    Roulette: 0,
+    Crash: 0,
+    Blackjack: 0,
+    "Elephant River": 0,
+    "Horse Race": 0
+  };
+
   coinFlipUses = 0;
   coinFlipOpen = false;
   coinFlipAnimating = false;
@@ -1471,6 +1568,10 @@ const namePopup = document.getElementById("name-popup");
 const playerNameInput = document.getElementById("player-name-input");
 const submitScoreBtn = document.getElementById("submit-score-btn");
 const leaderboardList = document.getElementById("leaderboard-list");
+const cashoutFinalBalanceText = document.getElementById("cashout-final-balance-text");
+const cashoutHighestBalanceText = document.getElementById("cashout-highest-balance-text");
+const cashoutFavoriteGameText = document.getElementById("cashout-favorite-game-text");
+const cashoutTimePlayedText = document.getElementById("cashout-time-played-text");
 
 let typewriterInterval = null;
 
@@ -1530,11 +1631,22 @@ function continueRun() {
 }
 
 function cashOutRun() {
+  if (!runEndTime) {
+    runEndTime = Date.now();
+  }
+
   goalPopupOpen = false;
   runEnded = true;
 
   goalPopup.classList.add("hidden");
   namePopup.classList.remove("hidden");
+
+  const runSummary = getRunSummary();
+
+  cashoutFinalBalanceText.textContent = `Final Balance: $${balance.toFixed(2)}`;
+  cashoutHighestBalanceText.textContent = `Highest Balance: $${highestBalance.toFixed(2)}`;
+  cashoutFavoriteGameText.textContent = `Favorite Game: ${runSummary.favoriteGame}`;
+  cashoutTimePlayedText.textContent = `Time Played: ${runSummary.timePlayed}`;
 
   playerNameInput.value = "";
   playerNameInput.focus();
@@ -1956,6 +2068,7 @@ plinkoBtn.addEventListener("click", () => {
   }
 
   changeBalance(-bet);
+  trackGamePlayed("Plinko");
 
   activePlinkoBalls++;
 
@@ -2295,6 +2408,7 @@ spinBtn.addEventListener("click", () => {
     showToast(`EJM’s Record Vinyl used! Free max bet spin: $${bet}`);
   }
 
+  trackGamePlayed("Roulette");
   spinRoulette(bet, isFreeVinylSpin);
 });
 
@@ -2533,6 +2647,7 @@ startCrashBtn.addEventListener("click", () => {
   }
 
   changeBalance(-bet);
+  trackGamePlayed("Crash");
 
   crashBet = bet;
   crashMultiplier = 1;
@@ -2866,6 +2981,7 @@ function startBlackjackRound() {
   blackjackMessage.textContent = "Dealing cards...";
 
   changeBalance(-bet);
+  trackGamePlayed("Blackjack");
   updateBlackjackButtonState();
 
   dealCardWithDelay(blackjackPlayerHand, () => {
@@ -3120,6 +3236,7 @@ function startFrogRoadRound() {
   frogMultiplierText.textContent = "Multiplier: 1.00x";
 
   changeBalance(-bet);
+  trackGamePlayed("Elephant River");
 
   updateFrogButtons();
 }
@@ -3372,6 +3489,7 @@ function startHorseRace() {
   horseMessage.textContent = "And they are off!";
 
   changeBalance(-bet);
+  trackGamePlayed("Horse Race");
 
   playHorseStartSound();
   startHorseGallopSound();
