@@ -976,10 +976,78 @@ function addItemToInventory(itemId) {
   inventory.push(itemId);
 }
 
-function removeItemFromInventory(itemId) {
+function showItemBreakAnimation(itemId) {
+  const item = getItemData(itemId);
+
+  if (!item) return;
+
+  let breakLayer = document.getElementById("item-break-layer");
+
+  if (!breakLayer) {
+    breakLayer = document.createElement("div");
+    breakLayer.id = "item-break-layer";
+    breakLayer.className = "item-break-layer";
+    document.body.appendChild(breakLayer);
+  }
+
+  breakLayer.classList.remove("hidden");
+
+  const card = document.createElement("div");
+  card.classList.add("item-break-card");
+
+  const icon = document.createElement("div");
+  icon.classList.add("item-break-icon");
+  icon.textContent = item.icon;
+
+  const crack = document.createElement("div");
+  crack.classList.add("item-break-crack");
+  crack.textContent = "⚡";
+
+  const label = document.createElement("div");
+  label.classList.add("item-break-label");
+  label.textContent = `${item.name} broke!`;
+
+  const shardA = document.createElement("span");
+  shardA.classList.add("item-shard", "shard-a");
+
+  const shardB = document.createElement("span");
+  shardB.classList.add("item-shard", "shard-b");
+
+  const shardC = document.createElement("span");
+  shardC.classList.add("item-shard", "shard-c");
+
+  card.appendChild(shardA);
+  card.appendChild(shardB);
+  card.appendChild(shardC);
+  card.appendChild(icon);
+  card.appendChild(crack);
+  card.appendChild(label);
+
+  breakLayer.appendChild(card);
+
+  playTone(190, 0.09, "square", 0.08);
+
+  setTimeout(() => {
+    playTone(95, 0.14, "sawtooth", 0.07);
+  }, 110);
+
+  setTimeout(() => {
+    card.remove();
+
+    if (breakLayer.children.length === 0) {
+      breakLayer.classList.add("hidden");
+    }
+  }, 1150);
+}
+
+function removeItemFromInventory(itemId, showBreakAnimation = false) {
   const index = inventory.indexOf(itemId);
 
   if (index >= 0) {
+    if (showBreakAnimation) {
+      showItemBreakAnimation(itemId);
+    }
+
     inventory.splice(index, 1);
   }
 
@@ -1078,7 +1146,7 @@ function useInventoryItem(itemId) {
 
   if (itemId === "timeBottle") {
     timeLeft += 30;
-    removeItemFromInventory(itemId);
+    removeItemFromInventory(itemId, true);
     updateUI();
     closeItemPopup();
     showToast("Time in a Bottle used! +30 seconds.");
@@ -1087,7 +1155,7 @@ function useInventoryItem(itemId) {
 
   if (itemId === "rouletteMagnet") {
     activeRouletteMagnet = true;
-    removeItemFromInventory(itemId);
+    removeItemFromInventory(itemId, true);
     closeItemPopup();
     showToast("Roulette Magnet activated for your next Roulette spin.");
     return;
@@ -1095,7 +1163,7 @@ function useInventoryItem(itemId) {
 
   if (itemId === "frogSneakers") {
     activeFrogSneakers++;
-    removeItemFromInventory(itemId);
+    removeItemFromInventory(itemId, true);
     closeItemPopup();
     showToast(`Pool Floaties activated! Floaties stacked: ${activeFrogSneakers}.`);
     return;
@@ -1103,7 +1171,7 @@ function useInventoryItem(itemId) {
 
   if (itemId === "goalCutter") {
     goal = Math.max(50, Math.ceil(goal * 0.9));
-    removeItemFromInventory(itemId);
+    removeItemFromInventory(itemId, true);
     updateUI();
     closeItemPopup();
     showToast("Goal Cutter used! Current goal lowered by 10%.");
@@ -1119,14 +1187,14 @@ function useInventoryItem(itemId) {
     blackjackDealerHidden = false;
     renderBlackjackHands();
     blackjackMessage.textContent = "Dealer’s Peek Card used. Hidden card revealed!";
-    removeItemFromInventory(itemId);
+    removeItemFromInventory(itemId, true);
     closeItemPopup();
     return;
   }
 
   if (itemId === "goldenHorseshoe") {
     activeGoldenHorseshoe++;
-    removeItemFromInventory(itemId);
+    removeItemFromInventory(itemId, true);
     closeItemPopup();
     showToast(`Golden Horseshoe activated! Horseshoes stacked: ${activeGoldenHorseshoe}.`);
     return;
@@ -1134,7 +1202,7 @@ function useInventoryItem(itemId) {
 
   if (itemId === "weightedBall") {
     activeWeightedBall++;
-    removeItemFromInventory(itemId);
+    removeItemFromInventory(itemId, true);
     closeItemPopup();
     showToast(`Weighted Ball activated! Weighted Balls stacked: ${activeWeightedBall}.`);
     return;
@@ -1149,7 +1217,7 @@ function useInventoryItem(itemId) {
       cashbackActiveUntil = now + 60000;
     }
 
-    removeItemFromInventory(itemId);
+    removeItemFromInventory(itemId, true);
     closeItemPopup();
     showToast("Cashback Coupon activated! +60 seconds added.");
     renderActiveItemTimers();
@@ -1165,7 +1233,7 @@ function useInventoryItem(itemId) {
       activeJesterHatUntil = now + 60000;
     }
 
-    removeItemFromInventory(itemId);
+    removeItemFromInventory(itemId, true);
     closeItemPopup();
     showToast("Thottie’s Jester Hat activated! +60 seconds added.");
     renderActiveItemTimers();
@@ -1174,7 +1242,7 @@ function useInventoryItem(itemId) {
 
   if (itemId === "roseKatMagnumOpus") {
     roseKatPlinkoBoosts += 2;
-    removeItemFromInventory(itemId);
+    removeItemFromInventory(itemId, true);
     closeItemPopup();
     showToast(`RoseKat’s Magnum Opus activated! Plinko boosts stacked: ${roseKatPlinkoBoosts}.`);
     return;
@@ -1182,7 +1250,7 @@ function useInventoryItem(itemId) {
 
   if (itemId === "ejmRecordVinyl") {
     activeFreeRouletteMaxSpin++;
-    removeItemFromInventory(itemId);
+    removeItemFromInventory(itemId, true);
     closeItemPopup();
     showToast(`EJM’s Record Vinyl activated! Free max spins stacked: ${activeFreeRouletteMaxSpin}.`);
     return;
@@ -1258,7 +1326,7 @@ function processFullLoss(bet) {
     refund += insuranceRefund;
 
     for (let i = 0; i < ticketsToUse; i++) {
-      removeItemFromInventory("insuranceTicket");
+      removeItemFromInventory("insuranceTicket", true);
     }
 
     messageParts.push(
@@ -1288,7 +1356,7 @@ function processFullLoss(bet) {
 
 function tryUseSecondWindSoda() {
   if (balance <= 0 && hasItem("secondWindSoda")) {
-    removeItemFromInventory("secondWindSoda");
+    removeItemFromInventory("secondWindSoda", true);
 
     balance = 25;
     recordBalancePoint();
@@ -1794,7 +1862,7 @@ function flipRescueCoin() {
 
   if (hasItem("doubleHeadedCoin")) {
     playerWins = true;
-    removeItemFromInventory("doubleHeadedCoin");
+    removeItemFromInventory("doubleHeadedCoin", true);
   }
 
   coin.classList.remove("flipping", "win", "lose");
