@@ -3,42 +3,49 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
   <title>Casino Run</title>
+
   <link rel="manifest" href="./manifest.json" />
   <meta name="theme-color" content="#073b4c" />
+
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="Casino Run" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <link rel="stylesheet" href="./style.css?v=restart1" />
+
+  <link rel="stylesheet" href="./style.css?v=12" />
 </head>
 <body>
+
   <div id="title-screen" class="title-screen">
     <div class="title-card">
       <h1>Casino Run</h1>
       <p>Make the goal before time runs out.</p>
       <p class="title-subtext">Win big. Risk more. Cash out before it all disappears.</p>
+
       <button id="play-btn" class="play-btn">PLAY</button>
     </div>
   </div>
 
   <div id="danger-flash" class="danger-flash hidden"></div>
 
-  <main id="game-wrapper" class="game hidden">
-    <aside id="inventory-sidebar" class="inventory-sidebar">
+  <div id="game-wrapper" class="game hidden">
+
+    <div id="inventory-sidebar" class="inventory-sidebar">
       <h3>🎒</h3>
       <div id="inventory-icons" class="inventory-icons"></div>
       <div id="active-item-timers" class="active-item-timers"></div>
-    </aside>
+    </div>
 
     <h1>Casino Run</h1>
 
-    <section class="stats">
+    <div class="stats">
       <p id="balance">Balance: $100.00</p>
       <p id="goal">Goal: $300</p>
       <p id="timer">Time: 120</p>
-    </section>
+    </div>
 
-    <nav class="nav">
+    <div class="nav">
       <button class="nav-btn active" data-screen="plinko-screen">Plinko</button>
       <button class="nav-btn" data-screen="roulette-screen">Roulette</button>
       <button class="nav-btn" data-screen="crash-screen">Crash</button>
@@ -46,72 +53,388 @@
       <button class="nav-btn" data-screen="frog-screen">Elephant River</button>
       <button class="nav-btn" data-screen="horse-screen">Horse Race</button>
       <button class="nav-btn shop-nav-btn" data-screen="shop-screen">Shop</button>
-    </nav>
+    </div>
 
-    <section id="plinko-screen" class="screen active-screen">
-      <div class="bet-slider-card"><div class="bet-row"><span>Bet</span><strong id="plinko-bet-display">$20</strong></div><input id="plinko-bet-slider" class="bet-slider" type="range" min="1" max="100" value="20" /><div class="bet-meta"><span>$1</span><span id="plinko-max-display">Max: $100</span></div></div>
-      <div id="board"><div class="pegs"></div><div class="slots"><div class="slot">0x</div><div class="slot">0.5x</div><div class="slot">1x</div><div class="slot">2x</div><div class="slot">5x</div></div></div>
-      <button id="plinko-btn" class="main-btn game-action-btn">DROP BALL</button>
-    </section>
+    <div id="plinko-screen" class="screen active-screen">
+      <div class="bet-slider-card">
+        <div class="bet-row">
+          <span>Bet</span>
+          <strong id="plinko-bet-display">$20</strong>
+        </div>
 
-    <section id="roulette-screen" class="screen">
-      <div class="bet-slider-card"><div class="bet-row"><span>Bet</span><strong id="roulette-bet-display">$20</strong></div><input id="roulette-bet-slider" class="bet-slider" type="range" min="1" max="100" value="20" /><div class="bet-meta"><span>$1</span><span id="roulette-max-display">Max: $100</span></div></div>
-      <div id="wheel-container"><canvas id="roulette-canvas" width="300" height="300"></canvas><div id="pointer"></div></div>
-      <div class="roulette-buttons"><button id="bet-red" class="roulette-choice">Red</button><button id="bet-black" class="roulette-choice">Black</button><button id="bet-green" class="roulette-choice">Green</button></div>
-      <button id="spin-btn" class="main-btn game-action-btn">SPIN</button>
-      <p id="roulette-result">Result: -</p>
-    </section>
+        <input id="plinko-bet-slider" class="bet-slider" type="range" min="1" max="100" value="20" />
 
-    <section id="crash-screen" class="screen">
-      <div class="bet-slider-card"><div class="bet-row"><span>Bet</span><strong id="crash-bet-display">$20</strong></div><input id="crash-bet-slider" class="bet-slider" type="range" min="1" max="100" value="20" /><div class="bet-meta"><span>$1</span><span id="crash-max-display">Max: $100</span></div></div>
-      <div class="crash-card"><div id="crash-multiplier">1.00x</div><canvas id="crash-canvas" width="360" height="220"></canvas><p id="crash-status">Place your bet and start.</p></div>
-      <div class="crash-buttons"><button id="start-crash-btn" class="main-btn game-action-btn">START CRASH</button><button id="cashout-btn" class="main-btn cashout-btn" disabled>CASH OUT</button></div>
-    </section>
-
-    <section id="blackjack-screen" class="screen">
-      <div class="bet-slider-card"><div class="bet-row"><span>Bet</span><strong id="blackjack-bet-display">$20</strong></div><input id="blackjack-bet-slider" class="bet-slider" type="range" min="1" max="100" value="20" /><div class="bet-meta"><span>$1</span><span id="blackjack-max-display">Max: $100</span></div></div>
-      <div id="blackjack-board" class="blackjack-board">
-        <div class="blackjack-section"><div class="blackjack-header"><h3>Dealer</h3><span id="dealer-total">Total: ?</span></div><div id="dealer-hand" class="card-row"></div></div>
-        <div id="blackjack-message" class="blackjack-message">Press DEAL to start.</div>
-        <div class="blackjack-section"><div class="blackjack-header"><h3>You</h3><span id="player-total">Total: 0</span></div><div id="player-hand" class="card-row"></div></div>
+        <div class="bet-meta">
+          <span>$1</span>
+          <span id="plinko-max-display">Max: $100</span>
+        </div>
       </div>
-      <div class="blackjack-buttons"><button id="blackjack-deal-btn" class="main-btn game-action-btn">DEAL</button><button id="blackjack-hit-btn" class="main-btn game-action-btn" disabled>HIT</button><button id="blackjack-stand-btn" class="main-btn game-action-btn" disabled>STAND</button></div>
-    </section>
 
-    <section id="frog-screen" class="screen">
-      <div class="bet-slider-card"><div class="bet-row"><span>Bet</span><strong id="frog-bet-display">$20</strong></div><input id="frog-bet-slider" class="bet-slider" type="range" min="1" max="100" value="20" /><div class="bet-meta"><span>$1</span><span id="frog-max-display">Max: $100</span></div></div>
-      <div id="frog-board" class="frog-board elephant-river-board"><div class="frog-top-zone elephant-shore-top">SAFE SHORE</div><div class="frog-road elephant-river"><div class="frog-lane"><div class="lane-line river-line"></div><div class="car car-a">🪵</div></div><div class="frog-lane"><div class="lane-line river-line"></div><div class="car car-b">🐊</div></div><div class="frog-lane"><div class="lane-line river-line"></div><div class="car car-c">🚤</div></div><div class="frog-lane"><div class="lane-line river-line"></div><div class="car car-d">🛶</div></div><div class="frog-lane"><div class="lane-line river-line"></div><div class="car car-e">🪵</div></div><div id="frog-player" class="frog-player elephant-player">🐘</div></div><div class="frog-start-zone elephant-shore-bottom">RIVERBANK</div></div>
-      <div class="frog-info"><p id="frog-message">Press START CROSSING to help the pink elephant cross the river.</p><p id="frog-multiplier">Multiplier: 1.00x</p></div>
-      <div class="frog-buttons"><button id="frog-start-btn" class="main-btn game-action-btn">START CROSSING</button><button id="frog-hop-btn" class="main-btn game-action-btn" disabled>STEP FORWARD</button><button id="frog-cashout-btn" class="main-btn cashout-btn game-action-btn" disabled>CASH OUT</button></div>
-    </section>
+      <div id="board">
+        <div class="pegs"></div>
 
-    <section id="horse-screen" class="screen">
-      <div class="bet-slider-card"><div class="bet-row"><span>Bet</span><strong id="horse-bet-display">$20</strong></div><input id="horse-bet-slider" class="bet-slider" type="range" min="1" max="100" value="20" /><div class="bet-meta"><span>$1</span><span id="horse-max-display">Max: $100</span></div></div>
-      <div class="horse-pick-card"><p>Pick your horse</p><div class="horse-pick-buttons"><button class="horse-choice selected" data-horse="0">Dingo</button><button class="horse-choice" data-horse="1">Vas</button><button class="horse-choice" data-horse="2">HisterBlue</button><button class="horse-choice" data-horse="3">The Horse</button></div></div>
-      <div id="horse-board" class="horse-board"><div class="finish-line">FINISH</div><div class="horse-track-lane"><span class="lane-number">Dingo</span><div id="horse-0" class="horse-runner">🐎</div></div><div class="horse-track-lane"><span class="lane-number">Vas</span><div id="horse-1" class="horse-runner">🐎</div></div><div class="horse-track-lane"><span class="lane-number">HisterBlue</span><div id="horse-2" class="horse-runner">🐎</div></div><div class="horse-track-lane"><span class="lane-number">The Horse</span><div id="horse-3" class="horse-runner">🐎</div></div></div>
-      <div class="horse-info"><p id="horse-message">Pick a horse and start the race.</p><p id="horse-payout">Payout: 4x if your horse wins</p></div>
+        <div class="slots">
+          <div class="slot">0x</div>
+          <div class="slot">0.5x</div>
+          <div class="slot">1x</div>
+          <div class="slot">2x</div>
+          <div class="slot">5x</div>
+        </div>
+      </div>
+
+      <button id="plinko-btn" class="main-btn game-action-btn">DROP BALL</button>
+    </div>
+
+    <div id="roulette-screen" class="screen">
+      <div class="bet-slider-card">
+        <div class="bet-row">
+          <span>Bet</span>
+          <strong id="roulette-bet-display">$20</strong>
+        </div>
+
+        <input id="roulette-bet-slider" class="bet-slider" type="range" min="1" max="100" value="20" />
+
+        <div class="bet-meta">
+          <span>$1</span>
+          <span id="roulette-max-display">Max: $100</span>
+        </div>
+      </div>
+
+      <div id="wheel-container">
+        <canvas id="roulette-canvas" width="300" height="300"></canvas>
+        <div id="pointer"></div>
+      </div>
+
+      <div class="roulette-buttons">
+        <button id="bet-red" class="roulette-choice">Red</button>
+        <button id="bet-black" class="roulette-choice">Black</button>
+        <button id="bet-green" class="roulette-choice">Green</button>
+      </div>
+
+      <button id="spin-btn" class="main-btn game-action-btn">SPIN</button>
+
+      <p id="roulette-result">Result: -</p>
+    </div>
+
+    <div id="crash-screen" class="screen">
+      <div class="bet-slider-card">
+        <div class="bet-row">
+          <span>Bet</span>
+          <strong id="crash-bet-display">$20</strong>
+        </div>
+
+        <input id="crash-bet-slider" class="bet-slider" type="range" min="1" max="100" value="20" />
+
+        <div class="bet-meta">
+          <span>$1</span>
+          <span id="crash-max-display">Max: $100</span>
+        </div>
+      </div>
+
+      <div class="crash-card">
+        <div id="crash-multiplier">1.00x</div>
+        <canvas id="crash-canvas" width="360" height="220"></canvas>
+        <p id="crash-status">Place your bet and start.</p>
+      </div>
+
+      <div class="crash-buttons">
+        <button id="start-crash-btn" class="main-btn game-action-btn">START CRASH</button>
+        <button id="cashout-btn" class="main-btn cashout-btn" disabled>CASH OUT</button>
+      </div>
+    </div>
+
+    <div id="blackjack-screen" class="screen">
+      <div class="bet-slider-card">
+        <div class="bet-row">
+          <span>Bet</span>
+          <strong id="blackjack-bet-display">$20</strong>
+        </div>
+
+        <input id="blackjack-bet-slider" class="bet-slider" type="range" min="1" max="100" value="20" />
+
+        <div class="bet-meta">
+          <span>$1</span>
+          <span id="blackjack-max-display">Max: $100</span>
+        </div>
+      </div>
+
+      <div id="blackjack-board" class="blackjack-board">
+        <div class="blackjack-section">
+          <div class="blackjack-header">
+            <h3>Dealer</h3>
+            <span id="dealer-total">Total: ?</span>
+          </div>
+
+          <div id="dealer-hand" class="card-row"></div>
+        </div>
+
+        <div id="blackjack-message" class="blackjack-message">
+          Press DEAL to start.
+        </div>
+
+        <div class="blackjack-section">
+          <div class="blackjack-header">
+            <h3>You</h3>
+            <span id="player-total">Total: 0</span>
+          </div>
+
+          <div id="player-hand" class="card-row"></div>
+        </div>
+      </div>
+
+      <div class="blackjack-buttons">
+        <button id="blackjack-deal-btn" class="main-btn game-action-btn">DEAL</button>
+        <button id="blackjack-hit-btn" class="main-btn game-action-btn" disabled>HIT</button>
+        <button id="blackjack-stand-btn" class="main-btn game-action-btn" disabled>STAND</button>
+      </div>
+    </div>
+
+    <div id="frog-screen" class="screen">
+      <div class="bet-slider-card">
+        <div class="bet-row">
+          <span>Bet</span>
+          <strong id="frog-bet-display">$20</strong>
+        </div>
+
+        <input id="frog-bet-slider" class="bet-slider" type="range" min="1" max="100" value="20" />
+
+        <div class="bet-meta">
+          <span>$1</span>
+          <span id="frog-max-display">Max: $100</span>
+        </div>
+      </div>
+
+      <div id="frog-board" class="frog-board elephant-river-board">
+        <div class="frog-top-zone elephant-shore-top">SAFE SHORE</div>
+
+        <div class="frog-road elephant-river">
+          <div class="frog-lane">
+            <div class="lane-line river-line"></div>
+            <div class="car car-a">🪵</div>
+          </div>
+
+          <div class="frog-lane">
+            <div class="lane-line river-line"></div>
+            <div class="car car-b">🐊</div>
+          </div>
+
+          <div class="frog-lane">
+            <div class="lane-line river-line"></div>
+            <div class="car car-c">🚤</div>
+          </div>
+
+          <div class="frog-lane">
+            <div class="lane-line river-line"></div>
+            <div class="car car-d">🛶</div>
+          </div>
+
+          <div class="frog-lane">
+            <div class="lane-line river-line"></div>
+            <div class="car car-e">🪵</div>
+          </div>
+
+          <div id="frog-player" class="frog-player elephant-player">🐘</div>
+        </div>
+
+        <div class="frog-start-zone elephant-shore-bottom">RIVERBANK</div>
+      </div>
+
+      <div class="frog-info">
+        <p id="frog-message">Press START CROSSING to help the pink elephant cross the river.</p>
+        <p id="frog-multiplier">Multiplier: 1.00x</p>
+      </div>
+
+      <div class="frog-buttons">
+        <button id="frog-start-btn" class="main-btn game-action-btn">START CROSSING</button>
+        <button id="frog-hop-btn" class="main-btn game-action-btn" disabled>STEP FORWARD</button>
+        <button id="frog-cashout-btn" class="main-btn cashout-btn game-action-btn" disabled>CASH OUT</button>
+      </div>
+    </div>
+
+    <div id="horse-screen" class="screen">
+      <div class="bet-slider-card">
+        <div class="bet-row">
+          <span>Bet</span>
+          <strong id="horse-bet-display">$20</strong>
+        </div>
+
+        <input id="horse-bet-slider" class="bet-slider" type="range" min="1" max="100" value="20" />
+
+        <div class="bet-meta">
+          <span>$1</span>
+          <span id="horse-max-display">Max: $100</span>
+        </div>
+      </div>
+
+      <div class="horse-pick-card">
+        <p>Pick your horse</p>
+
+        <div class="horse-pick-buttons">
+          <button class="horse-choice selected" data-horse="0">Dingo</button>
+          <button class="horse-choice" data-horse="1">Vas</button>
+          <button class="horse-choice" data-horse="2">HisterBlue</button>
+          <button class="horse-choice" data-horse="3">The Horse</button>
+        </div>
+      </div>
+
+      <div id="horse-board" class="horse-board">
+        <div class="finish-line">FINISH</div>
+
+        <div class="horse-track-lane">
+          <span class="lane-number">Dingo</span>
+          <div id="horse-0" class="horse-runner">🐎</div>
+        </div>
+
+        <div class="horse-track-lane">
+          <span class="lane-number">Vas</span>
+          <div id="horse-1" class="horse-runner">🐎</div>
+        </div>
+
+        <div class="horse-track-lane">
+          <span class="lane-number">HisterBlue</span>
+          <div id="horse-2" class="horse-runner">🐎</div>
+        </div>
+
+        <div class="horse-track-lane">
+          <span class="lane-number">The Horse</span>
+          <div id="horse-3" class="horse-runner">🐎</div>
+        </div>
+      </div>
+
+      <div class="horse-info">
+        <p id="horse-message">Pick a horse and start the race.</p>
+        <p id="horse-payout">Payout: 4x if your horse wins</p>
+      </div>
+
       <button id="horse-start-btn" class="main-btn game-action-btn">START RACE</button>
-    </section>
+    </div>
 
-    <section id="shop-screen" class="screen"><div class="shop-card"><h2>Casino Shop</h2><p>Shop refreshes after each goal or new run. Prices rise every round.</p><div id="shop-items" class="shop-items"></div></div></section>
+    <div id="shop-screen" class="screen">
+      <div class="shop-card">
+        <h2>Casino Shop</h2>
+        <p>Shop refreshes after each goal or new run.</p>
 
-    <section class="leaderboard-card"><h2>Leaderboard</h2><ol id="leaderboard-list"><li>No scores yet.</li></ol></section>
-  </main>
+        <div id="shop-items" class="shop-items"></div>
+      </div>
+    </div>
 
-  <div id="goal-popup" class="goal-popup hidden"><div class="goal-popup-card"><div class="goal-popup-glow"></div><h2>GOAL HIT!</h2><p id="goal-popup-message"></p><div class="goal-popup-buttons"><button id="keep-going-btn">YES, KEEP GOING</button><button id="cash-out-run-btn">NO, CASH OUT</button></div></div></div>
-  <div id="name-popup" class="goal-popup hidden"><div class="goal-popup-card name-card"><div class="goal-popup-glow"></div><h2>RUN COMPLETE</h2><p>You cashed out! Add your name to the leaderboard.</p><input id="player-name-input" class="name-input" type="text" maxlength="12" placeholder="Your name" /><button id="submit-score-btn" class="submit-score-btn">SUBMIT SCORE</button></div></div>
-  <div id="game-over-popup" class="goal-popup hidden"><div class="goal-popup-card game-over-card"><div class="goal-popup-glow"></div><h2>GAME OVER</h2><p id="game-over-summary">You lost it all.</p><div class="run-stats"><p id="final-balance-text">Final Balance: $0.00</p><p id="highest-balance-text">Highest Balance: $100.00</p></div><canvas id="game-over-graph" width="360" height="220"></canvas><button id="try-again-btn" class="try-again-btn">TRY AGAIN</button></div></div>
-  <div id="coin-flip-popup" class="goal-popup hidden"><div class="goal-popup-card coin-flip-card"><div class="goal-popup-glow"></div><h2>LAST CHANCE</h2><p id="coin-flip-message">You dropped under $1. Flip the coin. Win and get 20% of the current goal. Lose and the run ends.</p><div class="coin-area"><div id="coin" class="coin"><div class="coin-face coin-front">$</div><div class="coin-face coin-back">X</div></div></div><p id="coin-flips-left">Coin flips left: 3</p><button id="flip-coin-btn" class="try-again-btn">FLIP COIN</button></div></div>
-  <div id="item-popup" class="goal-popup hidden"><div class="goal-popup-card item-popup-card"><div class="goal-popup-glow"></div><div id="item-popup-icon" class="item-popup-icon">🛒</div><h2 id="item-popup-name">Item</h2><p id="item-popup-type">Type</p><p id="item-popup-description">Description</p><button id="use-item-btn" class="submit-score-btn hidden">USE ITEM</button><button id="close-item-popup-btn" class="try-again-btn">CLOSE</button></div></div>
+    <div class="leaderboard-card">
+      <h2>Leaderboard</h2>
+      <ol id="leaderboard-list">
+        <li>No scores yet.</li>
+      </ol>
+    </div>
+
+  </div>
+
+  <div id="goal-popup" class="goal-popup hidden">
+    <div class="goal-popup-card">
+      <div class="goal-popup-glow"></div>
+
+      <h2>GOAL HIT!</h2>
+
+      <p id="goal-popup-message"></p>
+
+      <div class="goal-popup-buttons">
+        <button id="keep-going-btn">YES, KEEP GOING</button>
+        <button id="cash-out-run-btn">NO, CASH OUT</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="name-popup" class="goal-popup hidden">
+    <div class="goal-popup-card name-card">
+      <div class="goal-popup-glow"></div>
+
+      <h2>RUN COMPLETE</h2>
+
+      <p>You cashed out! Add your name to the leaderboard.</p>
+
+      <input id="player-name-input" class="name-input" type="text" maxlength="12" placeholder="Your name" />
+
+      <button id="submit-score-btn" class="submit-score-btn">SUBMIT SCORE</button>
+    </div>
+  </div>
+
+  <div id="game-over-popup" class="goal-popup hidden">
+    <div class="goal-popup-card game-over-card">
+      <div class="goal-popup-glow"></div>
+
+      <h2>GAME OVER</h2>
+
+      <p id="game-over-summary">You lost it all.</p>
+
+      <div class="run-stats">
+        <p id="final-balance-text">Final Balance: $0.00</p>
+        <p id="highest-balance-text">Highest Balance: $100.00</p>
+      </div>
+
+      <canvas id="game-over-graph" width="360" height="220"></canvas>
+
+      <button id="try-again-btn" class="try-again-btn">TRY AGAIN</button>
+    </div>
+  </div>
+
+  <div id="coin-flip-popup" class="goal-popup hidden">
+    <div class="goal-popup-card coin-flip-card">
+      <div class="goal-popup-glow"></div>
+
+      <h2>LAST CHANCE</h2>
+
+      <p id="coin-flip-message">
+        You dropped under $1. Flip the coin. Win and get 20% of the current goal. Lose and the run ends.
+      </p>
+
+      <div class="coin-area">
+        <div id="coin" class="coin">
+          <div class="coin-face coin-front">$</div>
+          <div class="coin-face coin-back">X</div>
+        </div>
+      </div>
+
+      <p id="coin-flips-left">Coin flips left: 3</p>
+
+      <button id="flip-coin-btn" class="try-again-btn">FLIP COIN</button>
+    </div>
+  </div>
+
+  <div id="item-popup" class="goal-popup hidden">
+    <div class="goal-popup-card item-popup-card">
+      <div class="goal-popup-glow"></div>
+
+      <div id="item-popup-icon" class="item-popup-icon">🛒</div>
+      <h2 id="item-popup-name">Item</h2>
+      <p id="item-popup-type">Type</p>
+      <p id="item-popup-description">Description</p>
+
+      <button id="use-item-btn" class="submit-score-btn hidden">USE ITEM</button>
+      <button id="close-item-popup-btn" class="try-again-btn">CLOSE</button>
+    </div>
+  </div>
+
   <div id="money-popup-layer" class="money-popup-layer hidden"></div>
+
   <div id="toast-message" class="toast-message hidden"></div>
 
   <script>
     if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.getRegistrations().then((registrations) => registrations.forEach((registration) => registration.unregister()));
-      if ("caches" in window) caches.keys().then((cacheNames) => cacheNames.forEach((cacheName) => caches.delete(cacheName)));
+      navigator.serviceWorker.getRegistrations().then((registrations) => {
+        registrations.forEach((registration) => {
+          registration.unregister();
+        });
+      });
+
+      if ("caches" in window) {
+        caches.keys().then((cacheNames) => {
+          cacheNames.forEach((cacheName) => {
+            caches.delete(cacheName);
+          });
+        });
+      }
     }
   </script>
-  <script src="./script.js?v=restart1"></script>
+
+  <script src="./script.js?v=12"></script>
+
 </body>
 </html>
