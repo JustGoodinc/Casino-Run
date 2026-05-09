@@ -44,6 +44,12 @@ let coinFlipOpen = false;
 let coinFlipAnimating = false;
 const maxCoinFlips = 3;
 
+const SUPABASE_PROJECT_URL = "https://deprjdkxyrrbfgfjukay.supabase.co";
+const SUPABASE_ANON_PUBLIC_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRlcHJqZGt4eXJyYmZnZmp1a2F5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzMzA0NjEsImV4cCI6MjA5MzkwNjQ2MX0.ljw_0B1tiekRCyhbMF6E37XbP5bdy0XSKgk_-6A7QHc";
+const SUPABASE_LEADERBOARD_TABLE = "leaderboard";
+let leaderboardIsLoading = false;
+let leaderboardSubmitBusy = false;
+
 const toastMessage = document.getElementById("toast-message");
 let moneyPopupLayer = document.getElementById("money-popup-layer");
 let toastTimeout = null;
@@ -2321,41 +2327,142 @@ function cashOutRun() {
   updateDangerFlash();
 }
 
-function submitScore() {
+async function submitScore() {
+  if (leaderboardSubmitBusy) return;
+
   let name = playerNameInput.value.trim();
 
   if (name === "") {
     name = "Player";
   }
 
-  leaderboard.push({
-    name,
-    score: balance
-  });
+  leaderboardSubmitBusy = true;
+  submitScoreBtn.disabled = true;
+  submitScoreBtn.textContent = "SAVING...";
 
-  leaderboard.sort((a, b) => b.score - a.score);
-  leaderboard = leaderboard.slice(0, 10);
+  const savedOnline = await submitLiveLeaderboardScore(name, balance);
 
-  renderLeaderboard();
+  if (!savedOnline) {
+    leaderboard.push({
+      name,
+      score: balance
+    });
 
-  namePopup.classList.add("hidden");
+    leaderboard.sort((a, b) => b.score - a.score);
+    leaderboard = leaderboard.slice(0, 10);
+    renderLeaderboard("Saved locally. Live leaderboard could not be reached.");
+  }
+
+  await loadLiveLeaderboard();
+
+  submitScoreBtn.textContent = savedOnline ? "SAVED!" : "SAVED LOCALLY";
+
+  setTimeout(() => {
+    submitScoreBtn.disabled = false;
+    submitScoreBtn.textContent = "SUBMIT SCORE";
+    leaderboardSubmitBusy = false;
+    namePopup.classList.add("hidden");
+  }, 900);
 }
 
-function renderLeaderboard() {
+function renderLeaderboard(statusMessage = "") {
   leaderboardList.innerHTML = "";
+
+  if (statusMessage) {
+    const statusItem = document.createElement("li");
+    statusItem.textContent = statusMessage;
+    statusItem.classList.add("leaderboard-status");
+    leaderboardList.appendChild(statusItem);
+  }
+
+  if (leaderboardIsLoading) {
+    const loadingItem = document.createElement("li");
+    loadingItem.textContent = "Loading live scores...";
+    loadingItem.classList.add("leaderboard-status");
+    leaderboardList.appendChild(loadingItem);
+    return;
+  }
 
   if (leaderboard.length === 0) {
     const emptyItem = document.createElement("li");
-    emptyItem.textContent = "No scores yet.";
+    emptyItem.textContent = "No live scores yet.";
     leaderboardList.appendChild(emptyItem);
     return;
   }
 
   leaderboard.forEach((entry) => {
     const item = document.createElement("li");
-    item.textContent = `${entry.name} - $${entry.score.toFixed(2)}`;
+    item.textContent = `${entry.name} - $${Number(entry.score).toFixed(2)}`;
     leaderboardList.appendChild(item);
   });
+}
+
+async function loadLiveLeaderboard() {
+  if (!leaderboardList) return;
+
+  leaderboardIsLoading = true;
+  renderLeaderboard();
+
+  try {
+    const url = `${SUPABASE_PROJECT_URL}/rest/v1/${SUPABASE_LEADERBOARD_TABLE}?select=player_name,final_balance&order=final_balance.desc&limit=10`;
+
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        apikey: SUPABASE_ANON_PUBLIC_KEY,
+        Authorization: `Bearer ${SUPABASE_ANON_PUBLIC_KEY}`
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Leaderboard load failed: ${response.status}`);
+    }
+
+    const rows = await response.json();
+
+    leaderboard = rows.map((row) => {
+      return {
+        name: row.player_name,
+        score: Number(row.final_balance) || 0
+      };
+    });
+
+    leaderboardIsLoading = false;
+    renderLeaderboard();
+  } catch (error) {
+    console.error(error);
+    leaderboardIsLoading = false;
+    renderLeaderboard("Live leaderboard unavailable.");
+  }
+}
+
+async function submitLiveLeaderboardScore(name, finalBalance) {
+  try {
+    const response = await fetch(`${SUPABASE_PROJECT_URL}/rest/v1/${SUPABASE_LEADERBOARD_TABLE}`, {
+      method: "POST",
+      headers: {
+        apikey: SUPABASE_ANON_PUBLIC_KEY,
+        Authorization: `Bearer ${SUPABASE_ANON_PUBLIC_KEY}`,
+        "Content-Type": "application/json",
+        Prefer: "return=minimal"
+      },
+      body: JSON.stringify({
+        player_name: name.slice(0, 12),
+        final_balance: Number(finalBalance.toFixed(2))
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Leaderboard save failed: ${response.status}`);
+    }
+
+    showToast("Score saved to live leaderboard!");
+    return true;
+  } catch (error) {
+    console.error(error);
+    showToast("Could not save live score. Saved locally instead.");
+    return false;
+  }
 }
 
 keepGoingBtn.addEventListener("click", continueRun);
@@ -4321,7 +4428,7 @@ setInterval(() => {
 resetBlackjack();
 resetFrogRoad();
 resetHorseRace();
-renderLeaderboard();
+loadLiveLeaderboard();
 renderInventory();
 renderShop();
 renderActiveItemTimers();
