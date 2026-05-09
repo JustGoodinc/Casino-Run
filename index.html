@@ -13,7 +13,7 @@
   <meta name="apple-mobile-web-app-title" content="Casino Run" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 
-  <link rel="stylesheet" href="./style.css?v=17" />
+  <link rel="stylesheet" href="./style.css?v=18" />
 </head>
 <body>
 
@@ -31,8 +31,11 @@
 
   <div id="game-wrapper" class="game hidden">
 
-    <div id="inventory-sidebar" class="inventory-sidebar">
-      <h3>🎒</h3>
+    <div id="inventory-sidebar" class="inventory-sidebar inventory-collapsed">
+      <button id="inventory-bag-toggle" class="inventory-bag-toggle" type="button">
+        <span id="inventory-bag-label">🎒 Items</span>
+        <span id="inventory-bag-count">0</span>
+      </button>
       <div id="inventory-icons" class="inventory-icons"></div>
       <div id="active-item-timers" class="active-item-timers"></div>
     </div>
@@ -43,6 +46,7 @@
       <p id="balance">Balance: $100.00</p>
       <p id="goal">Goal: $300</p>
       <p id="timer">Time: 120</p>
+      <p id="streak-text" class="streak-text">🔥 Streak: 0 | Bonus: +0%</p>
     </div>
 
     <div class="nav">
@@ -354,7 +358,15 @@
         <p id="cashout-final-balance-text">Final Balance: $0.00</p>
         <p id="cashout-highest-balance-text">Highest Balance: $100.00</p>
         <p id="cashout-favorite-game-text">Favorite Game: -</p>
+        <p id="cashout-most-lost-game-text">Most Lost Game: -</p>
         <p id="cashout-time-played-text">Time Played: 0:00</p>
+        <p id="cashout-highest-streak-text">Highest Streak: 0</p>
+        <p id="cashout-hot-streak-bonus-text">Hot Streak Bonus Earned: $0.00</p>
+      </div>
+
+      <div class="run-history-card">
+        <h3>Run History</h3>
+        <div id="cashout-history-list" class="run-history-list"></div>
       </div>
 
       <input id="player-name-input" class="name-input" type="text" maxlength="12" placeholder="Your name" />
@@ -375,10 +387,18 @@
         <p id="final-balance-text">Final Balance: $0.00</p>
         <p id="highest-balance-text">Highest Balance: $100.00</p>
         <p id="favorite-game-text">Favorite Game: -</p>
+        <p id="most-lost-game-text">Most Lost Game: -</p>
         <p id="time-played-text">Time Played: 0:00</p>
+        <p id="highest-streak-text">Highest Streak: 0</p>
+        <p id="hot-streak-bonus-text">Hot Streak Bonus Earned: $0.00</p>
       </div>
 
       <canvas id="game-over-graph" width="360" height="220"></canvas>
+
+      <div class="run-history-card">
+        <h3>Run History</h3>
+        <div id="game-over-history-list" class="run-history-list"></div>
+      </div>
 
       <button id="try-again-btn" class="try-again-btn">TRY AGAIN</button>
     </div>
@@ -443,7 +463,7 @@
     }
   </script>
 
-  <script src="./script.js?v=17"></script>
+  <script src="./script.js?v=18"></script>
 
 </body>
 </html>

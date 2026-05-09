@@ -10,6 +10,15 @@ let popupQueueActive = false;
 let popupQueue = Promise.resolve();
 let goalPopupQueued = false;
 
+let currentWinStreak = 0;
+let highestWinStreak = 0;
+let totalHotStreakBonusEarned = 0;
+let greaseFireActive = false;
+let consumedItemIds = [];
+let runRoundHistory = [];
+let gameLossStats = {};
+let inventoryCollapsed = true;
+
 let goalPopupOpen = false;
 let runEnded = false;
 let gameStarted = false;
@@ -383,6 +392,7 @@ function updateUI() {
   balanceText.textContent = `Balance: $${balance.toFixed(2)}`;
   goalText.textContent = `Goal: $${goal}`;
   timerText.textContent = `Time: ${timeLeft}`;
+  updateStreakUI();
 
   updateBetSliders();
   updateDangerFlash();
@@ -415,6 +425,22 @@ function resetRunTracking() {
     "Elephant River": 0,
     "Horse Race": 0
   };
+
+  gameLossStats = {
+    Plinko: { losses: 0, moneyLost: 0 },
+    Roulette: { losses: 0, moneyLost: 0 },
+    Crash: { losses: 0, moneyLost: 0 },
+    Blackjack: { losses: 0, moneyLost: 0 },
+    "Elephant River": { losses: 0, moneyLost: 0 },
+    "Horse Race": { losses: 0, moneyLost: 0 }
+  };
+
+  runRoundHistory = [];
+  currentWinStreak = 0;
+  highestWinStreak = 0;
+  totalHotStreakBonusEarned = 0;
+  greaseFireActive = false;
+  consumedItemIds = [];
 }
 
 function trackGamePlayed(gameName) {
@@ -462,9 +488,242 @@ function formatRunTime(totalSeconds) {
 function getRunSummary() {
   return {
     favoriteGame: getFavoriteGame(),
-    timePlayed: formatRunTime(getRunSeconds())
+    mostLostGame: getMostLostGame(),
+    timePlayed: formatRunTime(getRunSeconds()),
+    highestStreak: highestWinStreak,
+    totalHotStreakBonus: totalHotStreakBonusEarned
   };
 }
+
+function getMostLostGame() {
+  let mostLostGame = "None Yet";
+  let mostLosses = 0;
+  let mostMoneyLost = 0;
+
+  Object.entries(gameLossStats).forEach(([gameName, stats]) => {
+    if (
+      stats.losses > mostLosses ||
+      (stats.losses === mostLosses && stats.moneyLost > mostMoneyLost)
+    ) {
+      mostLostGame = gameName;
+      mostLosses = stats.losses;
+      mostMoneyLost = stats.moneyLost;
+    }
+  });
+
+  if (mostLosses === 0) {
+    return "None Yet";
+  }
+
+  return `${mostLostGame} (${mostLosses} loss${mostLosses === 1 ? "" : "es"}, $${mostMoneyLost.toFixed(2)} lost)`;
+}
+
+function recordRoundResult(gameName, result, amount = 0) {
+  const safeGameName = gameName || "Unknown";
+  const safeAmount = Number.isFinite(amount) ? amount : 0;
+
+  runRoundHistory.push({
+    gameName: safeGameName,
+    result,
+    amount: safeAmount,
+    streakAfter: currentWinStreak,
+    time: formatRunTime(getRunSeconds())
+  });
+
+  if (result === "Loss") {
+    if (!gameLossStats[safeGameName]) {
+      gameLossStats[safeGameName] = { losses: 0, moneyLost: 0 };
+    }
+
+    gameLossStats[safeGameName].losses++;
+    gameLossStats[safeGameName].moneyLost += Math.abs(safeAmount);
+  }
+}
+
+function renderRunHistory(containerId) {
+  const container = document.getElementById(containerId);
+
+  if (!container) return;
+
+  container.innerHTML = "";
+
+  if (runRoundHistory.length === 0) {
+    const empty = document.createElement("div");
+    empty.classList.add("run-history-empty");
+    empty.textContent = "No completed rounds yet.";
+    container.appendChild(empty);
+    return;
+  }
+
+  [...runRoundHistory].reverse().forEach((entry) => {
+    const row = document.createElement("div");
+    row.classList.add("run-history-row");
+
+    const isPositive = entry.amount > 0;
+    const isNegative = entry.amount < 0;
+
+    if (isPositive) row.classList.add("run-history-win");
+    if (isNegative) row.classList.add("run-history-loss");
+
+    const amountText = entry.amount === 0
+      ? "$0.00"
+      : `${entry.amount > 0 ? "+" : "-"}$${Math.abs(entry.amount).toFixed(2)}`;
+
+    row.innerHTML = `
+      <span>${entry.time}</span>
+      <strong>${entry.gameName}</strong>
+      <span>${entry.result}</span>
+      <b>${amountText}</b>
+    `;
+
+    container.appendChild(row);
+  });
+}
+
+function getStreakBonusRate() {
+  if (currentWinStreak >= 5) return 0.5;
+  if (currentWinStreak === 4) return 0.35;
+  if (currentWinStreak === 3) return 0.2;
+  if (currentWinStreak === 2) return 0.1;
+  return 0;
+}
+
+function getStreakLabel() {
+  if (currentWinStreak >= 5) {
+    return "🔥 On Fire | Bonus: +50%";
+  }
+
+  return `🔥 Streak: ${currentWinStreak} | Bonus: +${Math.round(getStreakBonusRate() * 100)}%`;
+}
+
+function updateStreakUI() {
+  const streakText = document.getElementById("streak-text");
+
+  if (!streakText) return;
+
+  streakText.textContent = getStreakLabel();
+
+  if (currentWinStreak >= 5) {
+    streakText.classList.add("streak-on-fire");
+  } else {
+    streakText.classList.remove("streak-on-fire");
+  }
+}
+
+function showStreakMessage(message) {
+  queuePopupStep(() => {
+    showToast(message);
+  }, 1300);
+}
+
+function consumeAutoItem(itemId) {
+  if (!hasItem(itemId)) return false;
+
+  removeItemFromInventory(itemId, true);
+  return true;
+}
+
+function handleHotStreakWin(baseProfit, bonusLines = []) {
+  currentWinStreak++;
+  highestWinStreak = Math.max(highestWinStreak, currentWinStreak);
+
+  const bonusRate = getStreakBonusRate();
+  let streakBonus = Math.max(0, baseProfit) * bonusRate;
+
+  if (greaseFireActive) {
+    if (streakBonus > 0) {
+      streakBonus *= 3;
+      bonusLines.push({
+        type: "bonus",
+        text: "Grease Fire! Triple Hot Streak Bonus!"
+      });
+    }
+
+    greaseFireActive = false;
+    showStreakMessage("Grease Fire burned out.");
+  }
+
+  if (streakBonus > 0) {
+    totalHotStreakBonusEarned += streakBonus;
+    bonusLines.push({
+      type: "bonus",
+      text: `+$${streakBonus.toFixed(2)} Hot Streak Bonus (${getStreakLabel()})`
+    });
+  }
+
+  updateStreakUI();
+  return streakBonus;
+}
+
+function handleHotStreakLoss() {
+  if (greaseFireActive) {
+    const burnAmount = balance * 0.25;
+    greaseFireActive = false;
+
+    if (burnAmount > 0) {
+      changeBalance(-burnAmount);
+    }
+
+    showStreakMessage(`Grease Fire Backfired! Burned $${burnAmount.toFixed(2)}.`);
+  }
+
+  if (currentWinStreak <= 0) {
+    currentWinStreak = 0;
+    updateStreakUI();
+    return;
+  }
+
+  if (hasItem("luckyMatch")) {
+    consumeAutoItem("luckyMatch");
+    showStreakMessage("Lucky Match Saved Your Streak!");
+    updateStreakUI();
+    return;
+  }
+
+  if (hasItem("heatShield")) {
+    consumeAutoItem("heatShield");
+    currentWinStreak = Math.max(0, currentWinStreak - 1);
+    showStreakMessage("Heat Shield Activated! Streak reduced by 1.");
+    updateStreakUI();
+    return;
+  }
+
+  currentWinStreak = 0;
+  showStreakMessage("Streak Broken!");
+  updateStreakUI();
+}
+
+function applyRoundWin(payout, bet, bonusLines = [], gameName = "Game") {
+  const baseProfit = Math.max(0, payout - bet);
+  let finalPayout = payout;
+
+  const hulaGirlCount = countItem("luckyHulaGirl");
+
+  if (hulaGirlCount > 0 && baseProfit > 0) {
+    const bonusRate = 0.1 * hulaGirlCount;
+    const bonus = baseProfit * bonusRate;
+
+    if (bonus > 0) {
+      finalPayout += bonus;
+      bonusLines.push({
+        type: "bonus",
+        text: `+$${bonus.toFixed(2)} Lucky Hula Girl Bonus`
+      });
+    }
+  }
+
+  if (baseProfit > 0) {
+    finalPayout += handleHotStreakWin(baseProfit, bonusLines);
+  }
+
+  recordRoundResult(gameName, baseProfit > 0 ? "Win" : "Push", finalPayout - bet);
+
+  return {
+    payout: finalPayout,
+    bonusLines
+  };
+}
+
 
 function animateBalanceChange(type) {
   balanceText.classList.remove("balance-gain");
@@ -896,12 +1155,36 @@ const shopItemData = [
     description: "Refunds 50% of a fully lost bet. Up to 2 can trigger at once."
   },
   {
-    id: "secondWindSoda",
-    icon: "🥤",
-    name: "Second Wind Soda",
-    type: "Trigger",
+    id: "filthTea",
+    icon: "🍵",
+    name: "Filth-Tea",
+    type: "Consumable",
     price: 85,
-    description: "If your balance hits $0, automatically restores you to $25 once."
+    description: "Use it to refund a random consumed item from this run. It will not refund itself."
+  },
+  {
+    id: "luckyMatch",
+    icon: "🔥",
+    name: "Lucky Match",
+    type: "Trigger",
+    price: 90,
+    description: "Protects your Hot Streak from breaking one time after a loss."
+  },
+  {
+    id: "heatShield",
+    icon: "🛡️",
+    name: "Heat Shield",
+    type: "Trigger",
+    price: 95,
+    description: "On a loss, lowers your Hot Streak by 1 instead of resetting it to 0."
+  },
+  {
+    id: "greaseFire",
+    icon: "🛢️",
+    name: "Grease Fire",
+    type: "Consumable",
+    price: 105,
+    description: "Use it to triple your next Hot Streak bonus. If you lose first, it burns 25% of your balance."
   },
   {
     id: "goalCutter",
@@ -1214,6 +1497,10 @@ function removeItemFromInventory(itemId, showBreakAnimation = false) {
   if (index >= 0) {
     if (showBreakAnimation) {
       showItemBreakAnimation(itemId);
+
+      if (itemId !== "filthTea") {
+        consumedItemIds.push(itemId);
+      }
     }
 
     inventory.splice(index, 1);
@@ -1230,16 +1517,100 @@ function countItem(itemId) {
   return inventory.filter((id) => id === itemId).length;
 }
 
+function getCurrentGameName() {
+  const activeScreen = document.querySelector(".screen.active-screen");
+
+  if (!activeScreen) return "General";
+
+  const screenMap = {
+    "plinko-screen": "Plinko",
+    "roulette-screen": "Roulette",
+    "crash-screen": "Crash",
+    "blackjack-screen": "Blackjack",
+    "frog-screen": "Elephant River",
+    "horse-screen": "Horse Race",
+    "shop-screen": "Shop"
+  };
+
+  return screenMap[activeScreen.id] || "General";
+}
+
+function isItemRelevantToGame(itemId, gameName = getCurrentGameName()) {
+  const generalItems = [
+    "timeBottle",
+    "filthTea",
+    "goalCutter",
+    "cashbackCoupon",
+    "luckyMatch",
+    "heatShield",
+    "greaseFire",
+    "luckyHulaGirl",
+    "insuranceTicket",
+    "doubleHeadedCoin"
+  ];
+
+  const gameItems = {
+    Plinko: ["weightedBall", "roseKatMagnumOpus"],
+    Roulette: ["rouletteMagnet", "ejmRecordVinyl"],
+    Crash: [],
+    Blackjack: ["dealerPeek", "thottiesJesterHat"],
+    "Elephant River": ["frogSneakers"],
+    "Horse Race": ["goldenHorseshoe"]
+  };
+
+  if (generalItems.includes(itemId)) return true;
+  if (gameName === "Shop") return true;
+
+  return (gameItems[gameName] || []).includes(itemId);
+}
+
+function updateInventoryHeader() {
+  const bagLabel = document.getElementById("inventory-bag-label");
+  const bagCount = document.getElementById("inventory-bag-count");
+  const sidebar = document.getElementById("inventory-sidebar");
+
+  if (bagLabel) {
+    bagLabel.textContent = inventoryCollapsed ? "🎒 Items" : `🎒 ${getCurrentGameName()}`;
+  }
+
+  if (bagCount) {
+    bagCount.textContent = inventory.length;
+  }
+
+  if (sidebar) {
+    sidebar.classList.toggle("inventory-collapsed", inventoryCollapsed);
+  }
+}
+
 function renderInventory() {
   inventoryIcons.innerHTML = "";
+  updateInventoryHeader();
 
-  const uniqueItems = [...new Set(inventory)];
+  if (inventoryCollapsed) {
+    return;
+  }
+
+  const currentGameName = getCurrentGameName();
+  const uniqueItems = [...new Set(inventory)].filter((itemId) => {
+    return isItemRelevantToGame(itemId, currentGameName);
+  });
+
+  if (uniqueItems.length === 0) {
+    const empty = document.createElement("div");
+    empty.classList.add("inventory-empty-message");
+    empty.textContent = "No usable items for this game.";
+    inventoryIcons.appendChild(empty);
+    return;
+  }
 
   uniqueItems.forEach((itemId) => {
     const item = getItemData(itemId);
+    if (!item) return;
+
     const count = countItem(itemId);
 
     const wrapper = document.createElement("div");
+    wrapper.classList.add("inventory-item-wrapper");
 
     const button = document.createElement("button");
     button.classList.add("inventory-item-icon");
@@ -1266,6 +1637,8 @@ function renderInventory() {
 function canUseItem(itemId) {
   return [
     "timeBottle",
+    "filthTea",
+    "greaseFire",
     "rouletteMagnet",
     "frogSneakers",
     "goalCutter",
@@ -1311,6 +1684,37 @@ function useSelectedItem() {
 
 function useInventoryItem(itemId) {
   if (!hasItem(itemId)) return;
+
+  if (itemId === "filthTea") {
+    const refundableItems = consumedItemIds.filter((id) => id !== "filthTea" && getItemData(id));
+
+    if (refundableItems.length === 0) {
+      closeItemPopup();
+      showToast("Filth-Tea had nothing to refund.");
+      return;
+    }
+
+    const refundedItemId = refundableItems[Math.floor(Math.random() * refundableItems.length)];
+    const removeIndex = consumedItemIds.indexOf(refundedItemId);
+
+    if (removeIndex >= 0) {
+      consumedItemIds.splice(removeIndex, 1);
+    }
+
+    addItemToInventory(refundedItemId);
+    removeItemFromInventory(itemId, true);
+    closeItemPopup();
+    showToast(`Filth-Tea refunded ${getItemData(refundedItemId).name}!`);
+    return;
+  }
+
+  if (itemId === "greaseFire") {
+    greaseFireActive = true;
+    removeItemFromInventory(itemId, true);
+    closeItemPopup();
+    showToast("Grease Fire is lit! Next win triples Hot Streak bonus. Next loss burns 25%.");
+    return;
+  }
 
   if (itemId === "timeBottle") {
     timeLeft += 30;
@@ -1454,34 +1858,11 @@ function renderActiveItemTimers() {
 
 setInterval(renderActiveItemTimers, 250);
 
-function applyWinBonus(payout, bet, bonusLines = []) {
-  const hulaGirlCount = countItem("luckyHulaGirl");
-
-  if (hulaGirlCount <= 0) {
-    return {
-      payout,
-      bonusLines
-    };
-  }
-
-  const profit = Math.max(0, payout - bet);
-  const bonusRate = 0.1 * hulaGirlCount;
-  const bonus = profit * bonusRate;
-
-  if (bonus > 0) {
-    bonusLines.push({
-      type: "bonus",
-      text: `+$${bonus.toFixed(2)} Lucky Hula Girl Bonus`
-    });
-  }
-
-  return {
-    payout: payout + bonus,
-    bonusLines
-  };
+function applyWinBonus(payout, bet, bonusLines = [], gameName = "Game") {
+  return applyRoundWin(payout, bet, bonusLines, gameName);
 }
 
-function processFullLoss(bet) {
+function processFullLoss(bet, gameName = "Game") {
   let refund = 0;
   let messageParts = [];
 
@@ -1508,6 +1889,9 @@ function processFullLoss(bet) {
     messageParts.push(`Cashback returned $${cashbackRefund.toFixed(2)}.`);
   }
 
+  handleHotStreakLoss();
+  recordRoundResult(gameName, "Loss", -Math.abs(bet));
+
   if (refund > 0) {
     changeBalance(refund, [
       {
@@ -1522,23 +1906,18 @@ function processFullLoss(bet) {
   return messageParts.join(" ");
 }
 
-function tryUseSecondWindSoda() {
-  if (balance <= 0 && hasItem("secondWindSoda")) {
-    removeItemFromInventory("secondWindSoda", true);
-
-    balance = 25;
-    recordBalancePoint();
-
-    playCashSound();
-    animateBalanceChange("gain");
-    updateUI();
-
-    showToast("Second Wind Soda saved you! Balance restored to $25.");
-
-    return true;
-  }
-
+function tryUseAutoRescueItem() {
   return false;
+}
+
+
+const inventoryBagToggle = document.getElementById("inventory-bag-toggle");
+
+if (inventoryBagToggle) {
+  inventoryBagToggle.addEventListener("click", () => {
+    inventoryCollapsed = !inventoryCollapsed;
+    renderInventory();
+  });
 }
 
 closeItemPopupBtn.addEventListener("click", closeItemPopup);
@@ -1554,6 +1933,9 @@ const finalBalanceText = document.getElementById("final-balance-text");
 const highestBalanceText = document.getElementById("highest-balance-text");
 const favoriteGameText = document.getElementById("favorite-game-text");
 const timePlayedText = document.getElementById("time-played-text");
+const mostLostGameText = document.getElementById("most-lost-game-text");
+const highestStreakText = document.getElementById("highest-streak-text");
+const hotStreakBonusText = document.getElementById("hot-streak-bonus-text");
 const gameOverGraph = document.getElementById("game-over-graph");
 const gameOverCtx = gameOverGraph.getContext("2d");
 const tryAgainBtn = document.getElementById("try-again-btn");
@@ -1588,6 +1970,10 @@ function showGameOverScreen() {
   highestBalanceText.textContent = `Highest Balance: $${highestBalance.toFixed(2)}`;
   favoriteGameText.textContent = `Favorite Game: ${runSummary.favoriteGame}`;
   timePlayedText.textContent = `Time Played: ${runSummary.timePlayed}`;
+  if (mostLostGameText) mostLostGameText.textContent = `Most Lost Game: ${runSummary.mostLostGame}`;
+  if (highestStreakText) highestStreakText.textContent = `Highest Streak: ${runSummary.highestStreak}`;
+  if (hotStreakBonusText) hotStreakBonusText.textContent = `Hot Streak Bonus Earned: $${runSummary.totalHotStreakBonus.toFixed(2)}`;
+  renderRunHistory("game-over-history-list");
 
   gameOverPopup.classList.remove("hidden");
 
@@ -1690,6 +2076,13 @@ function resetRunToTitleScreen() {
   timeLeft = 120;
   currentRound = 1;
   moneyPopupActive = false;
+  currentWinStreak = 0;
+  highestWinStreak = 0;
+  totalHotStreakBonusEarned = 0;
+  greaseFireActive = false;
+  consumedItemIds = [];
+  runRoundHistory = [];
+  gameLossStats = {};
   allInAnimationActive = false;
 
   goalPopupOpen = false;
@@ -1818,6 +2211,9 @@ const cashoutFinalBalanceText = document.getElementById("cashout-final-balance-t
 const cashoutHighestBalanceText = document.getElementById("cashout-highest-balance-text");
 const cashoutFavoriteGameText = document.getElementById("cashout-favorite-game-text");
 const cashoutTimePlayedText = document.getElementById("cashout-time-played-text");
+const cashoutMostLostGameText = document.getElementById("cashout-most-lost-game-text");
+const cashoutHighestStreakText = document.getElementById("cashout-highest-streak-text");
+const cashoutHotStreakBonusText = document.getElementById("cashout-hot-streak-bonus-text");
 
 let typewriterInterval = null;
 
@@ -1904,6 +2300,10 @@ function cashOutRun() {
   cashoutHighestBalanceText.textContent = `Highest Balance: $${highestBalance.toFixed(2)}`;
   cashoutFavoriteGameText.textContent = `Favorite Game: ${runSummary.favoriteGame}`;
   cashoutTimePlayedText.textContent = `Time Played: ${runSummary.timePlayed}`;
+  if (cashoutMostLostGameText) cashoutMostLostGameText.textContent = `Most Lost Game: ${runSummary.mostLostGame}`;
+  if (cashoutHighestStreakText) cashoutHighestStreakText.textContent = `Highest Streak: ${runSummary.highestStreak}`;
+  if (cashoutHotStreakBonusText) cashoutHotStreakBonusText.textContent = `Hot Streak Bonus Earned: $${runSummary.totalHotStreakBonus.toFixed(2)}`;
+  renderRunHistory("cashout-history-list");
 
   playerNameInput.value = "";
   playerNameInput.focus();
@@ -2227,6 +2627,8 @@ navButtons.forEach((button) => {
     const screenId = button.dataset.screen;
     document.getElementById(screenId).classList.add("active-screen");
 
+    renderInventory();
+
     if (screenId === "plinko-screen") {
       requestAnimationFrame(() => {
         createPegs();
@@ -2435,14 +2837,14 @@ function finishPlinkoBall(ball, x, bet) {
   }
 
   if (activeWeightedBall > 0) {
-    const weightedBoost = activeWeightedBall;
+    const weightedBoost = 1;
 
     slotIndex = Math.min(
       slotIndex + weightedBoost + Math.floor(Math.random() * 2),
       plinkoMultipliers.length - 1
     );
 
-    activeWeightedBall = 0;
+    activeWeightedBall--;
   }
 
   const multiplier = plinkoMultipliers[slotIndex];
@@ -2475,14 +2877,20 @@ function finishPlinkoBall(ball, x, bet) {
   }
 
   if (winnings > bet) {
-    const bonusResult = applyWinBonus(winnings, bet, bonusLines);
+    const bonusResult = applyWinBonus(winnings, bet, bonusLines, "Plinko");
     winnings = bonusResult.payout;
+  } else if (winnings === bet && winnings > 0) {
+    recordRoundResult("Plinko", "Push", 0);
+  } else if (winnings > 0 && winnings < bet) {
+    handleHotStreakLoss();
+    recordRoundResult("Plinko", "Loss", winnings - bet);
+    resetBetSliderToOne(plinkoBetSlider);
   }
 
   if (winnings > 0) {
     changeBalance(winnings, bonusLines);
   } else {
-    const lossText = processFullLoss(bet);
+    const lossText = processFullLoss(bet, "Plinko");
 
     resetBetSliderToOne(plinkoBetSlider);
 
@@ -2724,7 +3132,7 @@ function finishRouletteSpin(result, bet, isFreeVinylSpin = false) {
       text: `+$${winnings.toFixed(2)} Roulette Payout`
     });
 
-    const bonusResult = applyWinBonus(winnings, bet, bonusLines);
+    const bonusResult = applyWinBonus(winnings, bet, bonusLines, "Roulette");
     winnings = bonusResult.payout;
   }
 
@@ -2737,7 +3145,7 @@ function finishRouletteSpin(result, bet, isFreeVinylSpin = false) {
       rouletteResultText.textContent =
         `Result: ${result} (${resultColor}) — EJM’s free spin lost, but you paid $0.`;
     } else {
-      const lossText = processFullLoss(bet);
+      const lossText = processFullLoss(bet, "Roulette");
 
       resetBetSliderToOne(rouletteBetSlider);
 
@@ -2967,7 +3375,7 @@ cashoutBtn.addEventListener("click", () => {
     }
   ];
 
-  const bonusResult = applyWinBonus(winnings, crashBet, bonusLines);
+  const bonusResult = applyWinBonus(winnings, crashBet, bonusLines, "Crash");
   winnings = bonusResult.payout;
 
   changeBalance(winnings, bonusLines);
@@ -3005,7 +3413,7 @@ function crashGameOver() {
   crashMultiplierText.textContent = "CRASHED";
   updateCrashGlow(crashPoint, true);
 
-  const lossText = processFullLoss(crashBet);
+  const lossText = processFullLoss(crashBet, "Crash");
 
   resetBetSliderToOne(crashBetSlider);
 
@@ -3336,13 +3744,13 @@ function finishBlackjackRound(reason) {
       text: `+$${payout.toFixed(2)} Blackjack Payout`
     });
 
-    const bonusResult = applyWinBonus(payout, blackjackBet, bonusLines);
+    const bonusResult = applyWinBonus(payout, blackjackBet, bonusLines, "Blackjack");
     payout = bonusResult.payout;
 
     message = `BLACKJACK! You won $${(payout - blackjackBet).toFixed(2)} profit.`;
   } else if (reason === "playerBust") {
     payout = 0;
-    const lossText = processFullLoss(blackjackBet);
+    const lossText = processFullLoss(blackjackBet, "Blackjack");
 
     resetBetSliderToOne(blackjackBetSlider);
 
@@ -3355,7 +3763,7 @@ function finishBlackjackRound(reason) {
       text: `+$${payout.toFixed(2)} Blackjack Payout`
     });
 
-    const bonusResult = applyWinBonus(payout, blackjackBet, bonusLines);
+    const bonusResult = applyWinBonus(payout, blackjackBet, bonusLines, "Blackjack");
     payout = bonusResult.payout;
 
     message = `Dealer busts! You win $${(payout - blackjackBet).toFixed(2)} profit.`;
@@ -3367,7 +3775,7 @@ function finishBlackjackRound(reason) {
       text: `+$${payout.toFixed(2)} Blackjack Payout`
     });
 
-    const bonusResult = applyWinBonus(payout, blackjackBet, bonusLines);
+    const bonusResult = applyWinBonus(payout, blackjackBet, bonusLines, "Blackjack");
     payout = bonusResult.payout;
 
     message = `You win! ${playerTotal} beats ${dealerTotal}.`;
@@ -3382,7 +3790,7 @@ function finishBlackjackRound(reason) {
     message = `Push! You tied at ${playerTotal}. Your bet is returned.`;
   } else {
     payout = 0;
-    const lossText = processFullLoss(blackjackBet);
+    const lossText = processFullLoss(blackjackBet, "Blackjack");
 
     resetBetSliderToOne(blackjackBetSlider);
 
@@ -3565,7 +3973,7 @@ function loseFrogRoadRound() {
 
   playFrogHitSound();
 
-  const lossText = processFullLoss(frogBet);
+  const lossText = processFullLoss(frogBet, "Elephant River");
 
   resetBetSliderToOne(frogBetSlider);
 
@@ -3604,7 +4012,7 @@ function cashOutFrogRoad() {
     }
   ];
 
-  const bonusResult = applyWinBonus(payout, frogBet, bonusLines);
+  const bonusResult = applyWinBonus(payout, frogBet, bonusLines, "Elephant River");
   payout = bonusResult.payout;
 
   changeBalance(payout, bonusLines);
@@ -3830,7 +4238,7 @@ function finishHorseRace() {
       }
     ];
 
-    const bonusResult = applyWinBonus(payout, horseBet, bonusLines);
+    const bonusResult = applyWinBonus(payout, horseBet, bonusLines, "Horse Race");
     payout = bonusResult.payout;
 
     horseMessage.textContent =
@@ -3841,7 +4249,7 @@ function finishHorseRace() {
   } else {
     activeGoldenHorseshoe = 0;
 
-    const lossText = processFullLoss(horseBet);
+    const lossText = processFullLoss(horseBet, "Horse Race");
 
     resetBetSliderToOne(horseBetSlider);
 
@@ -3879,10 +4287,6 @@ function checkGameState() {
   }
 
   if (balance < 1) {
-    if (tryUseSecondWindSoda()) {
-      return;
-    }
-
     showCoinFlipPopup();
     return;
   }
