@@ -4425,6 +4425,117 @@ setInterval(() => {
   }
 }, 1000);
 
+
+/* ========================= */
+/* HOW TO PLAY MODAL */
+/* ========================= */
+
+const howToPlayBtn = document.getElementById("how-to-play-btn");
+const howToPlayModal = document.getElementById("how-to-play-modal");
+const closeHowToPlayBtn = document.getElementById("close-how-to-play-btn");
+const helpTabButtons = document.querySelectorAll(".help-tab");
+const helpPages = document.querySelectorAll(".help-page");
+const helpPrevBtn = document.getElementById("help-prev-btn");
+const helpNextBtn = document.getElementById("help-next-btn");
+const helpPageIndicator = document.getElementById("help-page-indicator");
+
+const helpPageOrder = ["basics", "games", "streak", "items", "inventory"];
+let currentHelpPageIndex = 0;
+
+function updateHelpPageIndicator() {
+  if (!helpPageIndicator) return;
+
+  helpPageIndicator.textContent = `${currentHelpPageIndex + 1} / ${helpPageOrder.length}`;
+}
+
+function showHelpPage(pageId) {
+  const pageIndex = helpPageOrder.indexOf(pageId);
+
+  if (pageIndex >= 0) {
+    currentHelpPageIndex = pageIndex;
+  }
+
+  helpTabButtons.forEach((button) => {
+    button.classList.toggle("active", button.dataset.helpTab === pageId);
+  });
+
+  helpPages.forEach((page) => {
+    page.classList.toggle("active", page.dataset.helpPage === pageId);
+  });
+
+  updateHelpPageIndicator();
+}
+
+function openHowToPlay() {
+  if (!howToPlayModal) return;
+
+  howToPlayModal.classList.remove("hidden");
+  howToPlayModal.setAttribute("aria-hidden", "false");
+  showHelpPage(helpPageOrder[currentHelpPageIndex] || "basics");
+
+  if (closeHowToPlayBtn) {
+    closeHowToPlayBtn.focus();
+  }
+}
+
+function closeHowToPlay() {
+  if (!howToPlayModal) return;
+
+  howToPlayModal.classList.add("hidden");
+  howToPlayModal.setAttribute("aria-hidden", "true");
+}
+
+function goToNextHelpPage() {
+  currentHelpPageIndex = (currentHelpPageIndex + 1) % helpPageOrder.length;
+  showHelpPage(helpPageOrder[currentHelpPageIndex]);
+}
+
+function goToPreviousHelpPage() {
+  currentHelpPageIndex =
+    (currentHelpPageIndex - 1 + helpPageOrder.length) % helpPageOrder.length;
+  showHelpPage(helpPageOrder[currentHelpPageIndex]);
+}
+
+function setupHowToPlayModal() {
+  if (!howToPlayModal) return;
+
+  if (howToPlayBtn) {
+    howToPlayBtn.addEventListener("click", openHowToPlay);
+  }
+
+  if (closeHowToPlayBtn) {
+    closeHowToPlayBtn.addEventListener("click", closeHowToPlay);
+  }
+
+  helpTabButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      showHelpPage(button.dataset.helpTab);
+    });
+  });
+
+  if (helpNextBtn) {
+    helpNextBtn.addEventListener("click", goToNextHelpPage);
+  }
+
+  if (helpPrevBtn) {
+    helpPrevBtn.addEventListener("click", goToPreviousHelpPage);
+  }
+
+  howToPlayModal.addEventListener("click", (event) => {
+    if (event.target === howToPlayModal) {
+      closeHowToPlay();
+    }
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !howToPlayModal.classList.contains("hidden")) {
+      closeHowToPlay();
+    }
+  });
+
+  showHelpPage("basics");
+}
+
 resetBlackjack();
 resetFrogRoad();
 resetHorseRace();
@@ -4433,4 +4544,5 @@ renderInventory();
 renderShop();
 renderActiveItemTimers();
 setupDevUEasterEgg();
+setupHowToPlayModal();
 updateUI();

@@ -13,7 +13,7 @@
   <meta name="apple-mobile-web-app-title" content="Casino Run" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 
-  <link rel="stylesheet" href="./style.css?v=19" />
+  <link rel="stylesheet" href="./style.css?v=20" />
 </head>
 <body>
 
@@ -24,8 +24,151 @@
       <p class="title-subtext">Win big. Risk more. Cash out before it all disappears.</p>
 
       <button id="play-btn" class="play-btn">PLAY</button>
+      <button id="how-to-play-btn" class="how-to-play-btn" type="button">HOW TO PLAY</button>
     </div>
   </div>
+
+
+
+  <div id="how-to-play-modal" class="how-to-play-modal hidden" aria-hidden="true">
+    <div class="how-to-play-card" role="dialog" aria-modal="true" aria-labelledby="how-to-play-title">
+      <div class="how-to-play-header">
+        <div>
+          <p class="help-eyebrow">Casino Run Guide</p>
+          <h2 id="how-to-play-title">How to Play</h2>
+        </div>
+        <button id="close-how-to-play-btn" class="help-close-btn" type="button" aria-label="Close How to Play">✕</button>
+      </div>
+
+      <div class="help-tabs" role="tablist" aria-label="How to Play sections">
+        <button class="help-tab active" type="button" data-help-tab="basics">Basics</button>
+        <button class="help-tab" type="button" data-help-tab="games">Games</button>
+        <button class="help-tab" type="button" data-help-tab="streak">Hot Streak</button>
+        <button class="help-tab" type="button" data-help-tab="items">Items</button>
+        <button class="help-tab" type="button" data-help-tab="inventory">UI / Bag</button>
+      </div>
+
+      <div class="help-pages">
+        <section class="help-page active" data-help-page="basics">
+          <div class="help-hero-card">
+            <div class="help-big-icon">🎰</div>
+            <div>
+              <h3>Core Objective</h3>
+              <p>Start with a balance, choose casino games, win money, use items, and reach the target goal before going broke or running out of time.</p>
+              <p>The goal scales around your run, so you are always chasing the next risky target.</p>
+            </div>
+          </div>
+
+          <div class="help-grid two">
+            <div class="help-mini-card">
+              <span>💰</span>
+              <h4>Cash Out</h4>
+              <p>When you hit the goal, you can cash out and save your score to the leaderboard.</p>
+            </div>
+            <div class="help-mini-card">
+              <span>🔥</span>
+              <h4>Keep Going</h4>
+              <p>Risk your winnings for a bigger goal, better items, and a higher final balance.</p>
+            </div>
+          </div>
+
+          <div class="help-loop">
+            <div>Pick Game</div>
+            <div>Bet / Decide</div>
+            <div>Win or Lose</div>
+            <div>Use Items</div>
+            <div>Reach Goal</div>
+          </div>
+        </section>
+
+        <section class="help-page" data-help-page="games">
+          <div class="help-section-title">
+            <h3>Casino Games</h3>
+            <p>Each game has its own risk style and item support.</p>
+          </div>
+
+          <div class="help-game-list">
+            <div class="help-game-card"><b>🟡 Plinko</b><p>Drop a ball through pegs. Win based on the slot multiplier. Lose if it lands on 0x. Affected by Weighted Ball and RoseKat’s Magnum Opus.</p></div>
+            <div class="help-game-card"><b>🎡 Roulette</b><p>Pick red, black, or green, then spin. Match the color to win. Roulette Magnet and EJM’s Record Vinyl help here.</p></div>
+            <div class="help-game-card"><b>🚀 Crash</b><p>Start the rocket multiplier and cash out before it crashes. Wait too long and you lose the bet.</p></div>
+            <div class="help-game-card"><b>🃏 Blackjack</b><p>Beat the dealer without going over 21. Hit, stand, and use card-related items like Dealer’s Peek Card or Thottie’s Jester Hat.</p></div>
+            <div class="help-game-card"><b>🐘 Elephant River</b><p>Move the elephant forward across river lanes. Cash out or risk another step. Pool Floaties reduce danger.</p></div>
+            <div class="help-game-card"><b>🐎 Horse Race</b><p>Pick a horse and watch the race. If your horse wins, you get a big payout. Golden Horseshoe boosts payout.</p></div>
+          </div>
+        </section>
+
+        <section class="help-page" data-help-page="streak">
+          <div class="help-hero-card">
+            <div class="help-big-icon">🔥</div>
+            <div>
+              <h3>Hot Streak</h3>
+              <p>Wins increase your streak. Losses break it unless an item protects it. Streak bonuses apply only to positive profit from a win, not refunds, break-even results, or your whole balance.</p>
+            </div>
+          </div>
+
+          <div class="streak-table-help">
+            <div><b>Streak 0</b><span>+0%</span></div>
+            <div><b>Streak 1</b><span>+0%</span></div>
+            <div><b>Streak 2</b><span>+10%</span></div>
+            <div><b>Streak 3</b><span>+20%</span></div>
+            <div><b>Streak 4</b><span>+35%</span></div>
+            <div><b>Streak 5+</b><span>+50% / On Fire</span></div>
+          </div>
+
+          <div class="help-grid two">
+            <div class="help-mini-card"><span>✅</span><h4>Example Win</h4><p>Win $100 profit at streak 3. Hot Streak adds +20%, so you gain a $20 streak bonus.</p></div>
+            <div class="help-mini-card"><span>🛡️</span><h4>Example Save</h4><p>Lose at streak 5 with Heat Shield. Your streak becomes 4 instead of resetting to 0.</p></div>
+          </div>
+        </section>
+
+        <section class="help-page" data-help-page="items">
+          <div class="help-section-title">
+            <h3>Items</h3>
+            <p>Items can be general, game-specific, passive, timed, or consumed. Many break after use with an animation.</p>
+          </div>
+
+          <div class="help-item-gallery">
+            <div class="help-item-card"><span>🔥</span><b>Lucky Match</b><p>Protects your streak from breaking one time.</p></div>
+            <div class="help-item-card"><span>🛡️</span><b>Heat Shield</b><p>A loss lowers streak by 1 instead of resetting it.</p></div>
+            <div class="help-item-card"><span>🍳</span><b>Grease Fire</b><p>Next win triples Hot Streak bonus. Next loss burns 25% of current balance.</p></div>
+            <div class="help-item-card"><span>🍵</span><b>Filth-Tea</b><p>Refunds a random consumed item from the current run.</p></div>
+            <div class="help-item-card"><span>⚪</span><b>Weighted Ball</b><p>Queues future weighted Plinko rolls. Multiple uses stack as multiple pending rolls.</p></div>
+            <div class="help-item-card"><span>🖼️</span><b>RoseKat’s Magnum Opus</b><p>For winning Plinko drops, adds 4x the profit as bonus money after the final multiplier is known.</p></div>
+            <div class="help-item-card"><span>🌺</span><b>Lucky Hula Girl</b><p>Passive item. Adds extra profit to wins and stacks with copies.</p></div>
+            <div class="help-item-card"><span>💿</span><b>EJM’s Record Vinyl</b><p>Gives a free Roulette spin at max bet.</p></div>
+          </div>
+        </section>
+
+        <section class="help-page" data-help-page="inventory">
+          <div class="help-hero-card">
+            <div class="help-big-icon">🎒</div>
+            <div>
+              <h3>Inventory Bag</h3>
+              <p>Tap the bag to collapse or expand your inventory. Collapsed mode saves space on mobile.</p>
+            </div>
+          </div>
+
+          <div class="help-grid two">
+            <div class="help-mini-card"><span>👀</span><h4>Filtered View</h4><p>Only items relevant to the current game are shown. General items still appear everywhere.</p></div>
+            <div class="help-mini-card"><span>🔒</span><h4>Hidden ≠ Lost</h4><p>Items hidden by the filter are still in your inventory. Switch games to see relevant items.</p></div>
+          </div>
+
+          <div class="help-mini-card wide">
+            <span>🏆</span>
+            <h4>End Summary</h4>
+            <p>At cash out or game over, review your graph, favorite game, most lost game, time played, best streak, Hot Streak bonus earned, and scroll through your run history.</p>
+          </div>
+        </section>
+      </div>
+
+      <div class="help-footer-controls">
+        <button id="help-prev-btn" class="help-nav-control" type="button">BACK</button>
+        <span id="help-page-indicator">1 / 5</span>
+        <button id="help-next-btn" class="help-nav-control" type="button">NEXT</button>
+      </div>
+    </div>
+  </div>
+
 
   <div id="danger-flash" class="danger-flash hidden"></div>
 
@@ -463,7 +606,7 @@
     }
   </script>
 
-  <script src="./script.js?v=19"></script>
+  <script src="./script.js?v=20"></script>
 
 </body>
 </html>
