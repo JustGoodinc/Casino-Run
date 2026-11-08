@@ -14,7 +14,7 @@ Status: **planning plus asset validation only. No 3DS build exists yet.** Toolch
 
 ## Stages
 
-1. **Rules extraction (web).** Move pure game rules out of DOM handlers into `rules.js`: bet validation, the outcome generators (`rollPlinkoSlot`, `generateCrashPoint`, `getFrogMultiplier`, roulette, blackjack hand values, horse winner), settlement (`applyRoundWin`, `processFullLoss`, Hot Streak, items) and goal/timer progression. Inject the RNG (seedable). `tests/regression.js` must stay green throughout. *This is the gate for everything below.*
+1. **Rules extraction (web).** *Done 2026-11-08 (dddf253, 37151ca): `rules.js` holds every outcome and money formula; `CR.rules.seed(n)` = mulberry32. Timer tick + round state machine still in script.js.* Move pure game rules out of DOM handlers into `rules.js`: bet validation, the outcome generators (`rollPlinkoSlot`, `generateCrashPoint`, `getFrogMultiplier`, roulette, blackjack hand values, horse winner), settlement (`applyRoundWin`, `processFullLoss`, Hot Streak, items) and goal/timer progression. Inject the RNG (seedable). `tests/regression.js` must stay green throughout. *This is the gate for everything below.*
 2. **C core.** Port `rules.js` 1:1 to C (`source/rules.c`) and check it against the JS with shared seeds: same seed → same outcomes, compared by a test harness on PC.
 3. **Renderer.** citro2d: one sprite sheet, one glyph sheet. The top screen draws the game playfield and HUD; the bottom screen draws controls and inventory (see `SCREEN_LAYOUTS.md`).
 4. **Input.** HID mapping per `CONTROL_MAPS.md`; touch hit-boxes reuse the bottom-screen layout rectangles.
