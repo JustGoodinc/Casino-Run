@@ -35,6 +35,7 @@ TARGET		:=	casino-run
 APP_TITLE	:=	Casino Run
 APP_DESCRIPTION	:=	Arcade casino, fictional money
 APP_AUTHOR	:=	JustGoodinc
+ICON		:=	meta/icon.png
 BUILD		:=	build
 SOURCES		:=	source
 DATA		:=	data
@@ -43,6 +44,15 @@ GRAPHICS	:=	gfx
 #GFXBUILD	:=	$(BUILD)
 ROMFS		:=	romfs
 GFXBUILD	:=	$(ROMFS)/gfx
+
+# Stage original assets: sprites whose file names clash across folders get a prefix (tex3ds names
+# atlas entries by file name), and the web game's WAVs go into RomFS unchanged (22 kHz mono PCM16).
+ifeq ($(notdir $(CURDIR)),3ds)
+$(shell mkdir -p gfx/staged romfs/audio && \
+  for f in ../assets/sprites/icons/*.png; do cp -u "$$f" "gfx/staged/icon_$$(basename $$f)"; done && \
+  for f in ../assets/sprites/words/*.png; do cp -u "$$f" "gfx/staged/word_$$(basename $$f)"; done && \
+  cp -u ../assets/audio/*.wav romfs/audio/)
+endif
 
 #---------------------------------------------------------------------------------
 # options for code generation
@@ -54,6 +64,8 @@ CFLAGS	:=	-g -Wall -O2 -mword-relocations \
 			$(ARCH)
 
 CFLAGS	+=	$(INCLUDE) -D__3DS__
+# snprintf into fixed buffers truncates by design; EXTRA=-DCR_DEBUG builds the test shortcuts.
+CFLAGS	+=	-Wno-format-truncation $(EXTRA)
 
 CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions -std=gnu++11
 
@@ -161,7 +173,7 @@ ifneq ($(ROMFS),)
 	export _3DSXFLAGS += --romfs=$(CURDIR)/$(ROMFS)
 endif
 
-.PHONY: all clean
+.PHONY: all clean cia
 
 #---------------------------------------------------------------------------------
 all: $(BUILD) $(GFXBUILD) $(DEPSDIR) $(ROMFS_T3XFILES) $(T3XHFILES)
@@ -183,7 +195,20 @@ endif
 #---------------------------------------------------------------------------------
 clean:
 	@echo clean ...
-	@rm -fr $(BUILD) $(TARGET).3dsx $(OUTPUT).smdh $(TARGET).elf $(GFXBUILD)
+	@rm -fr $(BUILD) $(TARGET).3dsx $(OUTPUT).smdh $(TARGET).elf $(GFXBUILD) $(TARGET).cia meta/build
+
+#---------------------------------------------------------------------------------
+# Installable CIA (HOME Menu icon + banner). Tools live outside the repo; override the
+# paths with MAKEROM=... BANNERTOOL=... (see docs/3ds/INSTALL.md).
+#---------------------------------------------------------------------------------
+MAKEROM    ?= /c/Users/admin/Tools/3ds-cia/makerom/makerom.exe
+BANNERTOOL ?= /c/Users/admin/Tools/3ds-cia/bannertool/bannertool-1.2.3-windows/bannertool.exe
+cia: all
+	@mkdir -p meta/build
+	@$(BANNERTOOL) makebanner -i meta/banner.png -a ../assets/audio/goal_fanfare.wav -o meta/build/banner.bnr
+	@$(BANNERTOOL) makesmdh -s "$(APP_TITLE)" -l "$(APP_DESCRIPTION)" -p "$(APP_AUTHOR)" -i meta/icon.png -o meta/build/icon.smdh
+	@$(MAKEROM) -f cia -o $(TARGET).cia -target t -exefslogo -elf $(TARGET).elf -rsf meta/casino-run.rsf -icon meta/build/icon.smdh -banner meta/build/banner.bnr
+	@echo built $(TARGET).cia
 
 #---------------------------------------------------------------------------------
 $(GFXBUILD)/%.t3x	$(BUILD)/%.h	:	%.t3s

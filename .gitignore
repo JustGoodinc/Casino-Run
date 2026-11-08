@@ -6,3 +6,11 @@ docs/gauntlet/screenshots/reference/
 3ds/*.3dsx
 3ds/*.smdh
 3ds/*.elf
+
+# 3DS design reference images (large, kept local)
+docs/3ds/design/mockups/
+docs/3ds/design/references/
+3ds/gfx/staged/
+3ds/romfs/audio/
+3ds/*.cia
+3ds/meta/build/

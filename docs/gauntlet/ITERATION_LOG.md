@@ -225,3 +225,19 @@ Evidence: `screenshots/iter-18/`.
 **Verified in Azahar (60 FPS):** deal showed DEALER 5 + ? (hole card face-down) against YOU 15 (5♠ Q♦). On stand the dealer drew 7, 3, 2 to 17 and stood; DEALER WINS, bet lost, Dice sweating.
 
 **Found → fixed (rebuilt, not re-captured):** the felt tile drawn alone read as a harsh green/black checkerboard (`blackjack-deal-felt-bug.png`). It is a translucent weave meant to sit on felt green, as on the web, so a felt-green base is now drawn under it. The re-capture was abandoned because the owner started using the PC and synthetic key presses stopped reaching Azahar. Synthetic input must not be sent while the owner is active.
+
+## Iteration 22 (2026-11-08): the full 3DS game to the approved design, packaged as a .cia
+
+**Built from** `docs/3ds/design/Design-Bible.md` and all 25 mockups (studied before any UI code). New modules: `ui.c`, `games.c`, `items.c`, `save.c`, `audio.c`, `app.h`; `main.c` rewritten as a scene machine.
+
+**On 3DS now:** title, the six games in the mockup shell (HUD with timer between goal and streak, no goal bar; tabs in mockup order; Dice; item column; SHOP/ITEMS; bet panel with MIN/+10/+25/MAX; context footers), Shop (4-item rotation, round pricing, after-buy preview), Items (18 items, all effects from `script.js`, AUTO badges), Pause, Settings (music/SFX/Reduced Motion, saved), How to Play (5 topics, 6 guides with live half-scale previews), Goal (Cash Out / Keep Going), Emergency Coin Flip (3 per run, Double-Headed Coin), Cash-out results, Run over, Local high scores (top 10 on SD). Music per game with crossfade, all SFX, peg pitch variation.
+
+**Charm:** Dice idles, blinks, hops on wins, slumps and sweats on losses and low time; bevelled buttons press in; balance rolls; result words and payout pops; confetti, coins, debris, splash, hoof dust; peg flashes, ball arcs, cards slide from the shoe and flip, the roulette ball drops into its pocket; screen fades and pop-in panels. Reduced Motion cuts shake, particles, flashes and transitions only.
+
+**Rules unchanged:** C check 0 failures. Decisions where the bible was open follow the web: the timer runs in Shop/Items, stops for Pause/Goal/Coin flip; timeout waits only for a Plinko ball; item timers count real time. No web files changed.
+
+**Verified in Azahar (60 FPS, ≈4 ms/frame):** every screen captured (`docs/gauntlet/3ds/`) and compared with its mockup; win/loss/crash/cash-out/bust/stand/splash/race/timeout/goal/keep going/coin flip/cash-out/high scores all played; items bought and used; touch (held tap) starts a run. `.cia` installed through Azahar's File → Install CIA, listed as "Casino Run" with the Dice icon, launched and ran.
+
+**Found → fixed:** Crash result text doubled the CRASHED word and its trail lingered; shop card names overflowed (now the mockup's short names); "$-10.00" → "-$10.00"; pause text touched the panel edge; guide steps overflowed; half-scale previews dropped glyph columns (pixel snapping); Shop was touch-only (Y now opens it).
+
+**Not verified:** real hardware (sound needs the console's DSP firmware); the banner jingle and HOME Menu banner were built but only seen as files (Azahar's game list shows the icon, not the banner).
