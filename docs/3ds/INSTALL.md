@@ -8,7 +8,14 @@
 - A CIA installer on the console, for example **FBI** or **Universal-Updater**.
 - For sound: the console's DSP firmware dump at `sd:/3ds/dspfirm.cdc` (most CFW setups already have it; without it the game runs silent).
 
-## Install
+## Install with a QR code (no SD card swap)
+
+1. Connect the 3DS to Wi-Fi, open **FBI** → **Remote Install** → **Scan QR Code**.
+2. Scan this code and confirm. It downloads the latest `casino-run.cia` from the GitHub release.
+
+<img src="install-qr.png" alt="QR code: download casino-run.cia" width="240">
+
+## Install from the SD card
 
 1. Turn the 3DS off and put its SD card in your PC.
 2. Copy `casino-run.cia` anywhere on the SD card, e.g. `sd:/cias/`.
