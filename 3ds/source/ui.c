@@ -264,7 +264,7 @@ int button(int id, float x, float y, float w, float h, int style, const char *la
 // Button glyphs: green A, red B, cyan X, grey L/R, d-pad, touch, arrows.
 void padGlyph(float x, float y, char k) {
   if (k == 'A' || k == 'B' || k == 'X' || k == 'Y') {
-    u32 c = k == 'A' ? C_GREEN : k == 'B' ? C_CORAL : k == 'X' ? C_CYAN : C_GREY;
+    u32 c = k == 'A' ? C_GREEN : k == 'B' ? C_CORAL : k == 'X' ? C_CYAN : C_GOLD; // Y = Shop, gold like the SHOP highlight
     C2D_DrawCircleSolid(x + 6, y + 6, Z, 7, C_INK);
     C2D_DrawCircleSolid(x + 6, y + 6, Z, 6, c);
     char s[2] = { k, 0 };

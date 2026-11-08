@@ -404,7 +404,7 @@ static void itemColumn(void) {
     if (k < n) {
       spr(ITEMS[kinds[k]].sprite, 278, y + 1, 1);
       if (A.inv[kinds[k]] > 1) { char c[6]; snprintf(c, sizeof c, "%d", A.inv[kinds[k]]); textO(307 - textW(c, 1), y + 18, 1, C_GOLD, C_INK, c); }
-      if (hit(271, y, 40, 28)) openItemsAt(kinds[k]);
+      if (hit(271, y, 40, 28) && !(A.game == G_CRASH && G.flying)) openItemsAt(kinds[k]);
     }
   }
 }
@@ -412,7 +412,8 @@ static void itemColumn(void) {
 static void shopItemsRow(float y) {
   int shopOn = A.panel == PANEL_SHOP, itemsOn = A.panel == PANEL_ITEMS, lock = gameLocksTabs() && A.panel == PANEL_NONE;
   if (button(30, 70, y, 94, 17, lock ? B_DIM : shopOn ? B_GOLD : B_PURPLE, "", 1)) { A.panel = shopOn ? PANEL_NONE : PANEL_SHOP; A.sel2 = 0; sfx(shopOn ? "ui_close" : "ui_open"); }
-  if (button(31, 170, y, 94, 17, itemsOn ? B_GOLD : B_PURPLE, "", 1)) { A.panel = itemsOn ? PANEL_NONE : PANEL_ITEMS; A.sel2 = 0; sfx(itemsOn ? "ui_close" : "ui_open"); }
+  int itemsLock = A.panel == PANEL_NONE && A.game == G_CRASH && G.flying; // keep cash-out reachable
+  if (button(31, 170, y, 94, 17, itemsLock ? B_DIM : itemsOn ? B_GOLD : B_PURPLE, "", 1)) { A.panel = itemsOn ? PANEL_NONE : PANEL_ITEMS; A.sel2 = 0; sfx(itemsOn ? "ui_close" : "ui_open"); }
   spr(sprites_icon_shop_idx, 86, y - 1, 1);
   text(110, y + 5, 1, shopOn ? C_INK : lock ? C_GREY : C_CREAM, "SHOP");
   spr(sprites_bag_idx, 186, y + 1, 1);
@@ -541,7 +542,7 @@ static void bottomShop(u32 down) {
   if (button(60, 148, 172, 160, 36, can ? B_GOLD : B_DIM, "", 1)) down |= KEY_A;
   if (can) padGlyph(160, 184, 'A');
   textC(can ? 236 : 228, 186, 2, can ? C_INK : C_GREY, bl);
-  footer("D:D-PAD SELECT|A:BUY|B:BACK|X:ITEMS");
+  footer("D:SELECT|A:BUY|B:BACK|X:ITEMS|Y:CLOSE");
   if (down & KEY_A) {
     if (sold) sfx("ui_error");
     else if (A.balance < price) { sfx("ui_nofunds"); toast("NOT ENOUGH MONEY"); }
@@ -600,7 +601,7 @@ static void bottomItems(u32 down) {
   if (button(61, 148, 172, 160, 36, why ? B_DIM : B_GOLD, "", 1)) down |= KEY_A;
   if (!why) { padGlyph(160, 184, 'A'); textC(236, 186, 2, C_INK, "USE ITEM"); }
   else wrapC(228, why[0] && textW(why, 1) > 150 ? 180 : 186, 150, 1, C_GREY, why);
-  footer("D:SELECT|A:USE|B:BACK|X:CLOSE");
+  footer("D:SELECT|A:USE|B:BACK|X:CLOSE|Y:SHOP");
   if (down & KEY_A && it >= 0) { pressFlash(61); useItem(it); }
 }
 
@@ -892,13 +893,13 @@ static void helpControls(void) {
   rect(112, 72, 1, 34, C_PURPLE_L);
   textCO(250, 72, 2, C_CREAM, C_INK, "USE THESE CONTROLS\nTO PLAY CASINO RUN.");
   panel(18, 116, 364, 122, C_PURPLE_L, C_PANEL);
-  static const char K[6] = { 'A', 'B', 'X', 'L', 'S', 'D' };
-  static const char *D[6] = { "PRIMARY ACTION", "BACK / SECONDARY ACTION", "OPEN ITEMS", "SWITCH GAME", "PAUSE", "SELECT / ADJUST BET" };
-  for (int i = 0; i < 6; i++) {
-    float y = 121 + i * 19;
-    if (i) rect(22, y - 2, 356, 1, C_PURPLE_L);
-    if (i == 3) { padGlyph(66, y + 1, 'L'); text(80, y + 3, 1, C_GREY, "/"); padGlyph(88, y + 1, 'R'); }
-    else if (i == 4) { padGlyph(56, y + 1, 'S'); text(72, y + 3, 1, C_CREAM, "START"); }
+  static const char K[7] = { 'A', 'B', 'X', 'Y', 'L', 'S', 'D' };
+  static const char *D[7] = { "PRIMARY ACTION", "BACK / SECONDARY ACTION", "OPEN ITEMS", "OPEN SHOP", "SWITCH GAME", "PAUSE", "SELECT / ADJUST BET" };
+  for (int i = 0; i < 7; i++) {
+    float y = 120 + floorf(i * 16.5f);
+    if (i) rect(22, y - 1, 356, 1, C_PURPLE_L);
+    if (i == 4) { padGlyph(66, y + 1, 'L'); text(80, y + 3, 1, C_GREY, "/"); padGlyph(88, y + 1, 'R'); }
+    else if (i == 5) { padGlyph(56, y + 1, 'S'); text(72, y + 3, 1, C_CREAM, "START"); }
     else padGlyph(72, y + 1, K[i]);
     text(150, y + 3, 1, C_CREAM, D[i]);
   }
@@ -1296,12 +1297,14 @@ static void updateGame(u32 down, u32 held) {
     return;
   }
 #endif
-  if (down & KEY_Y) { // Shop without touch (Y is otherwise unused)
-    A.panel = A.panel == PANEL_SHOP ? PANEL_NONE : PANEL_SHOP; A.sel2 = 0;
-    sfx(A.panel ? "ui_open" : "ui_close");
+  if (down & KEY_Y) { // dedicated Shop button; locked mid-round like the SHOP button
+    if (A.panel == PANEL_SHOP) { A.panel = PANEL_NONE; sfx("ui_close"); }
+    else if (!gameLocksTabs()) { A.panel = PANEL_SHOP; A.sel2 = 0; sfx("ui_open"); }
+    else sfx("ui_error");
     return;
   }
   if (down & KEY_START) { go(SC_PAUSE); sfx("ui_open"); return; }
+  if (down & KEY_X && A.game == G_CRASH && G.flying && A.panel == PANEL_NONE) { sfx("ui_error"); return; } // keep cash-out reachable
   if (down & KEY_X) {
     if (A.panel == PANEL_ITEMS) { A.panel = PANEL_NONE; sfx("ui_close"); }
     else { A.panel = PANEL_ITEMS; A.sel2 = 0; sfx("ui_open"); }

@@ -655,11 +655,12 @@ void gameDrawControls(void) {
 
 void gameFooter(void) {
   int lock = gameLocksTabs();
-  const char *lr = lock ? "~L/R:GAME" : "L/R:GAME";
-  char f[96];
+  // Y (Shop) is listed whenever the Shop can open; mid-round it's locked like the SHOP button.
+  const char *lr = lock ? "~L/R:GAME" : "Y:SHOP|L/R:GAME";
+  char f[112];
   switch (A.game) {
-    case G_CRASH:
-      snprintf(f, sizeof f, G.flying ? "A:CASH OUT|B:CASH OUT|X:ITEM|%s" : "A:LAUNCH|B:BACK|X:ITEM|%s", lr); break;
+    case G_CRASH: // no Items mid-flight: the panel would hide the cash-out
+      snprintf(f, sizeof f, G.flying ? "A:CASH OUT|B:CASH OUT|~X:ITEM|%s" : "A:LAUNCH|B:BACK|X:ITEM|%s", lr); break;
     case G_BLACKJACK:
       snprintf(f, sizeof f, G.phase == 1 || G.phase == 2 || G.phase == 4 ? "A:HIT|B:STAND|X:ITEM|%s" : "A:DEAL|B:BACK|X:ITEM|%s", lr); break;
     case G_RIVER:
