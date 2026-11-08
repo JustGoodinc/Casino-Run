@@ -333,6 +333,49 @@ const frame = (accent) => canvas(24, 24, (i) => {
 });
 const bulb = () => [canvas(7, 7, (i) => { i.ball(3, 3, 2, "gold", "white", "orange"); }), canvas(7, 7, (i) => { i.ball(3, 3, 2, "brownDark", "brown", "ink"); })];
 
+// ---------- Iteration 3: roulette bowl + hub, "Dice" the host ----------
+// Bowl: static wooden ring with gold diamond deflectors that sits around the spinning canvas wheel.
+// 164x164 at 1x, shown at 2x around the 300px wheel (inner radius 75 -> 150px at 2x).
+const rouletteBowl = () => canvas(164, 164, (i) => {
+  const c = 82;
+  i.ring(c, c, 75, 81, (a, d) => (d > 80 ? "brownDark" : d < 76.5 ? "goldDark" : Math.sin(a * 37) > 0.6 ? "orange" : "brown"));
+  i.ring(c, c, 78, 78, (a) => (Math.sin(a + 0.8) < -0.6 ? "creamDark" : null));
+  for (let k = 0; k < 8; k++) {
+    const a = (k / 8) * Math.PI * 2 + Math.PI / 8, x = Math.round(c + Math.cos(a) * 78), y = Math.round(c + Math.sin(a) * 78);
+    i.blit(["..g..", ".gwg.", "gwggG", ".gGG.", "..G.."], x - 2, y - 2);
+  }
+});
+// Hub turret drawn at the wheel centre (rotates with it): gold dome + 4 spokes.
+const rouletteHub = () => canvas(40, 40, (i) => {
+  for (let k = 0; k < 4; k++) {
+    const a = (k / 4) * Math.PI * 2;
+    i.line(20, 20, Math.round(20 + Math.cos(a) * 18), Math.round(20 + Math.sin(a) * 18), "goldDark");
+    i.ball(Math.round(20 + Math.cos(a) * 18), Math.round(20 + Math.sin(a) * 18), 2, "gold", "cream", "goldDark");
+  }
+  i.ball(20, 20, 9, "gold", "cream", "goldDark").ring(20, 20, 6, 6, "goldDark").ball(20, 20, 3, "red", "redLight", "redDark");
+});
+
+// "Dice", the host: a die-headed showman (original). Frames: 0 idle, 1 cheer, 2 sweat.
+function host(mood) {
+  return canvas(22, 26, (i) => {
+    i.rect(7, 0, 8, 4, "gold").rect(7, 3, 8, 1, "red").rect(5, 4, 12, 1, "goldDark").set(8, 1, "cream");
+    i.rect(5, 5, 12, 9, "cream").rect(16, 5, 1, 9, "creamDark").rect(5, 13, 12, 1, "creamDark").rect(5, 5, 11, 1, "white");
+    i.rect(8, 8, 2, 2, "ink").rect(13, 8, 2, 2, "ink");
+    if (mood === 0) i.rect(9, 11, 4, 1, "ink").set(8, 10, "ink").set(13, 10, "ink");
+    if (mood === 1) i.rect(9, 10, 4, 3, "ink").rect(10, 11, 2, 1, "red");
+    if (mood === 2) { i.rect(9, 11, 4, 1, "ink").set(8, 12, "ink").set(13, 12, "ink").set(7, 7, "ink").set(15, 7, "ink"); i.set(18, 6, "cyan").set(18, 7, "cyan").set(17, 7, "white"); }
+    i.rect(8, 14, 2, 2, "red").rect(10, 14, 2, 2, "redDark").rect(12, 14, 2, 2, "red");
+    i.rect(6, 16, 10, 7, "purple").rect(9, 16, 1, 3, "purpleLight").rect(12, 16, 1, 3, "purpleLight").set(10, 19, "gold").set(10, 21, "gold");
+    if (mood === 1) {
+      i.rect(3, 10, 2, 7, "purple").rect(17, 10, 2, 7, "purple").rect(3, 8, 2, 2, "cream").rect(17, 8, 2, 2, "cream");
+      i.set(1, 5, "gold").set(20, 4, "gold").set(0, 6, "white");
+    } else {
+      i.rect(4, 16, 2, 6, "purple").rect(16, 16, 2, 6, "purple").rect(4, 22, 2, 1, "cream").rect(16, 22, 2, 1, "cream");
+    }
+    i.rect(7, 23, 3, 2, "greyDark").rect(12, 23, 3, 2, "greyDark");
+  });
+}
+
 // ---------- Registry ----------
 const one = (fn) => () => [fn()];
 const HORSE_SILKS = ["red", "cyan", "gold", "green"];
@@ -364,4 +407,7 @@ export const SPRITES = [
   ...Object.entries(TILES).map(([id, fn]) => ({ id: `tiles/${id}`, group: "tiles", game: "shared", frames: one(fn), outline: false })),
   ...Object.entries(FRAME_ACCENTS).map(([game, accent]) => ({ id: `frames/${game}`, group: "frames", game, frames: one(() => frame(accent)), outline: false })),
   { id: "ui/bulb", group: "ui", game: "shared", frames: bulb, outline: false, fps: 4 },
+  { id: "roulette/bowl", group: "environment", game: "roulette", frames: one(rouletteBowl), outline: false },
+  { id: "roulette/hub", group: "environment", game: "roulette", frames: one(rouletteHub) },
+  { id: "characters/host", group: "characters", game: "shared", frames: () => [host(0), host(1), host(2)], fps: 0 },
 ];

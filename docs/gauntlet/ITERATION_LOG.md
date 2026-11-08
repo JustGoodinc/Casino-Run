@@ -41,3 +41,19 @@
 **QA finding (environment):** browser-pane screenshots lag one capture behind the page, and CSS animations can stall while the pane throttles. Verify transient effects by reading DOM state, or seek animations (`a.currentTime = N; a.pause()`), then capture twice.
 
 **Evidence:** `screenshots/iter-2/horse-bigwin-number.jpg`, `horse-shoe-particles.jpg`.
+
+## Iteration 3 (2026-11-07)
+
+**Weaknesses targeted:** the roulette wheel was a flat canvas disc; no character presence anywhere (both references lean on characters: Nubby's portrait, Balatro's jokers).
+
+**Assets created (validated, tex3ds atlas 51.3 KB):** `roulette/bowl` (static wooden bowl with gold diamond deflectors, 164×164), `roulette/hub` (gold turret, rotates with the wheel), `characters/host` ("Dice": die-headed showman in top hat and purple suit; 3 frames: idle, cheer, sweat).
+
+**Implemented:**
+- Roulette: the spinning wheel sits inside the static bowl, with the hub sprite drawn at the centre. The ball sprite hides during the spin and drops (bounce) into the winning pocket under the pointer.
+- Dice replaces the coin icon beside the balance. He bobs when idle, cheers on wins (0.7 s + 0.35 s per tier; 2.5 s on goal) and sweats on losses. He only appears in the HUD (no new layout width); zoomed 0.75 on phones.
+
+**Tests:** regression 20/20; live red win showed BET $30 × 2.00X = +$60, GREAT!, +$30, ball visible, host = cheer; 375px: no overflow on any of the 7 screens, host inside the HUD.
+
+**Evidence:** `screenshots/iter-3/`.
+
+**Remaining:** river hazards and horses could use more animation frames; crash rocket trail; per-game sound stingers on big wins; the web layout isn't a 3DS layout (Studio mockups are); the music loops haven't been judged by ear.

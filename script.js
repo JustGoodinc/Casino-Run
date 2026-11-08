@@ -3195,7 +3195,19 @@ function drawRouletteWheel() {
   ctx.strokeStyle = "#F4C34E";
   ctx.lineWidth = 3;
   ctx.stroke();
+
+  // Gold turret hub sprite (assets/sprites/roulette/hub.png) at 2x; it rotates with the wheel.
+  if (rouletteHubSprite.complete && rouletteHubSprite.naturalWidth) {
+    ctx.imageSmoothingEnabled = false;
+    const w = rouletteHubSprite.naturalWidth * 2;
+    ctx.drawImage(rouletteHubSprite, center - w / 2, center - w / 2, w, w);
+  }
 }
+
+const rouletteHubSprite = new Image();
+rouletteHubSprite.onload = () => drawRouletteWheel();
+rouletteHubSprite.src = "assets/sprites/roulette/hub.png";
+const rouletteBallElement = document.getElementById("roulette-ball");
 
 drawRouletteWheel();
 
@@ -3261,6 +3273,7 @@ function spinRoulette(bet, isFreeVinylSpin = false) {
   // color while watching the wheel land always won.
   const betColor = selectedRouletteBet;
   const spinRunId = runId;
+  if (rouletteBallElement) rouletteBallElement.classList.add("hidden");
 
   startRouletteSpinSound();
 
@@ -3304,6 +3317,13 @@ function spinRoulette(bet, isFreeVinylSpin = false) {
 
 function finishRouletteSpin(result, bet, isFreeVinylSpin, betColor) {
   const resultColor = getRouletteColor(result);
+
+  // The ball drops into the winning pocket, which the spin always leaves under the pointer.
+  if (rouletteBallElement) {
+    rouletteBallElement.classList.remove("hidden", "drop");
+    void rouletteBallElement.offsetWidth;
+    rouletteBallElement.classList.add("drop");
+  }
 
   let winnings = 0;
   let bonusLines = [];

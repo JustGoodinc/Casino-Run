@@ -13,8 +13,8 @@
   <meta name="apple-mobile-web-app-title" content="Casino Run" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 
-  <link rel="stylesheet" href="./style.css?v=27" />
-  <link rel="stylesheet" href="./theme-cabinet.css?v=27" />
+  <link rel="stylesheet" href="./style.css?v=28" />
+  <link rel="stylesheet" href="./theme-cabinet.css?v=28" />
   <link rel="preload" href="./assets/fonts/casino-run-pixel.ttf" as="font" type="font/ttf" crossorigin />
 </head>
 <body>
@@ -184,7 +184,7 @@
     <h1 class="casino-logo">Casino R<span class="dev-u" title="Dev secret">u</span>n</h1>
 
     <div class="stats hud">
-      <div class="hud-money"><img class="sprite" src="assets/sprites/fx/coin.png" alt="" /><p id="balance" aria-label="Balance">$100.00</p></div>
+      <div class="hud-money"><div id="host" class="host" role="img" aria-label="Dice, your host"></div><p id="balance" aria-label="Balance">$100.00</p></div>
       <div class="hud-timer"><img class="sprite" src="assets/sprites/ui/timer.png" alt="" /><p id="timer" aria-label="Time left">2:00</p></div>
       <div class="hud-goal"><p id="goal">GOAL $300</p><div class="goal-bar" aria-hidden="true"><i id="goal-bar-fill"></i></div></div>
       <div class="hud-streak"><div id="streak-pips" class="streak-pips" aria-hidden="true"></div><p id="streak-text" class="streak-text">Streak: 0 | Bonus: +0%</p>
@@ -248,6 +248,9 @@
 
       <div id="wheel-container">
         <canvas id="roulette-canvas" width="300" height="300"></canvas>
+        <!-- Static bowl around the spinning wheel; the ball appears in the winning pocket at the pointer. -->
+        <img class="roulette-bowl" src="assets/sprites/roulette/bowl.png" alt="" draggable="false" />
+        <img class="roulette-ball hidden" id="roulette-ball" src="assets/sprites/ui/ball.png" alt="" draggable="false" />
         <div id="pointer"></div>
       </div>
 
@@ -606,9 +609,9 @@
     }
   </script>
 
-  <script src="./audio.js?v=27"></script>
-  <script src="./fx.js?v=27"></script>
-  <script src="./script.js?v=27"></script>
+  <script src="./audio.js?v=28"></script>
+  <script src="./fx.js?v=28"></script>
+  <script src="./script.js?v=28"></script>
 
 </body>
 </html>

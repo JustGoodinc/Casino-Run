@@ -170,11 +170,22 @@ CR.fx = (() => {
     setTimeout(() => el.remove(), 1100);
   }
 
+  // Dice the host reacts: "cheer" on wins (longer for bigger tiers), "sweat" on losses, then back to idle.
+  function hostMood(mood, ms) {
+    const h = document.getElementById("host");
+    if (!h) return;
+    h.classList.remove("cheer", "sweat");
+    if (mood) h.classList.add(mood);
+    clearTimeout(h._mood);
+    h._mood = setTimeout(() => h.classList.remove("cheer", "sweat"), ms);
+  }
+
   function celebrate({ profit, bet, streak = 0, special, game }) {
     if (!(profit > 0)) return 0;
     const tier = tierFor(profit, bet, streak);
     const t = TIERS[tier];
     const at = anchor();
+    hostMood("cheer", 700 + tier * 350);
     const kit = KITS[game] ? (tier >= 4 ? [...KITS[game], ...t.kinds] : KITS[game]) : t.kinds;
     marqueeHot(400 + tier * 400);
     CR.audio.play(t.sound);
@@ -192,12 +203,14 @@ CR.fx = (() => {
     const at = anchor();
     word(wordId || LOSS_WORD[gameName] || "miss", at.x, at.y - 30, 3);
     if (amount > 0) popNumber(`-$${amount.toFixed(2)}`, at.x, at.y + 8, 1, "#FF7A72");
+    hostMood("sweat", 1100);
     shake(2);
   }
 
   function goal() {
     const at = anchor();
     marqueeHot(2500);
+    hostMood("cheer", 2500);
     CR.audio.play("goal_fanfare");
     word("goal", innerWidth / 2, innerHeight * 0.3, 5);
     confetti(80);
@@ -205,7 +218,7 @@ CR.fx = (() => {
     shake(5);
   }
 
-  return { burst, confetti, word, shake, celebrate, loss, goal, tierFor, anchor, marqueeHot, popNumber, count: () => parts.length };
+  return { burst, confetti, word, shake, celebrate, loss, goal, tierFor, anchor, marqueeHot, popNumber, hostMood, count: () => parts.length };
 })();
 
 /* ---------- Machine marquees: a named sign with chasing bulbs above every game ---------- */

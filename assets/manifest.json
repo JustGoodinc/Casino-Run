@@ -1,5 +1,5 @@
 {
- "generated": "2026-11-08T07:09:22.874Z",
+ "generated": "2026-11-08T07:13:36.031Z",
  "sprites": [
   {
    "id": "items/doubleHeadedCoin",
@@ -1523,6 +1523,39 @@
    "frames": 2,
    "fps": 4,
    "bytes": 132
+  },
+  {
+   "id": "roulette/bowl",
+   "group": "environment",
+   "game": "roulette",
+   "file": "sprites/roulette/bowl.png",
+   "frameW": 164,
+   "frameH": 164,
+   "frames": 1,
+   "fps": 0,
+   "bytes": 1881
+  },
+  {
+   "id": "roulette/hub",
+   "group": "environment",
+   "game": "roulette",
+   "file": "sprites/roulette/hub.png",
+   "frameW": 42,
+   "frameH": 42,
+   "frames": 1,
+   "fps": 0,
+   "bytes": 366
+  },
+  {
+   "id": "characters/host",
+   "group": "characters",
+   "game": "shared",
+   "file": "sprites/characters/host.png",
+   "frameW": 24,
+   "frameH": 28,
+   "frames": 3,
+   "fps": 0,
+   "bytes": 474
   }
  ],
  "fonts": [
@@ -2143,7 +2176,7 @@
  ],
  "tex3ds": {
   "ok": true,
-  "note": "137 sprites -> sprites.t3x 46.1 KB (137 header defines); font.t3x 0.6 KB (A8)",
-  "checked": "2026-11-08T07:09:24.606Z"
+  "note": "140 sprites -> sprites.t3x 51.3 KB (140 header defines); font.t3x 0.6 KB (A8)",
+  "checked": "2026-11-08T07:13:38.008Z"
  }
 }

@@ -1,7 +1,7 @@
 # Autonomous Progress: restart checkpoint
 
 **Branch:** `redesign/audiovisual` (never pushed; `main` deploys to GitHub Pages, so don't merge without the owner).
-**Current gauntlet iteration:** 3 (iterations 1–2 committed).
+**Current gauntlet iteration:** 4 (iterations 1–3 committed).
 
 ## Resume in 4 commands
 
@@ -16,7 +16,7 @@ Then serve the repo root (`py -m http.server 8765`), open `/index.html?nocache=N
 
 ## Working now (verified)
 
-- Gameplay: 20/20 regression after iteration 1.
+- Gameplay: 20/20 regression after iteration 3.
 - Assets: 134 sprites, 60 audio clips (53 SFX + 7 music loops), all validator checks PASS; tex3ds atlas 45.9 KB.
 - Per-game music with crossfade and lazy loading; 8 Plinko peg variants.
 - Framed, textured machines with marquees; BET × MULT payout calculation.
@@ -25,13 +25,14 @@ Then serve the repo root (`py -m http.server 8765`), open `/index.html?nocache=N
 
 - Leaderboard host does not resolve (Supabase project paused/deleted); the owner must restore it.
 - The audio was judged by ear by the owner ("sounded great") for the batch-1 SFX. The per-game music loops and peg variants have only been checked numerically.
-- Roulette wheel is still canvas-drawn; the hazards are static sprites.
+- Roulette pockets are still canvas-drawn (bowl, hub and ball are sprites); river hazards are single-frame sprites.
 
 ## Next tasks (in order)
 
 1. ~~Per-game reward effects + floating numbers~~ (done in iteration 2: `CR.fx.popNumber`, KITS, IMPACT in fx.js).
-2. Roulette wheel sprite (rim, pockets, ball) replacing the canvas fill.
-3. Host mascot sprite in the HUD that reacts to wins and losses.
+2. ~~Roulette wheel~~ (iteration 3).
+3. ~~Host mascot~~ (iteration 3: Dice, `CR.fx.hostMood`).
+3b. Next: animation frames for river hazards and horses; crash rocket trail; per-game big-win stingers in `assets-src/audio/sfx.mjs`.
 4. Collection-wide regression + 375 / 400×240 / 320×240 checks; then commit.
 
 ## Files touched by the gauntlet
