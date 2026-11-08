@@ -153,3 +153,9 @@ Verification only, at 375×812 in the visible pane. Roulette: wheel centred in t
 **Implemented:** `3ds/` homebrew project (Makefile from the devkitPro citro2d example; title, description and author set). `gfx/sprites.t3s` has tex3ds pack the web game's own PNGs (logo, host, peg, ball, plate tile), so the art has one source. `source/main.c`: the top screen (400×240) tiles the plate, draws 7 rows of pegs and 5 palette-coloured multiplier slots; A drops a ball whose slot is pre-rolled by `cr_roll_plinko_slot` and steered there, then settled with `cr_plinko_mult`. The bottom screen (320×240) shows the logo, Dice at 2× (idle / cheer / sweat frame chosen by the result, cut from the 3-frame strip with a sub-texture) and balance / goal / bet. Up/Down change the bet; START quits. Goal steps with `cr_next_goal`.
 
 **Tests:** `make` in devkitPro MSYS2 builds `casino-run.3dsx` (176 KB) and `.smdh` with **no warnings** (the one `-Wformat-truncation` warning was fixed). Build outputs are git-ignored. **Not run:** no emulator or hardware here, so how it looks and plays on the device is unverified. Text uses the 3DS system font for now; the pixel-font atlas (`font.t3x`, A8) is ready for the next pass.
+
+## Iteration 14 (2026-11-08): pixel font on 3DS
+
+**Implemented:** the web game's glyph atlas (`assets/fonts/casino-run-pixel-atlas.png`, white 5×7 glyphs in 6×9 cells) is packed into the 3DS sprite sheet. `3ds/tests/make_font.mjs` turns its JSON into `3ds/source/font_glyphs.h` (63 glyphs: A–Z, 0–9, punctuation, `$ % /`). `text()` in `main.c` cuts a sub-texture per glyph, tints it to a palette colour and draws it at an integer scale (2× HUD and slot labels, 1× controls line), centred via `textW()`. The system font and the `C2D_TextBuf` are gone, so on-device text now matches the web font.
+
+**Tests:** `make` builds clean, no warnings. Not run on device or emulator, so glyph UVs are unverified on screen.

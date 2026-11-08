@@ -4,8 +4,10 @@
 #include <3ds.h>
 #include <citro2d.h>
 #include <stdio.h>
+#include <ctype.h>
 #include "rules.h"
 #include "sprites.h"
+#include "font_glyphs.h"
 
 #define TOP_W 400
 #define BOT_W 320
@@ -13,7 +15,6 @@
 #define ROWS 7
 
 static C2D_SpriteSheet sheet;
-static C2D_TextBuf textBuf;
 static const u32 SLOT_COLOR[5] = { 0xFF583AA8, 0xFF2B86B8, 0xFF4794F3, 0xFF4EC3F4, 0xFF65DD7E }; // ABGR
 
 static C2D_Image frame(size_t idx, int n, int frames, Tex3DS_SubTexture *store) {
@@ -27,11 +28,39 @@ static C2D_Image frame(size_t idx, int n, int frames, Tex3DS_SubTexture *store) 
   return img;
 }
 
-static void text(float x, float y, float size, u32 color, const char *s) {
-  C2D_Text t;
-  C2D_TextParse(&t, textBuf, s);
-  C2D_TextOptimize(&t);
-  C2D_DrawText(&t, C2D_WithColor, x, y, 0.5f, size, size, color);
+// Pixel font: the web game's glyph atlas (white glyphs), tinted per call, integer scale only.
+static const cr_glyph *glyph(char c) {
+  for (int i = 0; i < CR_GLYPH_COUNT; i++) if (CR_GLYPHS[i].c == c) return &CR_GLYPHS[i];
+  return NULL;
+}
+
+static int textW(const char *s, int scale) {
+  int w = 0;
+  for (; *s && *s != '\n'; s++) { const cr_glyph *g = glyph((char)toupper((unsigned char)*s)); w += ((g ? g->w : 3) + 1) * scale; }
+  return w > 0 ? w - scale : 0;
+}
+
+static void text(float x, float y, int scale, u32 color, const char *s) {
+  C2D_Image atlas = C2D_SpriteSheetGetImage(sheet, sprites_casino_run_pixel_atlas_idx);
+  const Tex3DS_SubTexture *a = atlas.subtex;
+  C2D_ImageTint tint;
+  C2D_PlainImageTint(&tint, color, 1.0f);
+  float cx = x;
+  for (; *s; s++) {
+    if (*s == '\n') { cx = x; y += (CR_FONT_CELL_H + 1) * scale; continue; }
+    const cr_glyph *g = glyph((char)toupper((unsigned char)*s));
+    if (!g) { cx += 4 * scale; continue; }
+    Tex3DS_SubTexture sub = *a;
+    sub.width = g->w;
+    sub.height = CR_FONT_CELL_H;
+    sub.left = a->left + (a->right - a->left) * g->x / a->width;
+    sub.right = a->left + (a->right - a->left) * (g->x + g->w) / a->width;
+    sub.top = a->top + (a->bottom - a->top) * g->y / a->height;
+    sub.bottom = a->top + (a->bottom - a->top) * (g->y + CR_FONT_CELL_H) / a->height;
+    C2D_Image img = { atlas.tex, &sub };
+    C2D_DrawImageAt(img, cx, y, 0.5f, &tint, scale, scale);
+    cx += (g->w + 1) * scale;
+  }
 }
 
 static void draw(C2D_Image img, float x, float y, float depth) { C2D_DrawImageAt(img, x, y, depth, NULL, 1, 1); }
@@ -48,7 +77,6 @@ int main(void) {
   C3D_RenderTarget *bottom = C2D_CreateScreenTarget(GFX_BOTTOM, GFX_LEFT);
   sheet = C2D_SpriteSheetLoad("romfs:/gfx/sprites.t3x");
   if (!sheet) svcBreak(USERBREAK_PANIC);
-  textBuf = C2D_TextBufNew(1024);
 
   cr_rng rng;
   cr_seed(&rng, (u32)osGetTime());
@@ -85,7 +113,6 @@ int main(void) {
       }
     }
 
-    C2D_TextBufClear(textBuf);
     C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
 
     C2D_TargetClear(top, C2D_Color32(0x19, 0x17, 0x27, 0xFF));
@@ -100,7 +127,7 @@ int main(void) {
       char label[16];
       snprintf(label, sizeof label, "%gx", cr_plinko_mult[s]);
       C2D_DrawRectSolid(slotX(s) - 30, 212, 0.2f, 60, 26, s == lastSlot ? 0xFFFFFFFF : SLOT_COLOR[s]);
-      text(slotX(s) - 12, 216, 0.6f, 0xFF170C0E, label);
+      text(slotX(s) - textW(label, 2) / 2.0f, 217, 2, 0xFF170C0E, label);
     }
     if (dropping) draw(C2D_SpriteSheetGetImage(sheet, sprites_ball_idx), ballX - 4, ballY, 0.3f);
 
@@ -111,13 +138,15 @@ int main(void) {
     C2D_DrawImageAt(frame(sprites_host_idx, mood, 3, &hostSub), 16, 150, 0, NULL, 2, 2);
     char hud[96];
     snprintf(hud, sizeof hud, "Balance $%.2f\nGoal    $%.0f\nBet     $%d", balance, goal, bet);
-    text(90, 82, 0.7f, 0xFF4EC3F4, hud);
-    text(90, 176, 0.5f, 0xFFCEF0FF, "A drop   Up/Down bet\nSTART quit");
+    text(80, 80, 2, 0xFF4EC3F4, hud);
+    {
+      const char *help = "A DROP   UP/DOWN BET   START QUIT";
+      text((BOT_W - textW(help, 1)) / 2.0f, 222, 1, 0xFFCEF0FF, help);
+    }
 
     C3D_FrameEnd(0);
   }
 
-  C2D_TextBufDelete(textBuf);
   C2D_SpriteSheetFree(sheet);
   C2D_Fini();
   C3D_Fini();
