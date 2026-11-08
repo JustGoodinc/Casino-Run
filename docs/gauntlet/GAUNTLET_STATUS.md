@@ -9,9 +9,9 @@
 | Plinko | ✅ pegs/ball/plate | ✅ | ✅ slot hit | ✅ 8 pegs + music | ✅ cascade | ✅ coins+sparkles at slot | ✅ | ✅ | ✅ | ✅ .3dsx slice runs in Azahar (it. 16) |
 | Roulette | ✅ bowl, hub, ball, pixel wheel in European order (it. 8) | ✅ | ✅ ball drop | ✅ ticks + tango | ✅ | ✅ chips | ✅ | ✅ 375px (it. 9) | ✅ | ✅ runs in Azahar (it. 19) |
 | Crash | ✅ rocket, stars | ✅ | ✅ exhaust trail | ✅ boom + synth | ✅ | ✅ explosion | ✅ | ✅ | ✅ | ✅ runs in Azahar (it. 17) |
-| Blackjack | ✅ 53 cards | ✅ | ✅ deal | ✅ jazz | ✅ | ✅ mini cards | ✅ | ✅ | ✅ | ◐ rules in C |
+| Blackjack | ✅ 53 cards | ✅ | ✅ deal | ✅ jazz | ✅ | ✅ mini cards | ✅ | ✅ | ✅ | ✅ runs in Azahar (it. 21) |
 | Elephant River | ✅ hazards 2-frame (it. 7) | ✅ | ✅ walk, croc snap, paddle | ✅ calypso | ✅ | ✅ droplets | ✅ | ✅ 375px | ✅ | ✅ runs in Azahar (it. 18) |
-| Horse Race | ✅ | ✅ | ✅ 4-frame gallop (it. 7) | ✅ gallop | ✅ | ✅ horseshoes | ✅ | ✅ 375px | ✅ | ◐ rules in C |
+| Horse Race | ✅ | ✅ | ✅ 4-frame gallop (it. 7) | ✅ gallop | ✅ | ✅ horseshoes | ✅ | ✅ 375px | ✅ | ✅ runs in Azahar (it. 20) |
 | Shell/HUD/shop | ✅ | ✅ | ✅ title bulbs, end screens | ✅ | — | — | ✅ | ✅ | ✅ | ◐ bottom-screen HUD in slice |
 
 "Rules in C" = `3ds/source/rules.c` reproduces `rules.js` seed for seed (`3ds/tests/rules_check.c`, 0 failures); no on-device screen for that game yet.
@@ -40,6 +40,8 @@
 | 17 | Crash on 3DS; climb curve into rules | Azahar verified, 25/25 (484d3ff) |
 | 18 | Elephant River on 3DS; result input lock | Azahar verified (aedd66a) |
 | 19 | Roulette on 3DS; payout table into rules | Azahar verified, 26/26 (a2ecb4f) |
+| 20 | Horse Race on 3DS; winner + payout into rules | Azahar verified, 27/27 (92496f1) |
+| 21 | Blackjack on 3DS; dealer rule + payouts into rules | Azahar verified, 28/28 (efe3450) |
 
 ## Next priorities
 
