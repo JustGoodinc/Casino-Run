@@ -72,13 +72,16 @@ static void draw(C2D_Image img, float x, float y, float depth) { C2D_DrawImageAt
 
 static float slotX(int slot) { return 40 + (slot + 0.5f) * (TOP_W - 80) / 5.0f; }
 
-enum { GAME_PLINKO, GAME_CRASH, GAME_COUNT };
-static const char *GAME_NAME[GAME_COUNT] = { "PLINKO", "CRASH" };
-static const char *GAME_HELP[GAME_COUNT] = { "A DROP  UP/DOWN BET  SELECT GAME", "A LAUNCH/CASH OUT  UP/DOWN BET  SELECT GAME" };
+enum { GAME_PLINKO, GAME_CRASH, GAME_RIVER, GAME_COUNT };
+static const char *GAME_NAME[GAME_COUNT] = { "PLINKO", "CRASH", "ELEPHANT RIVER" };
+static const char *GAME_HELP[GAME_COUNT] = { "A DROP  UP/DOWN BET  SELECT GAME", "A LAUNCH/CASH OUT  UP/DOWN BET  SELECT GAME",
+  "A START/STEP  B CASH OUT  SELECT GAME" };
 
 typedef struct {
   double balance, goal;
-  int bet, mood, game;
+  int bet, mood, game, tick, lock; // lock: frames A/B are ignored after a result (no accidental re-bet)
+  // Elephant River: lane 0 = bank, 5 = far shore; hop = frames left in the current hop
+  int crossing, lane, hop, splashed, banked;
   // Plinko
   int dropping, target, lastSlot;
   float ballX, ballY;
@@ -90,10 +93,71 @@ typedef struct {
 static void settle(state *s, double win) {
   s->balance += win;
   s->mood = win > s->bet ? 1 : win < s->bet ? 2 : 0;
+  s->lock = 30; // Azahar test: leftover hop presses started (and lost) a new round right after a splash
   if (s->balance >= s->goal) s->goal = cr_next_goal(s->balance);
 }
 
-static int busy(const state *s) { return s->dropping || s->flying; }
+static int busy(const state *s) { return s->dropping || s->flying || s->crossing; }
+
+// ---------- Elephant River ----------
+#define HOP_FRAMES 31 /* ~0.52 s, like the web hop */
+static float laneY(int lane) { return 210 - lane * 34; }
+
+static void updateRiver(state *s, cr_rng *rng, u32 down) {
+  if (!s->crossing) {
+    if (down & KEY_A && s->balance >= s->bet) {
+      s->balance -= s->bet;
+      s->crossing = 1; s->lane = 0; s->hop = 0; s->splashed = s->banked = 0; s->mood = 0;
+    }
+    return;
+  }
+  if (s->hop > 0) {
+    if (--s->hop == 0 && cr_rand(rng) < cr_frog_base_crash_chance(s->lane)) { // swept away
+      s->splashed = 1; s->crossing = 0;
+      settle(s, 0);
+    }
+    return;
+  }
+  if (down & KEY_A && s->lane < 5) { s->lane++; s->hop = HOP_FRAMES; }
+  else if (down & KEY_B && s->lane > 0) {
+    s->banked = 1; s->crossing = 0;
+    settle(s, s->bet * cr_frog_multiplier(s->lane));
+  }
+}
+
+static void drawRiver(const state *s) {
+  C2D_Image water = C2D_SpriteSheetGetImage(sheet, sprites_water_idx);
+  int flow = (s->tick / 2) % 32;
+  for (int y = 24; y < 200; y += 16)
+    for (int x = -32; x < TOP_W; x += 32) draw(water, x + flow, y, 0);
+  C2D_DrawRectSolid(0, 0, 0.05f, TOP_W, 24, 0xFF4F7D2E);   // far shore (felt green)
+  C2D_DrawRectSolid(0, 196, 0.05f, TOP_W, 44, 0xFF4F7D2E); // riverbank
+  text((TOP_W - textW("SAFE SHORE", 1)) / 2.0f, 8, 1, 0xFFCEF0FF, "SAFE SHORE");
+  // Hazards drift across each lane, alternating direction (decorative: hits come from the rules RNG).
+  static const int HAZ[5] = { sprites_log_idx, sprites_croc_idx, sprites_boat_idx, sprites_canoe_idx, sprites_log_idx };
+  static const float SPEED[5] = { 1.4f, 1.8f, 2.2f, 1.2f, 1.6f };
+  for (int k = 0; k < 5; k++) {
+    Tex3DS_SubTexture sub;
+    C2D_Image img = frame(HAZ[k], (s->tick / 15 + k) & 1, 2, &sub);
+    float w = sub.width * 2, x = fmodf(s->tick * SPEED[k] + k * 97, TOP_W + w + 40) - w - 20;
+    if (k & 1) C2D_DrawImageAt(img, floorf(TOP_W - x), laneY(k + 1) - 14, 0.1f, NULL, -2, 2); // leftward, mirrored
+    else C2D_DrawImageAt(img, floorf(x), laneY(k + 1) - 14, 0.1f, NULL, 2, 2);
+  }
+  // Elephant: walks while hopping, sits on its lane otherwise.
+  float from = laneY(s->lane - (s->hop > 0)), to = laneY(s->lane);
+  float ey = s->hop > 0 ? to + (from - to) * s->hop / (float)HOP_FRAMES : to;
+  Tex3DS_SubTexture esub;
+  if (!s->splashed) C2D_DrawImageAt(frame(sprites_elephant_idx, s->hop > 0 ? (s->tick / 8) & 1 : 0, 2, &esub), 174, floorf(ey) - 30, 0.3f, NULL, 2, 2);
+  else for (int k = 0; k < 10; k++) // splash: droplets thrown up where the elephant was
+    C2D_DrawRectSolid(186 + (k * 37 % 30), floorf(ey) - 30 + (k * 13 % 22), 0.3f, 4, 4, k & 1 ? 0xFFFFFFFF : 0xFFE8D937);
+  char m[48];
+  if (s->splashed) snprintf(m, sizeof m, "SPLASH!");
+  else if (s->banked) snprintf(m, sizeof m, "CASHED OUT %.2fX", cr_frog_multiplier(s->lane));
+  else if (!s->crossing) snprintf(m, sizeof m, "PRESS A TO START");
+  else if (s->lane == 0) snprintf(m, sizeof m, "PRESS A TO STEP"); // no cash-out on the bank
+  else snprintf(m, sizeof m, "LANE %d  %.2fX", s->lane, cr_frog_multiplier(s->lane));
+  text((TOP_W - textW(m, 2)) / 2.0f, 214, 2, s->splashed ? 0xFF583AF4 : 0xFF4EC3F4, m);
+}
 
 static void updatePlinko(state *s, cr_rng *rng, u32 down) {
   if (!s->dropping) {
@@ -210,14 +274,18 @@ int main(void) {
       if (down & KEY_DOWN && s.bet > 1) s.bet--;
       if (down & KEY_SELECT) { s.game = (s.game + 1) % GAME_COUNT; s.mood = 0; down = 0; }
     }
+    s.tick++;
+    if (s.lock > 0) { s.lock--; down &= ~(u32)(KEY_A | KEY_B); }
     if (s.game == GAME_PLINKO) updatePlinko(&s, &rng, down);
-    else updateCrash(&s, &rng, down);
+    else if (s.game == GAME_CRASH) updateCrash(&s, &rng, down);
+    else updateRiver(&s, &rng, down);
 
     C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
     C2D_TargetClear(top, C2D_Color32(0x19, 0x17, 0x27, 0xFF));
     C2D_SceneBegin(top);
     if (s.game == GAME_PLINKO) drawPlinko(&s);
-    else drawCrash(&s);
+    else if (s.game == GAME_CRASH) drawCrash(&s);
+    else drawRiver(&s);
 
     C2D_TargetClear(bottom, C2D_Color32(0x29, 0x26, 0x3A, 0xFF));
     C2D_SceneBegin(bottom);

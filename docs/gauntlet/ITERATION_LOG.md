@@ -183,3 +183,15 @@ Evidence: `screenshots/iter-16/`.
 **3DS:** `main.c` reorganised into a `state` struct with per-game update and draw functions; SELECT switches game when nothing is in play. Crash: tiled star field; the rocket (2-frame strip, 2×) climbs with x by time and y by log multiplier, with an 8-puff gold→red exhaust trail; a big pixel-font multiplier; A launches and A/B cash out. At the crash point the rocket becomes a 12-chunk pixel debris burst. The first version drew a flat red box, which read poorly in Azahar and was replaced.
 
 **Verified in Azahar (60 FPS):** a flight at 1.65× with its trail; cash-out at 1.35× paid exactly $13.52 on $10 (balance $70 → $60 → $73.52) with Dice cheering; crashes at 1.01× / 1.02× / 1.26× took the bet, with Dice sweating. C check 0 failures; vectors unchanged. Evidence: `screenshots/iter-17/`.
+
+## Iteration 18 (2026-11-08): Elephant River on 3DS
+
+**Implemented:** third 3DS game (SELECT cycles Plinko → Crash → River). Water tiles flow sideways; felt-green shore and bank; four 2-frame hazard sprites drift across lanes 1–5 in alternating directions (mirrored with a negative scale), decorative as on the web. The elephant (2-frame walk, 2×) hops a lane in 31 frames (~0.52 s, like the web), then rolls `cr_frog_base_crash_chance(lane)`; lane 5 is the shore. B cashes out at `cr_frog_multiplier(lane)`. A splash draws a droplet burst, a red SPLASH! and sweating Dice.
+
+**Verified in Azahar (60 FPS):** lane 2 shows 1.67×, matching the web's 0.96 / (0.80 × 0.72). Cash-out paid exactly $16.67 on $10 with Dice cheering; a splash lost the bet.
+
+**Found in testing → fixed:**
+1. Leftover hop presses right after a splash started and lost a new $10 round. Fix: A/B are ignored for 30 frames (0.5 s) after any result, in all games. The emulator re-test was inconclusive because of key-timing jitter in the test harness (~300 ms per key); the logic is two lines and correct on inspection.
+2. Lane 0 displayed "0.96X", a payout you can't take on the bank. It now says PRESS A TO STEP.
+
+Evidence: `screenshots/iter-18/`.
