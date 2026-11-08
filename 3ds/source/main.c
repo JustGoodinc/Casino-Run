@@ -1020,22 +1020,23 @@ static void bottomGoal(u32 down) {
   char c[32], n[32];
   snprintf(c, sizeof c, "CASH OUT $%.0f", floor(A.balance));
   snprintf(n, sizeof n, "NEXT GOAL $%.0f", cr_next_goal(A.balance));
-  int t0 = button(400, 30, 36, 260, 56, A.sel == 0 ? B_GOLD : B_PURPLE, "", 1);
-  if (A.sel == 0) textC(160, 44, 3, C_INK, c); else textCO(160, 44, 3, C_GOLD, C_INK, c);
-  textC(160, 76, 1, A.sel == 0 ? C_INK : C_CREAM, "END RUN AND SAVE SCORE");
-  int t1 = button(401, 30, 98, 260, 70, A.sel == 1 ? B_GOLD : B_PURPLE, "", 1);
-  if (A.sel == 1) textC(160, 106, 3, C_INK, "KEEP GOING"); else textCO(160, 106, 3, C_GOLD, C_INK, "KEEP GOING");
-  textC(160, 136, 2, A.sel == 1 ? C_INK : C_CREAM, n);
-  textC(160, 156, 1, A.sel == 1 ? C_INK : C_CYAN, "TIMER RESETS TO 2:00");
+  // Keep Going is first (top, selected by default); Cash Out sits below it. A.sel 0 = keep going.
+  int t1 = button(401, 30, 36, 260, 70, A.sel == 0 ? B_GOLD : B_PURPLE, "", 1);
+  if (A.sel == 0) textC(160, 44, 3, C_INK, "KEEP GOING"); else textCO(160, 44, 3, C_GOLD, C_INK, "KEEP GOING");
+  textC(160, 74, 2, A.sel == 0 ? C_INK : C_CREAM, n);
+  textC(160, 94, 1, A.sel == 0 ? C_INK : C_CYAN, "TIMER RESETS TO 2:00");
+  int t0 = button(400, 30, 112, 260, 56, A.sel == 1 ? B_GOLD : B_PURPLE, "", 1);
+  if (A.sel == 1) textC(160, 120, 3, C_INK, c); else textCO(160, 120, 3, C_GOLD, C_INK, c);
+  textC(160, 152, 1, A.sel == 1 ? C_INK : C_CREAM, "END RUN AND SAVE SCORE");
   textC(160, 180, 1, C_CREAM, "CONTINUE WITH YOUR CURRENT BALANCE");
   footerFramed("D:SELECT|A:CONFIRM|T:TAP TO CHOOSE");
-  int act = -1;
+  int act = -1; // 0 = cash out, 1 = keep going
   if (!A.menuLock) {
     if (down & (KEY_UP | KEY_DOWN)) { A.sel = !A.sel; sfx("ui_hover"); }
-    if (down & KEY_A) act = A.sel;
+    if (down & KEY_A) act = A.sel == 0 ? 1 : 0;
   }
-  if (t0) act = 0;
-  if (t1) act = 1;
+  if (t0) { act = 0; A.sel = 1; }
+  if (t1) { act = 1; A.sel = 0; }
   if (act < 0) return;
   pressFlash(400 + act);
   if (act == 0) { // Cash Out: ends the run and saves the score
@@ -1066,9 +1067,13 @@ static void topCoin(void) {
   drawDice(110, 130, A.flipT >= 70 ? (A.flipWin ? 1 : 2) : 2);
   // Coin: squash-spins (cos) and arcs up while flipping, then lands on the result.
   int spinning = A.flipT > 0 && A.flipT < 70 && !A.reduced;
-  float sx = spinning ? 3 * fabsf(cosf(A.flipT * 0.35f)) : 3, lift = spinning ? sinf(A.flipT / 70.0f * 3.14159f) * 22 : 0;
-  C2D_Image coin = img(sprites_coin_idx);
-  C2D_DrawImageAt(coin, floorf(250 - 7 * sx), floorf(132 - lift), 0.5f, NULL, fmaxf(sx, 0.3f), 3);
+  // Face shown: heads before the flip, the side facing us while it spins (it turns over every half
+  // turn), then the result: heads = win, tails = loss.
+  float c = cosf(A.flipT * 0.35f);
+  float sx = spinning ? 2 * fabsf(c) : 2, lift = spinning ? sinf(A.flipT / 70.0f * 3.14159f) * 22 : 0;
+  int heads = A.flipT >= 70 ? A.flipWin : spinning ? c >= 0 : 1;
+  C2D_Image coin = img(heads ? sprites_coin_heads_idx : sprites_coin_tails_idx);
+  C2D_DrawImageAt(coin, floorf(250 - 16 * sx), floorf(120 - lift), 0.5f, NULL, fmaxf(sx, 0.2f), 2);
   rect(80, 186, 240, 1, C_PURPLE_L);
   const char *m = A.flipT >= 70 ? (A.flipWin ? "HEADS! YOU SURVIVED!" : "TAILS... THE RUN ENDS") : "ONE FLIP TO STAY IN THE RUN";
   textC(200, 194, 1, A.flipT >= 70 ? (A.flipWin ? C_GREEN : C_CORAL) : C_CREAM, m);
@@ -1110,7 +1115,7 @@ static void coinTick(void) {
   if (A.flipT <= 0) return;
   A.flipT++;
   if (A.flipT == 70) {
-    if (A.flipWin) { sfx("win_medium"); mood(1, 90); fxBurst(250, 150, 20, 0, 1.4f); }
+    if (A.flipWin) { sfx("win_medium"); mood(1, 90); fxBurst(250, 150, 14, 2, 1.6f); } // stars, so the heads face stays visible
     else { sfx("lose"); mood(2, 90); }
   }
   if (A.flipT >= 130) {

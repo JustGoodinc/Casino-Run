@@ -24,6 +24,39 @@ const coin = () => canvas(12, 12, (i) => {
   i.text("$", 4, 3, "goldDark");
 });
 
+// Emergency coin flip faces (30x30): heads = Dice's face, tails = a star, struck at 2x into the gold
+// so the side reads at a glance mid-spin.
+const dbl = (rows) => rows.flatMap((r) => { const w = [...r].map((c) => c + c).join(""); return [w, w]; });
+const flipCoin = (face) => canvas(30, 30, (i) => {
+  const f = dbl(face);
+  i.ball(15, 15, 14, "gold", "cream", "goldDark");
+  i.ring(15, 15, 12, 12, () => "goldDark");
+  i.blit(f, 15 - Math.floor(f[0].length / 2), 15 - Math.floor(f.length / 2));
+});
+const COIN_HEADS = [
+  "..GGGGG..",
+  "..GrrrG..",
+  ".GGGGGGG.",
+  ".GeeeeeG.",
+  ".GekeekG.",
+  ".GekeekG.",
+  ".GeeeeeG.",
+  ".GekkkeG.",
+  "..GeeeG..",
+  "...GGG...",
+];
+const COIN_TAILS = [
+  "....G....",
+  "...GeG...",
+  "...GeG...",
+  "GGGGeGGGG",
+  ".GeeeeeG.",
+  "..GeeeG..",
+  "..GeGeG..",
+  ".GeG.GeG.",
+  ".GG...GG.",
+];
+
 const SUITS = {
   heart: { small: ["rr.rr", "rrrrr", "rrrrr", ".rrr.", "..r.."], color: "red" },
   diamond: { small: ["..r..", ".rrr.", "rrrrr", ".rrr.", "..r.."], color: "red" },
@@ -422,6 +455,8 @@ export const SPRITES = [
   ...Object.entries(UI).filter(([id]) => id !== "flame").map(([id, fn]) => ({ id: `ui/${id}`, group: "ui", game: "shared", frames: one(fn) })),
   { id: "ui/flame", group: "ui", game: "shared", frames: () => [UI.flame(0), UI.flame(1), UI.flame(2)], fps: 8 },
   { id: "fx/coin", group: "fx", game: "shared", frames: one(FX.coin) },
+  { id: "fx/coin-heads", group: "fx", game: "shared", frames: one(() => flipCoin(COIN_HEADS)) },
+  { id: "fx/coin-tails", group: "fx", game: "shared", frames: one(() => flipCoin(COIN_TAILS)) },
   ...["red", "gold", "cyan"].map((c) => ({ id: `fx/chip-${c}`, group: "fx", game: "shared", frames: one(() => FX.chip(c)) })),
   { id: "fx/sparkle", group: "fx", game: "shared", frames: one(FX.sparkle), outline: false },
   { id: "fx/star", group: "fx", game: "shared", frames: one(FX.star) },

@@ -1,5 +1,5 @@
 {
- "generated": "2026-11-08T14:49:22.789Z",
+ "generated": "2026-11-08T20:54:42.176Z",
  "sprites": [
   {
    "id": "items/doubleHeadedCoin",
@@ -1056,6 +1056,28 @@
    "frames": 1,
    "fps": 0,
    "bytes": 173
+  },
+  {
+   "id": "fx/coin-heads",
+   "group": "fx",
+   "game": "shared",
+   "file": "sprites/fx/coin-heads.png",
+   "frameW": 32,
+   "frameH": 32,
+   "frames": 1,
+   "fps": 0,
+   "bytes": 320
+  },
+  {
+   "id": "fx/coin-tails",
+   "group": "fx",
+   "game": "shared",
+   "file": "sprites/fx/coin-tails.png",
+   "frameW": 32,
+   "frameH": 32,
+   "frames": 1,
+   "fps": 0,
+   "bytes": 327
   },
   {
    "id": "fx/chip-red",
