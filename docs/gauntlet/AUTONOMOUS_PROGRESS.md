@@ -1,7 +1,8 @@
 # Autonomous Progress: restart checkpoint
 
 **Branch:** work directly on `main` (owner granted push authority 2026-11-08). Every push deploys live to casinorun.fun via GitHub Pages. Run regression (20/20) + validator before pushing.
-**Current gauntlet iteration:** 4 (iterations 1–3 committed).
+**Current gauntlet iteration:** 6 (iterations 1–5 shipped to main, live).
+**Owner vault (keep updated):** `\192.168.1.141ServerSSDobsidianKnowledgeRoblox-AI-Memory**Current gauntlet iteration:** 4 (iterations 1–3 committed).3_PROJECTSCasino-Run` (Current-State, Design-Bible, Decisions, Lessons). Update it after every milestone and rebuild the catalog.
 
 ## Resume in 4 commands
 
