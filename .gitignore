@@ -1,3 +1,8 @@
 tools/asset-validator/.cache/
 # Third-party reference screenshots (Balatro, Nubby's Number Factory) stay local: not ours to publish.
 docs/gauntlet/screenshots/reference/
+3ds/build/
+3ds/romfs/gfx/
+3ds/*.3dsx
+3ds/*.smdh
+3ds/*.elf

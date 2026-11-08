@@ -1,0 +1,6 @@
+--atlas -f rgba8888 -z auto
+../../assets/sprites/ui/logo.png
+../../assets/sprites/characters/host.png
+../../assets/sprites/ui/peg.png
+../../assets/sprites/ui/ball.png
+../../assets/sprites/tiles/plate.png

@@ -147,3 +147,9 @@ Verification only, at 375×812 in the visible pane. Roulette: wheel centred in t
 **Results:** built with the TinyCC bundled in an installed app (no host gcc on this PC) and run: **0 failures**. Negative test: changing one vector made it fail (`plinko[0] 2 != 3`, exit 1). The first negative test passed by mistake because the quoted `#include` picked up the real header beside `rules_check.c`, so the test was redone with both files isolated. The files also compile for the 3DS CPU (devkitARM, `-march=armv6k -mfloat-abi=hard -mfpu=vfp -Wall -Wextra`) with no warnings.
 
 **Next 3DS stage:** renderer (citro2d) using the existing `sprites.t3x` atlas.
+
+## Iteration 13 (2026-11-08): first 3DS build (stage 3 vertical slice)
+
+**Implemented:** `3ds/` homebrew project (Makefile from the devkitPro citro2d example; title, description and author set). `gfx/sprites.t3s` has tex3ds pack the web game's own PNGs (logo, host, peg, ball, plate tile), so the art has one source. `source/main.c`: the top screen (400×240) tiles the plate, draws 7 rows of pegs and 5 palette-coloured multiplier slots; A drops a ball whose slot is pre-rolled by `cr_roll_plinko_slot` and steered there, then settled with `cr_plinko_mult`. The bottom screen (320×240) shows the logo, Dice at 2× (idle / cheer / sweat frame chosen by the result, cut from the 3-frame strip with a sub-texture) and balance / goal / bet. Up/Down change the bet; START quits. Goal steps with `cr_next_goal`.
+
+**Tests:** `make` in devkitPro MSYS2 builds `casino-run.3dsx` (176 KB) and `.smdh` with **no warnings** (the one `-Wformat-truncation` warning was fixed). Build outputs are git-ignored. **Not run:** no emulator or hardware here, so how it looks and plays on the device is unverified. Text uses the 3DS system font for now; the pixel-font atlas (`font.t3x`, A8) is ready for the next pass.
