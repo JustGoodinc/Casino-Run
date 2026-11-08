@@ -175,3 +175,11 @@ Verification only, at 375×812 in the visible pane. Roulette: wheel centred in t
 **Bug found and fixed:** the 1× controls line was unreadable, with each glyph missing its left column (`text-1x-before.png`). The first guess, linear filtering, did not fix it (nearest filtering was kept anyway, since it is right for pixel art). The real cause was the centred line starting at x.5, so nearest sampling dropped a column. `text()` now floors x and y; the line is clean after the fix (`text-1x-after.png`).
 
 Evidence: `screenshots/iter-16/`.
+
+## Iteration 17 (2026-11-08): Crash on 3DS
+
+**Rules:** the climb curve `1 + t² × 0.55` (which was inline in `runCrash`) is now `crashMultiplierAt` in `rules.js` / `cr_crash_multiplier_at` in C; web regression check "Crash climb curve" (25/25).
+
+**3DS:** `main.c` reorganised into a `state` struct with per-game update and draw functions; SELECT switches game when nothing is in play. Crash: tiled star field; the rocket (2-frame strip, 2×) climbs with x by time and y by log multiplier, with an 8-puff gold→red exhaust trail; a big pixel-font multiplier; A launches and A/B cash out. At the crash point the rocket becomes a 12-chunk pixel debris burst. The first version drew a flat red box, which read poorly in Azahar and was replaced.
+
+**Verified in Azahar (60 FPS):** a flight at 1.65× with its trail; cash-out at 1.35× paid exactly $13.52 on $10 (balance $70 → $60 → $73.52) with Dice cheering; crashes at 1.01× / 1.02× / 1.26× took the bet, with Dice sweating. C check 0 failures; vectors unchanged. Evidence: `screenshots/iter-17/`.

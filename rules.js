@@ -40,6 +40,7 @@ CR.rules = (() => {
 
   // Crash: P(crash point > m) = 0.96 / m, capped at 100x.
   const generateCrashPoint = () => Math.min(100, Math.max(1, 0.96 / (1 - rand())));
+  const crashMultiplierAt = (seconds) => 1 + seconds * seconds * 0.55; // the climb shown while flying
 
   // Elephant River: multiplier = 0.96 / survival, so any cash-out lane returns 0.96 per $1.
   const getFrogBaseCrashChance = (lane) => Math.min(0.12 + lane * 0.08, 0.55);
@@ -110,7 +111,7 @@ CR.rules = (() => {
     rand, randInt, shuffle, pick,
     plinkoMultipliers, plinkoSlotOdds, rollPlinkoSlot,
     redNumbers, getRouletteColor, getRandomRouletteNumberForColor, rollRoulette,
-    generateCrashPoint,
+    generateCrashPoint, crashMultiplierAt,
     getFrogBaseCrashChance, getFrogMultiplier,
     shuffledDeck, getCardValue, getHandValue, isBlackjack,
   };

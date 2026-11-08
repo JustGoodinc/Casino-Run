@@ -3511,7 +3511,7 @@ function runCrash() {
   const now = performance.now();
   const elapsed = (now - crashStartTime) / 1000;
 
-  crashMultiplier = 1 + elapsed * elapsed * 0.55;
+  crashMultiplier = R.crashMultiplierAt(elapsed);
 
   crashMultiplierText.textContent = `${crashMultiplier.toFixed(2)}x`;
   updateCrashGlow(crashMultiplier);

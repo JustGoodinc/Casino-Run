@@ -23,6 +23,7 @@ int    cr_random_roulette_number_for_color(cr_rng *r, int color);
 int    cr_roll_roulette(cr_rng *r, int magnet_color);
 // Crash
 double cr_crash_point(cr_rng *r);
+double cr_crash_multiplier_at(double seconds); // climb shown while flying
 // Elephant River
 double cr_frog_base_crash_chance(int lane);
 double cr_frog_multiplier(int lane);

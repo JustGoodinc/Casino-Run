@@ -94,6 +94,7 @@
       && sb.bonus === 3 && sb.greaseUsed && !Rr.streakBonus(10, 1, true).greaseUsed
       && lr.tickets === 2 && lr.insurance === 20 && lr.cashback === 1 && Rr.coinFlipRescue(300) === 60,
       JSON.stringify({ lr, sb }));
+    check("Crash climb curve", Rr.crashMultiplierAt(0) === 1 && Math.abs(Rr.crashMultiplierAt(2) - 3.2) < 1e-12);
     check("Run state priority", Rr.runState(0, 500, 300) === "timeout" && Rr.runState(5, 300, 300) === "goal"
       && Rr.runState(5, 0.5, 300) === "broke" && Rr.runState(5, 1, 300) === "play");
 

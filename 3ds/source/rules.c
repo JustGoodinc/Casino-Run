@@ -51,6 +51,8 @@ int cr_roll_roulette(cr_rng *r, int magnet_color) {
 }
 
 // ---------- Crash: P(point > m) = 0.96 / m, capped at 100x ----------
+double cr_crash_multiplier_at(double seconds) { return 1 + seconds * seconds * 0.55; }
+
 double cr_crash_point(cr_rng *r) {
   return fmin(100, fmax(1, 0.96 / (1 - cr_rand(r))));
 }
