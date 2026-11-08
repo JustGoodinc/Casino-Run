@@ -72,16 +72,19 @@ static void draw(C2D_Image img, float x, float y, float depth) { C2D_DrawImageAt
 
 static float slotX(int slot) { return 40 + (slot + 0.5f) * (TOP_W - 80) / 5.0f; }
 
-enum { GAME_PLINKO, GAME_CRASH, GAME_RIVER, GAME_COUNT };
-static const char *GAME_NAME[GAME_COUNT] = { "PLINKO", "CRASH", "ELEPHANT RIVER" };
+enum { GAME_PLINKO, GAME_CRASH, GAME_RIVER, GAME_ROULETTE, GAME_COUNT };
+static const char *GAME_NAME[GAME_COUNT] = { "PLINKO", "CRASH", "ELEPHANT RIVER", "ROULETTE" };
 static const char *GAME_HELP[GAME_COUNT] = { "A DROP  UP/DOWN BET  SELECT GAME", "A LAUNCH/CASH OUT  UP/DOWN BET  SELECT GAME",
-  "A START/STEP  B CASH OUT  SELECT GAME" };
+  "A START/STEP  B CASH OUT  SELECT GAME", "A SPIN  LEFT/RIGHT COLOUR  UP/DOWN BET" };
 
 typedef struct {
   double balance, goal;
   int bet, mood, game, tick, lock; // lock: frames A/B are ignored after a result (no accidental re-bet)
   // Elephant River: lane 0 = bank, 5 = far shore; hop = frames left in the current hop
   int crossing, lane, hop, splashed, banked;
+  // Roulette: spin = frames left; colour = bet colour (CR_RED/CR_BLACK/CR_GREEN); result -1 = none yet
+  int spin, colour, result;
+  float angle, angleFrom, angleTo;
   // Plinko
   int dropping, target, lastSlot;
   float ballX, ballY;
@@ -97,7 +100,7 @@ static void settle(state *s, double win) {
   if (s->balance >= s->goal) s->goal = cr_next_goal(s->balance);
 }
 
-static int busy(const state *s) { return s->dropping || s->flying || s->crossing; }
+static int busy(const state *s) { return s->dropping || s->flying || s->crossing || s->spin; }
 
 // ---------- Elephant River ----------
 #define HOP_FRAMES 31 /* ~0.52 s, like the web hop */
@@ -247,6 +250,85 @@ static void drawCrash(const state *s) {
   text((TOP_W - textW(msg, 2)) / 2.0f, 58, 2, col, msg);
 }
 
+// ---------- Roulette ----------
+#define SPIN_FRAMES 180 /* 3 s, ease-out */
+#define TAU 6.2831853f
+static const u32 POCKET_FACE[3] = { 0xFF65DD7E, 0xFF585BF4, 0xFF271719 };  // green, red, black (ABGR)
+static const u32 POCKET_FLOOR[3] = { 0xFF47943F, 0xFF3A32A8, 0xFF170C0E };
+static const char *COLOUR_NAME[3] = { "GREEN", "RED", "BLACK" };
+
+static void updateRoulette(state *s, cr_rng *rng, u32 down) {
+  if (!s->spin) {
+    if (down & KEY_RIGHT) s->colour = s->colour == CR_RED ? CR_BLACK : s->colour == CR_BLACK ? CR_GREEN : CR_RED;
+    if (down & KEY_LEFT) s->colour = s->colour == CR_RED ? CR_GREEN : s->colour == CR_GREEN ? CR_BLACK : CR_RED;
+    if (down & KEY_A && s->balance >= s->bet) {
+      s->balance -= s->bet;
+      s->result = cr_roll_roulette(rng, -1); // no Magnet on 3DS yet
+      int idx = 0;
+      while (cr_wheel_order[idx] != s->result) idx++;
+      // Wedge idx is centred at -90deg + idx*step + angle; bring it under the top pointer after 5 turns.
+      float step = TAU / 37, target = -idx * step;
+      float base = s->angle - fmodf(s->angle, TAU);
+      s->angleFrom = s->angle;
+      s->angleTo = base + 5 * TAU + fmodf(target + TAU, TAU);
+      s->spin = SPIN_FRAMES; s->mood = 0;
+    }
+    return;
+  }
+  float p = 1 - (--s->spin) / (float)SPIN_FRAMES, e = 1 - (1 - p) * (1 - p) * (1 - p);
+  s->angle = s->angleFrom + (s->angleTo - s->angleFrom) * e;
+  if (s->spin == 0) settle(s, s->bet * cr_roulette_payout(s->colour, s->result));
+}
+
+static void wedge(float cx, float cy, float r0, float r1, float a0, float a1, u32 c) {
+  float x00 = cx + cosf(a0) * r0, y00 = cy + sinf(a0) * r0, x01 = cx + cosf(a0) * r1, y01 = cy + sinf(a0) * r1;
+  float x10 = cx + cosf(a1) * r0, y10 = cy + sinf(a1) * r0, x11 = cx + cosf(a1) * r1, y11 = cy + sinf(a1) * r1;
+  C2D_DrawTriangle(x00, y00, c, x01, y01, c, x11, y11, c, 0.1f);
+  C2D_DrawTriangle(x00, y00, c, x11, y11, c, x10, y10, c, 0.1f);
+}
+
+static void drawRoulette(const state *s) {
+  C2D_Image velvet = C2D_SpriteSheetGetImage(sheet, sprites_velvet_idx);
+  for (int y = 0; y < SCREEN_H; y += 32)
+    for (int x = 0; x < TOP_W; x += 32) draw(velvet, x, y, 0);
+  const float cx = 200, cy = 122, R = 104, step = TAU / 37;
+  C2D_DrawCircleSolid(cx, cy, 0.05f, R + 6, 0xFF170C0E);
+  C2D_DrawCircleSolid(cx, cy, 0.06f, R + 3, 0xFF2B86B8); // goldDark rim
+  for (int i = 0; i < 37; i++) {
+    int col = cr_roulette_color(cr_wheel_order[i]);
+    float a0 = -1.5707963f - step / 2 + i * step + s->angle, a1 = a0 + step;
+    wedge(cx, cy, R * 0.62f, R, a0, a1, POCKET_FACE[col]);
+    wedge(cx, cy, R * 0.46f, R * 0.62f, a0, a1, POCKET_FLOOR[col]);
+    C2D_DrawLine(cx + cosf(a0) * R * 0.46f, cy + sinf(a0) * R * 0.46f, 0xFF4EC3F4,
+                 cx + cosf(a0) * R, cy + sinf(a0) * R, 0xFF4EC3F4, 1, 0.15f); // gold fret
+    char n[4];
+    snprintf(n, sizeof n, "%d", cr_wheel_order[i]);
+    float am = a0 + step / 2;
+    text(cx + cosf(am) * R * 0.81f - textW(n, 1) / 2.0f, cy + sinf(am) * R * 0.81f - 3, 1, 0xFFCEF0FF, n);
+  }
+  C2D_DrawCircleSolid(cx, cy, 0.2f, R * 0.46f, 0xFF243A5E); // wooden cone
+  C2D_DrawCircleSolid(cx, cy, 0.21f, R * 0.38f, 0xFF3B5A8A);
+  C2D_Image hub = C2D_SpriteSheetGetImage(sheet, sprites_hub_idx);
+  draw(hub, cx - 21, cy - 21, 0.3f);
+  // Pointer at the top; the ball sits in the winning pocket once the wheel stops.
+  C2D_DrawTriangle(cx - 7, cy - R - 10, 0xFF4EC3F4, cx + 7, cy - R - 10, 0xFF4EC3F4, cx, cy - R + 2, 0xFF4EC3F4, 0.4f);
+  if (!s->spin && s->result >= 0) C2D_DrawCircleSolid(cx, cy - R * 0.72f, 0.4f, 4, 0xFFFFFFFF);
+  char m[40];
+  if (s->spin) snprintf(m, sizeof m, "%s", COLOUR_NAME[s->colour]);
+  else if (s->result >= 0) snprintf(m, sizeof m, "%d %s", s->result, COLOUR_NAME[cr_roulette_color(s->result)]);
+  else snprintf(m, sizeof m, "BET %s", COLOUR_NAME[s->colour]);
+  // Labels sit on ink panels: red text straight on the red velvet was unreadable (Azahar check).
+  C2D_DrawRectSolid(4, 4, 0.45f, textW(m, 2) + 8, 26, 0xFF170C0E);
+  text(8, 8, 2, s->result >= 0 && !s->spin && cr_roulette_color(s->result) == s->colour ? 0xFF4EC3F4 : 0xFFCEF0FF, m);
+  char c[24];
+  snprintf(c, sizeof c, "ON %s", COLOUR_NAME[s->colour]);
+  float cw = textW(c, 2);
+  C2D_DrawRectSolid(TOP_W - cw - 26, 4, 0.45f, cw + 22, 26, 0xFF170C0E);
+  C2D_DrawRectSolid(TOP_W - cw - 21, 11, 0.5f, 10, 12, POCKET_FACE[s->colour]); // colour swatch
+  C2D_DrawRectSolid(TOP_W - cw - 22, 10, 0.49f, 12, 14, 0xFFCEF0FF); // cream outline so black shows
+  text(TOP_W - 8 - cw, 8, 2, 0xFFCEF0FF, c);
+}
+
 int main(void) {
   romfsInit();
   gfxInitDefault();
@@ -262,7 +344,7 @@ int main(void) {
 
   cr_rng rng;
   cr_seed(&rng, (u32)osGetTime());
-  state s = { .balance = CR_START_BALANCE, .goal = CR_START_GOAL, .bet = 10, .lastSlot = -1, .mult = 1 };
+  state s = { .balance = CR_START_BALANCE, .goal = CR_START_GOAL, .bet = 10, .lastSlot = -1, .mult = 1, .colour = CR_RED, .result = -1 };
   Tex3DS_SubTexture hostSub;
 
   while (aptMainLoop()) {
@@ -278,14 +360,16 @@ int main(void) {
     if (s.lock > 0) { s.lock--; down &= ~(u32)(KEY_A | KEY_B); }
     if (s.game == GAME_PLINKO) updatePlinko(&s, &rng, down);
     else if (s.game == GAME_CRASH) updateCrash(&s, &rng, down);
-    else updateRiver(&s, &rng, down);
+    else if (s.game == GAME_RIVER) updateRiver(&s, &rng, down);
+    else updateRoulette(&s, &rng, down);
 
     C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
     C2D_TargetClear(top, C2D_Color32(0x19, 0x17, 0x27, 0xFF));
     C2D_SceneBegin(top);
     if (s.game == GAME_PLINKO) drawPlinko(&s);
     else if (s.game == GAME_CRASH) drawCrash(&s);
-    else drawRiver(&s);
+    else if (s.game == GAME_RIVER) drawRiver(&s);
+    else drawRoulette(&s);
 
     C2D_TargetClear(bottom, C2D_Color32(0x29, 0x26, 0x3A, 0xFF));
     C2D_SceneBegin(bottom);

@@ -195,3 +195,13 @@ Evidence: `screenshots/iter-16/`.
 2. Lane 0 displayed "0.96X", a payout you can't take on the bank. It now says PRESS A TO STEP.
 
 Evidence: `screenshots/iter-18/`.
+
+## Iteration 19 (2026-11-08): Roulette on 3DS; payout table shared
+
+**Rules:** the colour-bet payout (red/black 2×, green 14×, stake included) moved from the spin handler into `roulettePayout` (`rules.js`) / `cr_roulette_payout` (C). The web spin now calls it. New regression check "Roulette payout table" (26/26) plus the same cases in `rules_check.c` (0 failures).
+
+**3DS:** the fourth game. The wheel is built from triangles in the palette, in the same European order as the web (face, dark pocket floor, gold frets, wooden cone, the web's hub sprite) on the velvet tile, with 1× pixel-font numbers. Left/Right picks the colour, A spins: the result is rolled first and the wheel eases out over 3 s to put that pocket under the gold pointer, where the ball rests.
+
+**Verified in Azahar (60 FPS):** a spin landed on 4 black, between 19 and 21 as on a real wheel, with pointer and ball on 4; the red bet lost. After Right → black, a spin landed on 21 red and the black bet lost. Balances were exact.
+
+**Found → fixed:** the red "ON RED" label was unreadable on red velvet (`roulette-4-black-label-bug.png`). Both labels now sit on ink panels, with a colour swatch.

@@ -21,6 +21,7 @@ extern const int cr_wheel_order[37];
 int    cr_roulette_color(int n);
 int    cr_random_roulette_number_for_color(cr_rng *r, int color);
 int    cr_roll_roulette(cr_rng *r, int magnet_color);
+double cr_roulette_payout(int bet_color, int n); // stake included: red/black 2, green 14, miss 0
 // Crash
 double cr_crash_point(cr_rng *r);
 double cr_crash_multiplier_at(double seconds); // climb shown while flying

@@ -31,6 +31,8 @@ int main(void) {
     const cr_vector *v = &CR_VECTORS[0];
     CHECK(cr_run_state(0, 500, 300) == CR_TIMEOUT && cr_run_state(5, 300, 300) == CR_GOAL
       && cr_run_state(5, 0.5, 300) == CR_BROKE && cr_run_state(5, 1, 300) == CR_PLAY, "run state");
+    CHECK(cr_roulette_payout(CR_RED, 1) == 2 && cr_roulette_payout(CR_BLACK, 2) == 2 && cr_roulette_payout(CR_GREEN, 0) == 14
+      && cr_roulette_payout(CR_RED, 2) == 0 && cr_roulette_payout(CR_BLACK, 0) == 0, "roulette payout");
   }
   printf(fails ? "%d FAILED\n" : "rules.c matches rules.js (%d failures)\n", fails);
   return fails != 0;

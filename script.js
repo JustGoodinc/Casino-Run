@@ -3293,11 +3293,7 @@ function finishRouletteSpin(result, bet, isFreeVinylSpin, betColor) {
   let bonusLines = [];
 
   if (betColor === resultColor) {
-    if (resultColor === "green") {
-      winnings = bet * 14;
-    } else {
-      winnings = bet * 2;
-    }
+    winnings = bet * R.roulettePayout(betColor, result);
 
     bonusLines.push({
       type: "base",

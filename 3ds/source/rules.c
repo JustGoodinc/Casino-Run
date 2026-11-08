@@ -51,6 +51,10 @@ int cr_roll_roulette(cr_rng *r, int magnet_color) {
 }
 
 // ---------- Crash: P(point > m) = 0.96 / m, capped at 100x ----------
+double cr_roulette_payout(int bet_color, int n) {
+  return cr_roulette_color(n) != bet_color ? 0 : bet_color == CR_GREEN ? 14 : 2;
+}
+
 double cr_crash_multiplier_at(double seconds) { return 1 + seconds * seconds * 0.55; }
 
 double cr_crash_point(cr_rng *r) {
