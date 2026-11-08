@@ -215,3 +215,13 @@ Evidence: `screenshots/iter-18/`.
 **Verified in Azahar (60 FPS):** picked Vas; mid-race gallop captured; Dingo won at the line; the bet was lost and Dice sweated.
 
 **Found → fixed:** the pixel font has no apostrophe, so "AND THEY'RE OFF!" would have rendered with a gap. Reworded to "AND THEY ARE OFF!".
+
+## Iteration 21 (2026-11-08): Blackjack on 3DS (all six games now on 3DS)
+
+**Rules:** `dealerHits` (stands on all 17s; the web dealer now uses it) and `blackjackPayout(player, dealer, natural)` (2.5 / 0 / 2 / 1 / 0, the same table `finishBlackjackRound` pays) in `rules.js` and C. Regression "Blackjack payout table" (28/28); C check 0 failures; vectors unchanged.
+
+**3DS:** the sixth game. The web's own 52 pixel cards plus the back are packed in suit-major order, so a card's sprite is `sprites_A_spade_idx + card`, matching `rules.c` numbering (verified contiguous: 21…72). Deal order matches the web (player, dealer, player, dealer); the deck reshuffles at 10 cards left, like the web. A deals/hits, B stands; the dealer draws one card every 0.4 s until `cr_dealer_hits` is false. A natural pays 2.5× immediately.
+
+**Verified in Azahar (60 FPS):** deal showed DEALER 5 + ? (hole card face-down) against YOU 15 (5♠ Q♦). On stand the dealer drew 7, 3, 2 to 17 and stood; DEALER WINS, bet lost, Dice sweating.
+
+**Found → fixed (rebuilt, not re-captured):** the felt tile drawn alone read as a harsh green/black checkerboard (`blackjack-deal-felt-bug.png`). It is a translucent weave meant to sit on felt green, as on the web, so a felt-green base is now drawn under it. The re-capture was abandoned because the owner started using the PC and synthetic key presses stopped reaching Azahar. Synthetic input must not be sent while the owner is active.

@@ -96,6 +96,10 @@
       JSON.stringify({ lr, sb }));
     check("Roulette payout table", Rr.roulettePayout("red", 1) === 2 && Rr.roulettePayout("black", 2) === 2
       && Rr.roulettePayout("green", 0) === 14 && Rr.roulettePayout("red", 2) === 0 && Rr.roulettePayout("black", 0) === 0);
+    // Same table finishBlackjackRound pays: natural 2.5x, bust 0, dealer bust / higher 2x, tie 1x.
+    check("Blackjack payout table", Rr.blackjackPayout(21, 20, true) === 2.5 && Rr.blackjackPayout(22, 25) === 0
+      && Rr.blackjackPayout(18, 22) === 2 && Rr.blackjackPayout(19, 18) === 2 && Rr.blackjackPayout(18, 18) === 1
+      && Rr.blackjackPayout(17, 20) === 0 && Rr.dealerHits(16) && !Rr.dealerHits(17));
     check("Horse payout", Rr.horsePayout() === 4 && Rr.horsePayout(2) === 5);
     check("Crash climb curve", Rr.crashMultiplierAt(0) === 1 && Math.abs(Rr.crashMultiplierAt(2) - 3.2) < 1e-12);
     check("Run state priority", Rr.runState(0, 500, 300) === "timeout" && Rr.runState(5, 300, 300) === "goal"

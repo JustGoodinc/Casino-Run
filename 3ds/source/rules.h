@@ -36,6 +36,8 @@ void   cr_shuffled_deck(cr_rng *r, int deck[52]);
 int    cr_card_value(int card);
 int    cr_hand_value(const int *hand, int count);
 int    cr_is_blackjack(const int *hand, int count);
+int    cr_dealer_hits(int total); // dealer stands on all 17s
+double cr_blackjack_payout(int player_total, int dealer_total, int natural); // stake included
 // Settlement
 double cr_next_goal(double balance);
 double cr_goal_cutter_goal(double goal);

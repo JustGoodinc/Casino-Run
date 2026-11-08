@@ -72,10 +72,10 @@ static void draw(C2D_Image img, float x, float y, float depth) { C2D_DrawImageAt
 
 static float slotX(int slot) { return 40 + (slot + 0.5f) * (TOP_W - 80) / 5.0f; }
 
-enum { GAME_PLINKO, GAME_CRASH, GAME_RIVER, GAME_ROULETTE, GAME_HORSE, GAME_COUNT };
-static const char *GAME_NAME[GAME_COUNT] = { "PLINKO", "CRASH", "ELEPHANT RIVER", "ROULETTE", "HORSE RACE" };
+enum { GAME_PLINKO, GAME_CRASH, GAME_RIVER, GAME_ROULETTE, GAME_HORSE, GAME_BLACKJACK, GAME_COUNT };
+static const char *GAME_NAME[GAME_COUNT] = { "PLINKO", "CRASH", "ELEPHANT RIVER", "ROULETTE", "HORSE RACE", "BLACKJACK" };
 static const char *GAME_HELP[GAME_COUNT] = { "A DROP  UP/DOWN BET  SELECT GAME", "A LAUNCH/CASH OUT  UP/DOWN BET  SELECT GAME",
-  "A START/STEP  B CASH OUT  SELECT GAME", "A SPIN  LEFT/RIGHT COLOUR  UP/DOWN BET", "A RACE  LEFT/RIGHT HORSE  UP/DOWN BET" };
+  "A START/STEP  B CASH OUT  SELECT GAME", "A SPIN  LEFT/RIGHT COLOUR  UP/DOWN BET", "A RACE  LEFT/RIGHT HORSE  UP/DOWN BET", "A DEAL/HIT  B STAND  UP/DOWN BET" };
 
 typedef struct {
   double balance, goal;
@@ -87,6 +87,9 @@ typedef struct {
   float angle, angleFrom, angleTo;
   // Horse Race: race = frames run so far (0 = idle), pick = chosen horse, winner -1 = none yet
   int race, pick, winner;
+  // Blackjack: phase 0 idle, 1 player turn, 2 dealer drawing, 3 done; cards are suit*13+rank
+  int deck[52], deckLeft, ph[12], pn, dh[12], dn, phase, timer, natural;
+  double bjMult;
   // Plinko
   int dropping, target, lastSlot;
   float ballX, ballY;
@@ -102,7 +105,7 @@ static void settle(state *s, double win) {
   if (s->balance >= s->goal) s->goal = cr_next_goal(s->balance);
 }
 
-static int busy(const state *s) { return s->dropping || s->flying || s->crossing || s->spin || s->race; }
+static int busy(const state *s) { return s->dropping || s->flying || s->crossing || s->spin || s->race || s->phase == 1 || s->phase == 2; }
 
 // ---------- Elephant River ----------
 #define HOP_FRAMES 31 /* ~0.52 s, like the web hop */
@@ -390,6 +393,77 @@ static void drawHorse(const state *s) {
   text((TOP_W - textW(m, 2)) / 2.0f, 3, 2, done && s->winner == s->pick ? 0xFF4EC3F4 : 0xFFCEF0FF, m);
 }
 
+// ---------- Blackjack ----------
+static int drawCard(state *s, cr_rng *rng) {
+  if (s->deckLeft <= 10) { cr_shuffled_deck(rng, s->deck); s->deckLeft = 52; } // web reshuffles at 10 left
+  return s->deck[--s->deckLeft];
+}
+
+static void finishHand(state *s) {
+  s->phase = 3;
+  s->bjMult = cr_blackjack_payout(cr_hand_value(s->ph, s->pn), cr_hand_value(s->dh, s->dn), s->natural);
+  settle(s, s->bet * s->bjMult);
+}
+
+static void updateBlackjack(state *s, cr_rng *rng, u32 down) {
+  if (s->phase == 0 || s->phase == 3) {
+    if (down & KEY_A && s->balance >= s->bet) {
+      s->balance -= s->bet;
+      s->pn = s->dn = 0; s->natural = 0; s->mood = 0;
+      s->ph[s->pn++] = drawCard(s, rng); s->dh[s->dn++] = drawCard(s, rng); // same deal order as the web
+      s->ph[s->pn++] = drawCard(s, rng); s->dh[s->dn++] = drawCard(s, rng);
+      s->phase = 1;
+      if (cr_is_blackjack(s->ph, s->pn)) { s->natural = 1; finishHand(s); }
+    }
+    return;
+  }
+  if (s->phase == 1) {
+    if (down & KEY_A && s->pn < 12) {
+      s->ph[s->pn++] = drawCard(s, rng);
+      if (cr_hand_value(s->ph, s->pn) > 21) finishHand(s); // bust
+    } else if (down & KEY_B) { s->phase = 2; s->timer = 30; }
+    return;
+  }
+  if (--s->timer > 0) return; // dealer draws one card every 0.4 s
+  if (cr_dealer_hits(cr_hand_value(s->dh, s->dn)) && s->dn < 12) { s->dh[s->dn++] = drawCard(s, rng); s->timer = 24; }
+  else finishHand(s);
+}
+
+static void drawHand(const int *hand, int n, float y, int hideSecond) {
+  float w = n * 36 - 3, x0 = (TOP_W - w) / 2;
+  for (int i = 0; i < n; i++) {
+    C2D_Image img = C2D_SpriteSheetGetImage(sheet, hideSecond && i == 1 ? sprites_back_idx : sprites_A_spade_idx + hand[i]);
+    draw(img, floorf(x0 + i * 36), y, 0.2f + i * 0.01f);
+  }
+}
+
+static void drawBlackjack(const state *s) {
+  // The felt tile is a translucent weave meant to sit on felt green (as on the web); alone it read as a checkerboard.
+  C2D_DrawRectSolid(0, 0, 0, TOP_W, SCREEN_H, 0xFF4F7D2E);
+  C2D_Image felt = C2D_SpriteSheetGetImage(sheet, sprites_felt_idx);
+  for (int y = 0; y < SCREEN_H; y += 32)
+    for (int x = 0; x < TOP_W; x += 32) draw(felt, x, y, 0.01f);
+  char t[48];
+  if (s->dn) {
+    int hidden = s->phase == 1;
+    if (hidden) snprintf(t, sizeof t, "DEALER  %d + ?", cr_card_value(s->dh[0]));
+    else snprintf(t, sizeof t, "DEALER  %d", cr_hand_value(s->dh, s->dn));
+    text((TOP_W - textW(t, 2)) / 2.0f, 30, 2, 0xFFCEF0FF, t);
+    drawHand(s->dh, s->dn, 52, hidden);
+    snprintf(t, sizeof t, "YOU  %d", cr_hand_value(s->ph, s->pn));
+    text((TOP_W - textW(t, 2)) / 2.0f, 128, 2, 0xFFCEF0FF, t);
+    drawHand(s->ph, s->pn, 150, 0);
+  }
+  const char *m = "PRESS A TO DEAL";
+  int pt = cr_hand_value(s->ph, s->pn), dt = cr_hand_value(s->dh, s->dn);
+  if (s->phase == 1) m = "A HIT   B STAND";
+  else if (s->phase == 2) m = "DEALER PLAYS...";
+  else if (s->phase == 3)
+    m = s->natural ? "BLACKJACK!" : pt > 21 ? "BUST!" : dt > 21 ? "DEALER BUSTS - YOU WIN" : s->bjMult == 2 ? "YOU WIN!" : s->bjMult == 1 ? "PUSH" : "DEALER WINS";
+  C2D_DrawRectSolid(0, 0, 0.4f, TOP_W, 22, 0xFF170C0E);
+  text((TOP_W - textW(m, 2)) / 2.0f, 3, 2, s->phase == 3 && s->bjMult > 1 ? 0xFF4EC3F4 : s->phase == 3 && s->bjMult == 0 ? 0xFF583AF4 : 0xFFCEF0FF, m);
+}
+
 int main(void) {
   romfsInit();
   gfxInitDefault();
@@ -423,7 +497,8 @@ int main(void) {
     else if (s.game == GAME_CRASH) updateCrash(&s, &rng, down);
     else if (s.game == GAME_RIVER) updateRiver(&s, &rng, down);
     else if (s.game == GAME_ROULETTE) updateRoulette(&s, &rng, down);
-    else updateHorse(&s, &rng, down);
+    else if (s.game == GAME_HORSE) updateHorse(&s, &rng, down);
+    else updateBlackjack(&s, &rng, down);
 
     C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
     C2D_TargetClear(top, C2D_Color32(0x19, 0x17, 0x27, 0xFF));
@@ -432,7 +507,8 @@ int main(void) {
     else if (s.game == GAME_CRASH) drawCrash(&s);
     else if (s.game == GAME_RIVER) drawRiver(&s);
     else if (s.game == GAME_ROULETTE) drawRoulette(&s);
-    else drawHorse(&s);
+    else if (s.game == GAME_HORSE) drawHorse(&s);
+    else drawBlackjack(&s);
 
     C2D_TargetClear(bottom, C2D_Color32(0x29, 0x26, 0x3A, 0xFF));
     C2D_SceneBegin(bottom);

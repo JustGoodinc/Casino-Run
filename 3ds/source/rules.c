@@ -100,6 +100,15 @@ int cr_hand_value(const int *hand, int count) {
 
 int cr_is_blackjack(const int *hand, int count) { return count == 2 && cr_hand_value(hand, count) == 21; }
 
+int cr_dealer_hits(int total) { return total < 17; }
+
+double cr_blackjack_payout(int player_total, int dealer_total, int natural) {
+  if (natural) return 2.5;
+  if (player_total > 21) return 0;
+  if (dealer_total > 21 || player_total > dealer_total) return 2;
+  return player_total == dealer_total ? 1 : 0;
+}
+
 // ---------- Settlement ----------
 double cr_next_goal(double balance) { return fmax(50, ceil(balance * 3)); }
 double cr_goal_cutter_goal(double goal) { return fmax(50, ceil(goal * 0.9)); }

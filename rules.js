@@ -75,6 +75,14 @@ CR.rules = (() => {
     return total;
   }
   const isBlackjack = (hand) => hand.length === 2 && getHandValue(hand) === 21;
+  const dealerHits = (total) => total < 17; // dealer stands on all 17s
+  // Return multiplier (stake included): natural 2.5, bust 0, dealer bust or higher total 2, tie 1, else 0.
+  function blackjackPayout(playerTotal, dealerTotal, natural = false) {
+    if (natural) return 2.5;
+    if (playerTotal > 21) return 0;
+    if (dealerTotal > 21 || playerTotal > dealerTotal) return 2;
+    return playerTotal === dealerTotal ? 1 : 0;
+  }
 
   // Fisher-Yates (replaces the biased sort(() => Math.random() - 0.5) shuffle).
   function shuffle(list) {
@@ -120,6 +128,6 @@ CR.rules = (() => {
     redNumbers, getRouletteColor, getRandomRouletteNumberForColor, rollRoulette, roulettePayout, rollHorseWinner, horsePayout,
     generateCrashPoint, crashMultiplierAt,
     getFrogBaseCrashChance, getFrogMultiplier,
-    shuffledDeck, getCardValue, getHandValue, isBlackjack,
+    shuffledDeck, getCardValue, getHandValue, isBlackjack, dealerHits, blackjackPayout,
   };
 })();

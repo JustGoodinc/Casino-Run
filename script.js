@@ -3834,7 +3834,7 @@ function dealerPlayBlackjack(standRunId = runId) {
 
   const dealerTotal = getProtectedDealerTotal();
 
-  if (dealerTotal < 17) {
+  if (R.dealerHits(dealerTotal)) {
     dealCardWithDelay(blackjackDealerHand, () => {
       setTimeout(dealerPlayBlackjack, 350);
     }, 350);

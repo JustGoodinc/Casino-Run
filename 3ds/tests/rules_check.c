@@ -34,6 +34,9 @@ int main(void) {
     CHECK(cr_roulette_payout(CR_RED, 1) == 2 && cr_roulette_payout(CR_BLACK, 2) == 2 && cr_roulette_payout(CR_GREEN, 0) == 14
       && cr_roulette_payout(CR_RED, 2) == 0 && cr_roulette_payout(CR_BLACK, 0) == 0, "roulette payout");
     CHECK(cr_horse_payout(0) == 4 && cr_horse_payout(2) == 5, "horse payout");
+    CHECK(cr_blackjack_payout(21, 20, 1) == 2.5 && cr_blackjack_payout(22, 25, 0) == 0 && cr_blackjack_payout(18, 22, 0) == 2
+      && cr_blackjack_payout(19, 18, 0) == 2 && cr_blackjack_payout(18, 18, 0) == 1 && cr_blackjack_payout(17, 20, 0) == 0
+      && cr_dealer_hits(16) && !cr_dealer_hits(17), "blackjack payout");
   }
   printf(fails ? "%d FAILED\n" : "rules.c matches rules.js (%d failures)\n", fails);
   return fails != 0;
