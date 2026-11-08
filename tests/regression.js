@@ -90,11 +90,14 @@
     // Force the slot roll itself (counting Math.random draws broke once sounds also drew random pitch).
     const realRoll = rollPlinkoSlot;
     rollPlinkoSlot = () => 4;
+    // A hidden/minimised window pauses requestAnimationFrame entirely, so drive frames with a timer
+    // during the drop (test-only; the physics itself is unchanged).
+    const realRaf = window.requestAnimationFrame;
+    window.requestAnimationFrame = (cb) => setTimeout(() => cb(performance.now()), 16);
     plinkoBtn.click();
     rollPlinkoSlot = realRoll;
-    // Poll rather than a fixed wait: a background tab throttles requestAnimationFrame.
-    // Up to 3 min: a throttled tab can drop to ~2 fps and the physics advances per frame.
     for (let i = 0; i < 1800 && activePlinkoBalls > 0; i++) await wait(100);
+    window.requestAnimationFrame = realRaf;
     check("Plinko pays the rolled slot", balance === 140 && activePlinkoBalls === 0, `balance ${balance}`);
 
     // Roulette Magnet ignores green and stays active.

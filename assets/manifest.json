@@ -1,5 +1,5 @@
 {
- "generated": "2026-11-08T07:44:45.237Z",
+ "generated": "2026-11-08T14:49:22.789Z",
  "sprites": [
   {
    "id": "items/doubleHeadedCoin",
@@ -217,9 +217,9 @@
    "file": "sprites/river/croc.png",
    "frameW": 28,
    "frameH": 11,
-   "frames": 1,
-   "fps": 0,
-   "bytes": 156
+   "frames": 2,
+   "fps": 4,
+   "bytes": 220
   },
   {
    "id": "river/log",
@@ -228,9 +228,9 @@
    "file": "sprites/river/log.png",
    "frameW": 28,
    "frameH": 10,
-   "frames": 1,
-   "fps": 0,
-   "bytes": 166
+   "frames": 2,
+   "fps": 4,
+   "bytes": 224
   },
   {
    "id": "river/boat",
@@ -239,9 +239,9 @@
    "file": "sprites/river/boat.png",
    "frameW": 26,
    "frameH": 12,
-   "frames": 1,
-   "fps": 0,
-   "bytes": 148
+   "frames": 2,
+   "fps": 4,
+   "bytes": 201
   },
   {
    "id": "river/canoe",
@@ -250,9 +250,9 @@
    "file": "sprites/river/canoe.png",
    "frameW": 28,
    "frameH": 10,
-   "frames": 1,
-   "fps": 0,
-   "bytes": 168
+   "frames": 2,
+   "fps": 4,
+   "bytes": 247
   },
   {
    "id": "horse/horse-0",
@@ -261,9 +261,9 @@
    "file": "sprites/horse/horse-0.png",
    "frameW": 30,
    "frameH": 21,
-   "frames": 2,
+   "frames": 4,
    "fps": 10,
-   "bytes": 388
+   "bytes": 489
   },
   {
    "id": "horse/horse-1",
@@ -272,9 +272,9 @@
    "file": "sprites/horse/horse-1.png",
    "frameW": 30,
    "frameH": 21,
-   "frames": 2,
+   "frames": 4,
    "fps": 10,
-   "bytes": 391
+   "bytes": 492
   },
   {
    "id": "horse/horse-2",
@@ -283,9 +283,9 @@
    "file": "sprites/horse/horse-2.png",
    "frameW": 30,
    "frameH": 21,
-   "frames": 2,
+   "frames": 4,
    "fps": 10,
-   "bytes": 391
+   "bytes": 493
   },
   {
    "id": "horse/horse-3",
@@ -294,9 +294,9 @@
    "file": "sprites/horse/horse-3.png",
    "frameW": 30,
    "frameH": 21,
-   "frames": 2,
+   "frames": 4,
    "fps": 10,
-   "bytes": 392
+   "bytes": 493
   },
   {
    "id": "crash/rocket",
@@ -2284,7 +2284,7 @@
  ],
  "tex3ds": {
   "ok": true,
-  "note": "144 sprites -> sprites.t3x 52.8 KB (144 header defines); font.t3x 0.6 KB (A8)",
-  "checked": "2026-11-08T07:44:47.283Z"
+  "note": "144 sprites -> sprites.t3x 56.9 KB (144 header defines); font.t3x 0.6 KB (A8)",
+  "checked": "2026-11-08T14:49:24.859Z"
  }
 }

@@ -1,7 +1,7 @@
 # Autonomous Progress: restart checkpoint
 
 **Branch:** work directly on `main` (owner granted push authority 2026-11-08). Every push deploys live to casinorun.fun via GitHub Pages. Run regression (20/20) + validator before pushing.
-**Current gauntlet iteration:** 6 (iterations 1–5 shipped to main, live).
+**Current gauntlet iteration:** 8 (iterations 1–7 shipped to main, live).
 **Owner vault (keep updated):** `\\192.168.1.141\ServerSSD\obsidian\Knowledge\Roblox-AI-Memory\03_PROJECTS\Casino-Run\` (Casino-Run-Current-State, -Design-Bible, -Important-Decisions, -Lessons-Learned). Update it after every milestone, then run `py <vault>\Roblox-AI-Memory\00_START_HERE\tools\build_catalog.py`.
 
 ## Resume in 4 commands
@@ -26,14 +26,14 @@ Then serve the repo root (`py -m http.server 8765`), open `/index.html?nocache=N
 
 - Leaderboard host does not resolve (Supabase project paused/deleted); the owner must restore it.
 - The audio was judged by ear by the owner ("sounded great") for the batch-1 SFX. The per-game music loops and peg variants have only been checked numerically.
-- Roulette pockets are still canvas-drawn (bowl, hub and ball are sprites); river hazards are single-frame sprites.
+- Roulette pockets are still canvas-drawn (bowl, hub and ball are sprites); river hazards have 2 frames (iteration 7).
 
 ## Next tasks (in order)
 
 1. ~~Per-game reward effects + floating numbers~~ (done in iteration 2: `CR.fx.popNumber`, KITS, IMPACT in fx.js).
 2. ~~Roulette wheel~~ (iteration 3).
 3. ~~Host mascot~~ (iteration 3: Dice, `CR.fx.hostMood`).
-3b. Next: animation frames for river hazards and horses; crash rocket trail; per-game big-win stingers in `assets-src/audio/sfx.mjs`.
+3b. ~~River hazard frames~~ (iteration 7). Crash trail + stingers done in iteration 4. 4-frame gallop also iteration 7. Next: roulette pockets as pixel art.
 4. Collection-wide regression + 375 / 400×240 / 320×240 checks; then commit.
 
 ## Files touched by the gauntlet

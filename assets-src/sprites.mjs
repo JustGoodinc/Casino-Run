@@ -64,9 +64,13 @@ function horse(frame, silk) {
       i.line(x0, y0, x1, y1, c).line(x0 + 1, y0, x1 + 1, y1, c);
       i.rect(x1, y1, 2, 1, "greyDark");
     };
-    const legs = frame === 0
-      ? [[7, 12, 4, 17, true], [9, 12, 11, 17, false], [17, 12, 21, 16, true], [18, 12, 16, 17, false]]
-      : [[7, 12, 8, 17, true], [9, 12, 6, 17, false], [17, 12, 18, 17, true], [18, 12, 20, 16, false]];
+    // Gallop cycle (iteration 7: 4 frames): 0 front lands, 1 back pushes, 2 gathered, 3 stretched in the air.
+    const legs = [
+      [[7, 12, 4, 17, true], [9, 12, 11, 17, false], [17, 12, 21, 16, true], [18, 12, 16, 17, false]],
+      [[7, 12, 8, 17, true], [9, 12, 6, 17, false], [17, 12, 18, 17, true], [18, 12, 20, 16, false]],
+      [[7, 12, 9, 17, true], [9, 12, 10, 17, false], [17, 12, 15, 17, true], [18, 12, 17, 17, false]],
+      [[7, 12, 3, 16, true], [9, 12, 5, 16, false], [17, 12, 22, 15, true], [18, 12, 23, 16, false]],
+    ][frame];
     legs.filter((l) => l[4]).forEach((l) => leg(...l));
     // Tail
     i.line(4, 7, 1, 10, "brownDark").line(4, 8, 1, 12, "brownDark").line(5, 8, 2, 12, "brownDark");
@@ -85,31 +89,52 @@ function horse(frame, silk) {
 }
 const SILK_DARK = { red: "redDark", cyan: "cyanDark", gold: "goldDark", green: "greenDark" };
 
-const croc = () => canvas(26, 9, (i) => {
-  i.rect(0, 3, 20, 4, "green").rect(0, 6, 20, 1, "greenDark").rect(20, 4, 6, 3, "green").rect(20, 6, 6, 1, "greenDark");
+// Hazards: 2 frames each (iteration 7). A wake splashes at the tail; the croc snaps, the paddle strokes.
+const wake = (i, frame, y) => {
+  if (frame) i.set(0, y, "white").set(2, y - 1, "cyan").set(1, y - 2, "white");
+  else i.set(1, y, "cyan").set(0, y - 1, "white").set(3, y, "white");
+};
+const croc = (frame) => canvas(26, 9, (i) => {
+  i.rect(0, 3, 20, 4, "green").rect(0, 6, 20, 1, "greenDark");
   for (let x = 1; x < 18; x += 3) i.set(x, 2, "greenDark");
-  i.blit(["gk"], 19, 2).set(19, 1, "green").set(20, 1, "green");
-  for (let x = 21; x < 26; x += 2) i.set(x, 6, "white");
-  i.rect(3, 7, 2, 2, "greenDark").rect(14, 7, 2, 2, "greenDark");
+  if (frame) {
+    // Jaw open: upper jaw lifts, red mouth, one row of teeth (two rows read as a checkerboard).
+    i.rect(20, 2, 6, 2, "green").rect(20, 4, 6, 2, "redDark").rect(20, 6, 6, 1, "greenDark");
+    for (let x = 22; x < 26; x += 2) i.set(x, 4, "white");
+    i.blit(["gk"], 19, 1).set(19, 0, "green").set(20, 0, "green");
+  } else {
+    i.rect(20, 4, 6, 3, "green").rect(20, 6, 6, 1, "greenDark");
+    for (let x = 21; x < 26; x += 2) i.set(x, 6, "white");
+    i.blit(["gk"], 19, 2).set(19, 1, "green").set(20, 1, "green");
+  }
+  // Legs paddle: alternate which pair is down.
+  if (frame) i.rect(5, 7, 2, 2, "greenDark").rect(12, 7, 2, 2, "greenDark");
+  else i.rect(3, 7, 2, 2, "greenDark").rect(14, 7, 2, 2, "greenDark");
 });
-const log = () => canvas(26, 8, (i) => {
+const log = (frame) => canvas(26, 8, (i) => {
   i.rect(0, 1, 24, 6, "brown").rect(0, 1, 24, 1, "orange").rect(0, 6, 24, 1, "brownDark");
   ellipse(i, 24, 4, 2, 3, (x, y) => (Math.abs(x) + Math.abs(y) < 2 ? "brown" : "creamDark"));
   [[4, 3], [9, 4], [15, 3], [19, 5]].forEach(([x, y]) => i.rect(x, y, 3, 1, "brownDark"));
   i.rect(11, 0, 2, 1, "brownDark");
+  wake(i, frame, 7);
 });
-const boat = () => canvas(24, 10, (i) => {
+const boat = (frame) => canvas(24, 10, (i) => {
   i.blit(["....cccc", "...cwccc", "..cccccc"], 9, 0);
+  if (frame) i.set(13, 1, "cyan"); // porthole glints
   i.rect(1, 3, 22, 3, "white").rect(0, 6, 24, 2, "red").rect(2, 8, 20, 1, "redDark");
   i.rect(1, 3, 22, 1, "cream").set(23, 6, null).set(0, 7, null);
+  wake(i, frame, 9);
 });
-const canoe = () => canvas(26, 8, (i) => {
+const canoe = (frame) => canvas(26, 8, (i) => {
   for (let x = 0; x < 26; x++) {
     const t = Math.abs(x - 12.5) / 12.5;
     const top = 2 + Math.round(t * t * 2);
     for (let y = top; y < 7; y++) i.set(x, y, y === top ? "orange" : y > 5 ? "orangeDark" : "brown");
   }
-  i.line(16, 0, 20, 7, "brownDark").rect(19, 6, 3, 2, "brownDark");
+  // Paddle: forward reach, then pulled back with a splash.
+  if (frame) i.line(14, 0, 12, 7, "brownDark").rect(11, 6, 3, 2, "brownDark").set(10, 7, "white").set(14, 7, "cyan");
+  else i.line(16, 0, 20, 7, "brownDark").rect(19, 6, 3, 2, "brownDark");
+  wake(i, frame, 7);
 });
 const rocket = (frame) => grid([
   "....rr....", "...rlrR...", "..reeeeR..", "..eweeeE..", "..eccceE..", "..ecwceE..", "..eccceE..",
@@ -384,11 +409,11 @@ const HORSE_SILKS = ["red", "cyan", "gold", "green"];
 export const SPRITES = [
   ...Object.entries(ITEMS).map(([id, fn]) => ({ id: `items/${id}`, group: "items", game: "shop", frames: one(fn) })),
   { id: "river/elephant", group: "characters", game: "river", frames: () => [elephant(0), elephant(1)], fps: 6 },
-  { id: "river/croc", group: "hazards", game: "river", frames: one(croc) },
-  { id: "river/log", group: "hazards", game: "river", frames: one(log) },
-  { id: "river/boat", group: "hazards", game: "river", frames: one(boat) },
-  { id: "river/canoe", group: "hazards", game: "river", frames: one(canoe) },
-  ...HORSE_SILKS.map((silk, n) => ({ id: `horse/horse-${n}`, group: "characters", game: "horse", frames: () => [horse(0, silk), horse(1, silk)], fps: 10 })),
+  { id: "river/croc", group: "hazards", game: "river", frames: () => [croc(0), croc(1)], fps: 4 },
+  { id: "river/log", group: "hazards", game: "river", frames: () => [log(0), log(1)], fps: 4 },
+  { id: "river/boat", group: "hazards", game: "river", frames: () => [boat(0), boat(1)], fps: 4 },
+  { id: "river/canoe", group: "hazards", game: "river", frames: () => [canoe(0), canoe(1)], fps: 4 },
+  ...HORSE_SILKS.map((silk, n) => ({ id: `horse/horse-${n}`, group: "characters", game: "horse", frames: () => [3, 0, 2, 1].map((f) => horse(f, silk)), fps: 10 })),
   { id: "crash/rocket", group: "characters", game: "crash", frames: () => [rocket(0), rocket(1)], fps: 12 },
   ...["heart", "diamond", "spade", "club"].flatMap((suit) =>
     ["A", 2, 3, 4, 5, 6, 7, 8, 9, 10, "J", "Q", "K"].map((rank) => ({ id: `cards/${rank}-${suit}`, group: "cards", game: "blackjack", frames: one(() => card(rank, suit)), outline: true }))),

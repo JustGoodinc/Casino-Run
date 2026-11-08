@@ -89,3 +89,17 @@
 **Tests:** regression 20/20 (includes the dev easter egg via the logo's "u" hotspot). Evidence: `screenshots/iter-5-6/`.
 
 **Vault:** project notes now live in the owner's Obsidian vault (`Roblox-AI-Memory/03_PROJECTS/Casino-Run/`); update them after each milestone.
+
+## Iteration 7 (2026-11-08): animated river hazards + 4-frame gallop
+
+**Weakness:** the river hazards were single-frame sprites that only bobbed, while the elephant and horses animate.
+
+**Assets:** `river/croc`, `log`, `boat`, `canoe` are now 2-frame strips: the croc snaps its jaw open and paddles its legs, the canoe paddle strokes with a splash, the boat's porthole glints, and every hazard leaves a 2-frame wake. First draft of the open jaw used two rows of teeth that read as a checkerboard, so it was cut to one row.
+
+**Implemented:** `.car img` shows one frame of the strip (`object-fit: none` + `object-position`) and flips with `hazardFrames`, layered on the existing bob; the boat uses its own 26px frame width. No gameplay code touched (hazards are decorative).
+
+**Tests:** validator PASS (144 sprites, tex3ds 53.4 KB); each img measured 56×24 / 52×24 CSS px (exactly one 2× frame). Evidence: `screenshots/iter-7/hazard-frames-8x.png`.
+
+**Gallop:** horses went from 2 to 4 frames (stretched in the air → front lands → gathered → back pushes); `.racing` steps through all 4 at 0.1 s/frame (same rate as before). Evidence: `screenshots/iter-7/horse-gallop-8x.png`. tex3ds atlas now 56.9 KB.
+
+**Test fix:** the Plinko check failed whenever the app window was minimised, because the browser pauses `requestAnimationFrame` entirely (not just throttles it). The test now drives frames with a 16 ms timer during the drop only. Regression **20/20 in 33 s** with the window hidden (it used to need up to 3 minutes).

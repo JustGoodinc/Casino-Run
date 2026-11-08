@@ -171,6 +171,11 @@ button:disabled { background: var(--panel-c) !important; color: var(--purpleLigh
 .car img { animation: hazardBob 1.1s steps(2) infinite; }
 .car-b img { animation-delay: -0.3s; } .car-c img { animation-duration: 0.7s; } .car-d img { animation-delay: -0.6s; } .car-e img { animation-delay: -0.2s; }
 @keyframes hazardBob { 50% { translate: 0 -1px; } }
+/* Iteration 7: hazard PNGs are 2-frame strips; show one frame and flip (croc snaps, paddle strokes, wakes splash). */
+.car img { --fw: 28px; width: var(--fw); height: 12px; object-fit: none; object-position: 0 100%; animation: hazardBob 1.1s steps(2) infinite, hazardFrames 0.5s steps(1) infinite; }
+.car img[src*="boat"] { --fw: 26px; }
+.car-c img { animation-duration: 0.7s, 0.4s; } .car-b img { animation-duration: 1.1s, 0.7s; }
+@keyframes hazardFrames { 50% { object-position: calc(var(--fw) * -1) 100%; } }
 .frog-player { font-size: 0 !important; width: 48px !important; height: 34px !important; background: url("assets/sprites/river/elephant.png") 0 0 / 96px 34px no-repeat; image-rendering: pixelated; animation: walk2 0.5s steps(1) infinite; }
 @keyframes walk2 { 50% { background-position: -48px 0; } }
 /* style.css hue-rotated the grey emoji to make it pink; the sprite is already pink, so drop that filter. */
@@ -178,11 +183,11 @@ button:disabled { background: var(--panel-c) !important; color: var(--purpleLigh
 .frog-player.hit, .elephant-player.hit { filter: brightness(0.6) sepia(1) hue-rotate(170deg) !important; }
 
 /* ---------- Horse Race: Derby Dash ---------- */
-.horse-runner { font-size: 0 !important; width: 56px; height: 38px; background-repeat: no-repeat; background-size: 112px 38px; image-rendering: pixelated; }
+.horse-runner { font-size: 0 !important; width: 56px; height: 38px; background-repeat: no-repeat; background-size: 224px 38px; image-rendering: pixelated; }
 #horse-0 { background-image: url("assets/sprites/horse/horse-0.png"); } #horse-1 { background-image: url("assets/sprites/horse/horse-1.png"); }
 #horse-2 { background-image: url("assets/sprites/horse/horse-2.png"); } #horse-3 { background-image: url("assets/sprites/horse/horse-3.png"); }
-.horse-runner.racing { animation: gallop 0.2s steps(1) infinite !important; }
-@keyframes gallop { 50% { background-position: -56px 0; } }
+.horse-runner.racing { animation: gallop 0.4s steps(4) infinite !important; }
+@keyframes gallop { to { background-position: -224px 0; } }
 .horse-runner.winner { filter: drop-shadow(0 0 0 var(--gold)) drop-shadow(2px 2px 0 var(--gold)) !important; }
 .lane-number { font-size: 10px !important; color: var(--cream); }
 
