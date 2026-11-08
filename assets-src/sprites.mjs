@@ -258,6 +258,8 @@ const WORDS = {
   goal: ["GOAL!", "gold"], allin: ["ALL IN!", "orange"], onfire: ["ON FIRE!", "orange"], lucky: ["LUCKY!", "green"],
   bust: ["BUST!", "red"], crashed: ["CRASHED!", "red"], splash: ["SPLASH!", "red"], miss: ["MISS", "red"],
   push: ["PUSH", "cream"], soldout: ["SOLD OUT", "red"], blackjack: ["BLACKJACK!", "gold"], bonus: ["BONUS!", "purpleLight"],
+  // End-of-run headings (gauntlet iteration 5)
+  goalhit: ["GOAL HIT!", "gold"], gameover: ["GAME OVER", "red"], lastchance: ["LAST CHANCE", "orange"], cashedout: ["CASHED OUT!", "green"],
 };
 const RAMP = {
   green: ["white", "green", "green", "greenDark"], cyan: ["white", "cyan", "cyan", "cyanDark"],

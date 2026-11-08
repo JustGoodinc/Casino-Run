@@ -13,8 +13,8 @@
   <meta name="apple-mobile-web-app-title" content="Casino Run" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 
-  <link rel="stylesheet" href="./style.css?v=31" />
-  <link rel="stylesheet" href="./theme-cabinet.css?v=31" />
+  <link rel="stylesheet" href="./style.css?v=32" />
+  <link rel="stylesheet" href="./theme-cabinet.css?v=32" />
   <link rel="preload" href="./assets/fonts/casino-run-pixel.ttf" as="font" type="font/ttf" crossorigin />
 </head>
 <body>
@@ -480,7 +480,8 @@
     <div class="goal-popup-card">
       <div class="goal-popup-glow"></div>
 
-      <h2>GOAL HIT!</h2>
+      <div class="end-hero"><div class="host host-big cheer" aria-hidden="true"></div></div>
+      <h2 class="word-heading" aria-label="Goal hit!"><img class="sprite" src="assets/sprites/words/goalhit.png" alt="" /></h2>
 
       <p id="goal-popup-message"></p>
 
@@ -495,7 +496,8 @@
     <div class="goal-popup-card name-card">
       <div class="goal-popup-glow"></div>
 
-      <h2>RUN COMPLETE</h2>
+      <div class="end-hero"><div class="host host-big cheer" aria-hidden="true"></div></div>
+      <h2 class="word-heading" aria-label="Cashed out!"><img class="sprite" src="assets/sprites/words/cashedout.png" alt="" /></h2>
 
       <p>You cashed out! Add your name to the leaderboard.</p>
 
@@ -525,7 +527,8 @@
     <div class="goal-popup-card game-over-card">
       <div class="goal-popup-glow"></div>
 
-      <h2>GAME OVER</h2>
+      <div class="end-hero"><div class="host host-big sweat" aria-hidden="true"></div></div>
+      <h2 class="word-heading" aria-label="Game over"><img class="sprite" src="assets/sprites/words/gameover.png" alt="" /></h2>
 
       <p id="game-over-summary">You lost it all.</p>
 
@@ -554,7 +557,7 @@
     <div class="goal-popup-card coin-flip-card">
       <div class="goal-popup-glow"></div>
 
-      <h2>LAST CHANCE</h2>
+      <h2 class="word-heading" aria-label="Last chance"><img class="sprite" src="assets/sprites/words/lastchance.png" alt="" /></h2>
 
       <p id="coin-flip-message">
         You dropped under $1. Flip the coin. Win and get 20% of the current goal. Lose and the run ends.
@@ -609,9 +612,9 @@
     }
   </script>
 
-  <script src="./audio.js?v=31"></script>
-  <script src="./fx.js?v=31"></script>
-  <script src="./script.js?v=31"></script>
+  <script src="./audio.js?v=32"></script>
+  <script src="./fx.js?v=32"></script>
+  <script src="./script.js?v=32"></script>
 
 </body>
 </html>

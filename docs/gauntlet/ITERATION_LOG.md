@@ -69,3 +69,13 @@
 **Tests:** validator PASS (66 clips). Regression 19/20 on the first run. The Plinko drop timed out because the pane was throttled to 2 fps; re-run in isolation, it paid exactly $140 (PASS). The test's wait was raised from 60 s to 180 s.
 
 **Bag fix (same iteration, owner screenshot):** under 500px the ITEMS bag docks into the HUD streak row as an icon + count button, and its item list opens as a dropdown that wraps in rows. On wider screens it floats beside the column as before. Verified at 390px (in the HUD, items in rows of 3, no overflow) and on desktop (floating, `position: fixed`). Regression 20/20.
+
+## Iteration 5 (2026-11-08): end-of-run screens
+
+**Weakness:** GOAL HIT / CASHED OUT / GAME OVER / LAST CHANCE used plain text headings and had no art, yet they're the biggest moments in a run.
+
+**Assets:** word sprites `goalhit`, `cashedout`, `gameover`, `lastchance` (validated; tex3ds atlas 52.8 KB).
+
+**Implemented:** pixel word headings (popping in, with an aria-label for screen readers); a 2× Dice on goal/cash-out (cheering) and game over (sweating); stats in an inset ink box with the final balance in gold 30px; pixel-framed balance graph; cards scroll inside the viewport (`max-height: 100dvh − 32px`).
+
+**Tests:** all 4 headings load, 3 large hosts present, game-over screen reviewed by screenshot; regression 20/20.
