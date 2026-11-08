@@ -29,6 +29,12 @@ AccessControlInfo:
    - DirectSdmc
    - DirectSdmcWrite
   IoAccessControl:
+  # Without the DSP mapping, ndspInit faults on real hardware writing DSP shared memory
+  # (0x1FF5xxxx: data abort, Translation - Page). Azahar does not enforce it.
+  IORegisterMapping:
+   - 1ff00000-1ff7ffff   # DSP memory
+  MemoryMapping:
+   - 1f000000-1f5fffff:r # VRAM
   MemoryType                    : Application
   SystemMode                    : 64MB
   IdealProcessor                : 0
