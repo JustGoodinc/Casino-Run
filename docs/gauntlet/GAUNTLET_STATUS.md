@@ -7,7 +7,7 @@
 | Game | Art | UI/frame | Anim | Sound | Score FX | Special FX | Gameplay | Visual QA | Perf | 3DS |
 |---|---|---|---|---|---|---|---|---|---|---|
 | Plinko | ✅ pegs/ball/plate | ✅ | ✅ slot hit | ✅ 8 pegs + music | ✅ cascade | ✅ coins+sparkles at slot | ✅ | ✅ | ✅ | ✅ .3dsx slice runs in Azahar (it. 16) |
-| Roulette | ✅ bowl, hub, ball, pixel wheel in European order (it. 8) | ✅ | ✅ ball drop | ✅ ticks + tango | ✅ | ✅ chips | ✅ | ✅ 375px (it. 9) | ✅ | ◐ rules in C |
+| Roulette | ✅ bowl, hub, ball, pixel wheel in European order (it. 8) | ✅ | ✅ ball drop | ✅ ticks + tango | ✅ | ✅ chips | ✅ | ✅ 375px (it. 9) | ✅ | ✅ runs in Azahar (it. 19) |
 | Crash | ✅ rocket, stars | ✅ | ✅ exhaust trail | ✅ boom + synth | ✅ | ✅ explosion | ✅ | ✅ | ✅ | ✅ runs in Azahar (it. 17) |
 | Blackjack | ✅ 53 cards | ✅ | ✅ deal | ✅ jazz | ✅ | ✅ mini cards | ✅ | ✅ | ✅ | ◐ rules in C |
 | Elephant River | ✅ hazards 2-frame (it. 7) | ✅ | ✅ walk, croc snap, paddle | ✅ calypso | ✅ | ✅ droplets | ✅ | ✅ 375px | ✅ | ✅ runs in Azahar (it. 18) |
@@ -39,6 +39,7 @@
 | 16 | First emulator run (Azahar); 1x text fix | 60 FPS, controls verified (497b0a9) |
 | 17 | Crash on 3DS; climb curve into rules | Azahar verified, 25/25 (484d3ff) |
 | 18 | Elephant River on 3DS; result input lock | Azahar verified (aedd66a) |
+| 19 | Roulette on 3DS; payout table into rules | Azahar verified, 26/26 (a2ecb4f) |
 
 ## Next priorities
 
