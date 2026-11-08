@@ -387,37 +387,56 @@ static void blackjackDraw(void) {
 }
 
 // ======================= ELEPHANT RIVER =======================
+// Side view, left to right: the elephant hops from the left bank across four still logs to the safe
+// shore on the right. Each hop's outcome is rolled as it starts (same one draw per hop as the web);
+// a bad step sinks the elephant (and its log) and a crocodile surfaces.
 #define HOP_FRAMES 31
-static float laneY(int lane) { return 199 - lane * 37; }
+#define WATERLINE 118
+static float laneX(int lane) { return 28 + lane * 70; } // bank 28, logs 98-308, shore 378
+static float landX(int lane, int fail) { return fail && lane >= 5 ? 344 : laneX(lane); } // a failed jump to shore falls short
 
 static void riverEnd(void) { G.crossing = 0; A.floaties = 0; }
 
 static void riverUpdate(u32 down) {
+  if (G.splashed && G.sinkT < 200) G.sinkT++;
+  if (G.landT > 0) G.landT--;
   if (!G.crossing) {
+    if (G.splashed && G.sinkT < 60) return; // let the sink and the crocodile play out
     if (down & KEY_A) {
       pressFlash(BTN_A);
       if (!takeBet()) return;
       G.riverBet = A.bet;
-      G.crossing = 1; G.lane = 0; G.hop = 0; G.splashed = G.banked = 0;
+      G.crossing = 1; G.lane = 0; G.hop = 0; G.splashed = G.banked = 0; G.sinkT = G.landT = 0;
     }
     return;
   }
   if (G.hop > 0) {
     if (--G.hop == 0) {
-      double chance = cr_frog_base_crash_chance(G.lane);
-      if (A.floaties > 0) chance *= fmax(0.2, 1 - A.floaties * 0.45); // Pool Floaties
-      if (cr_rand(&RNG) < chance) {
-        G.splashed = 1; riverEnd();
+      float x = landX(G.lane, G.hopFail);
+      if (G.hopFail) {
+        G.splashed = 1; G.sinkT = 1; riverEnd();
         sfx("river_splash");
-        fxBurst(200, HUD_H + laneY(G.lane), 18, 5, 1.6f);
+        fxBurst(x, HUD_H + WATERLINE, 18, 5, 1.6f);
         fxShake(5);
         fxWord(sprites_word_splash_idx);
         settleRound(0, G.riverBet, "river", 0);
-      } else if (G.lane >= 5) { A.floaties = 0; toast("SAFE SHORE! CASH OUT NOW"); }
+      } else {
+        G.landT = 10;
+        fxBurst(x, HUD_H + WATERLINE, 4, 5, 0.6f);
+        if (G.lane >= 5) { A.floaties = 0; toast("SAFE SHORE! CASH OUT NOW"); }
+      }
     }
     return;
   }
-  if (down & KEY_A && G.lane < 5) { pressFlash(BTN_A); G.lane++; G.hop = HOP_FRAMES; sfx("river_step"); }
+  if (down & KEY_A && G.lane < 5) {
+    pressFlash(BTN_A);
+    G.lane++;
+    double chance = cr_frog_base_crash_chance(G.lane);
+    if (A.floaties > 0) chance *= fmax(0.2, 1 - A.floaties * 0.45); // Pool Floaties
+    G.hopFail = cr_rand(&RNG) < chance;
+    G.hop = HOP_FRAMES;
+    sfx("river_step");
+  }
   else if (down & KEY_B && G.lane > 0) {
     pressFlash(BTN_B);
     G.banked = 1; riverEnd();
@@ -425,36 +444,50 @@ static void riverUpdate(u32 down) {
   }
 }
 
+static void waterRect(float x0, float y0, float w, float h, int off) {
+  // Water tiles flowing gently downstream (top to bottom); the logs themselves stay still.
+  for (float y = y0 - 16 + off; y < y0 + h; y += 16) {
+    float top = fmaxf(y, y0), bot = fminf(y + 16, y0 + h);
+    if (bot > top) tiles(sprites_water_idx, x0, top, w, bot - top);
+  }
+}
+
 static void riverDraw(void) {
-  C2D_Image water = img(sprites_water_idx);
-  int flow = (A.tick / 2) % 32;
-  for (int y = 24; y < 186; y += 16) {
-    float sh = ((y / 16) & 1) ? flow : 32 - flow;
-    for (int x = -32; x < TOP_W; x += 32) {
-      float xx = x + sh;
-      if (xx < 0) tiles(sprites_water_idx, 0, y, 32 + xx, fminf(16, 186 - y));
-      else if (xx + 32 > TOP_W) tiles(sprites_water_idx, xx, y, TOP_W - xx, fminf(16, 186 - y));
-      else if (y + 16 <= 186) C2D_DrawImageAt(water, xx, y, 0.5f, NULL, 1, 1);
-      else tiles(sprites_water_idx, xx, y, 32, 186 - y);
+  int off = A.reduced ? 0 : (A.tick / 4) % 16;
+  waterRect(44, 0, 312, 186, off);
+  u32 grass = RGB(0x3F8F4A), edge = RGB(0x2E6B37);
+  rect(0, 0, 44, 186, grass); rect(42, 0, 2, 186, edge);      // left bank (start)
+  rect(356, 0, 44, 186, grass); rect(356, 0, 2, 186, edge);   // safe shore (right)
+  rect(0, 186, TOP_W, FIELD_H - 186, grass); rect(0, 186, TOP_W, 2, edge);
+  spr(sprites_goalFlag_idx, 370, 54, 2);
+  textCO(378, 80, 1, C_CREAM, C_INK, "SAFE\nSHORE");
+  int sinking = G.splashed && G.sinkT > 0;
+  float failX = sinking ? landX(G.lane, 1) : -1;
+  // Still logs on lanes 1-4, with small ripples at their ends.
+  for (int l = 1; l <= 4; l++) {
+    float x = laneX(l), y = WATERLINE - 10;
+    if (l == G.lane && G.landT > 0) y += G.landT > 5 ? 2 : 1;                    // dip under the landing
+    if (sinking && fabsf(failX - x) < 1) y += fminf(G.sinkT * 0.8f, 24);       // the log goes under too
+    sprFrame(sprites_log_idx, 0, 2, x - 28, y, 2, 2);
+    if (!A.reduced && ((A.tick / 20 + l) & 1)) { rect(x - 34, WATERLINE + 9, 6, 1, C_WHITE); rect(x + 28, WATERLINE + 9, 6, 1, C_WHITE); }
+  }
+  // Elephant: on the bank, a log or the shore; arcs between them while hopping.
+  float ex, ey = WATERLINE - 44;
+  if (G.hop > 0) {
+    float p = 1 - G.hop / (float)HOP_FRAMES, x0 = laneX(G.lane - 1), x1 = landX(G.lane, G.hopFail);
+    ex = x0 + (x1 - x0) * p;
+    ey -= sinf(p * PI) * (A.reduced ? 8 : 28);
+  } else ex = sinking ? failX : laneX(G.lane);
+  if (sinking) ey += fminf(G.sinkT * 1.5f, 46);
+  sprFrame(sprites_elephant_idx, G.hop > 0 ? (A.tick / 6) & 1 : 0, 2, ex - 26, ey, 2, 2);
+  if (sinking) {
+    waterRect(failX - 36, WATERLINE + 4, 72, 182 - WATERLINE, off); // the river closes over the elephant
+    if (G.sinkT > 12) { // crocodile surfaces where it went under and snaps
+      float rise = fminf((G.sinkT - 12) / 10.0f, 1);
+      sprFrame(sprites_croc_idx, (G.sinkT / 8) & 1, 2, failX - 28, WATERLINE + 14 - rise * 26, 2, 2);
+      waterRect(failX - 36, WATERLINE + 8, 72, 178 - WATERLINE, off); // only its head and back break the surface
     }
   }
-  rect(0, 0, TOP_W, 24, RGB(0x3F8F4A));
-  rect(0, 22, TOP_W, 2, RGB(0x2E6B37));
-  rect(0, 186, TOP_W, FIELD_H - 186, RGB(0x3F8F4A));
-  rect(0, 186, TOP_W, 2, RGB(0x2E6B37));
-  textCO(200, 4, 2, C_CREAM, C_INK, "SAFE SHORE");
-  static const int HAZ[4] = { sprites_log_idx, sprites_croc_idx, sprites_boat_idx, sprites_log_idx };
-  static const float SPEED[4] = { 1.3f, 1.8f, 2.3f, 1.1f };
-  for (int k = 0; k < 4; k++) {
-    float w = 56, x = fmodf(A.tick * SPEED[k] + k * 131, TOP_W + w + 40) - w - 20;
-    int f = (A.tick / 15 + k) & 1;
-    if (k & 1) sprFrame(HAZ[k], f, 2, TOP_W - x, laneY(k + 1) - 11, -2, 2);
-    else sprFrame(HAZ[k], f, 2, x, laneY(k + 1) - 11, 2, 2);
-  }
-  float from = laneY(G.lane - (G.hop > 0)), to = laneY(G.lane);
-  float p = G.hop > 0 ? 1 - G.hop / (float)HOP_FRAMES : 1;
-  float ey = from + (to - from) * p - sinf(p * PI) * (A.reduced ? 0 : 10);
-  if (!G.splashed) sprFrame(sprites_elephant_idx, G.hop > 0 ? (A.tick / 6) & 1 : 0, 2, 174, ey - 26, 2, 2);
   char m[40];
   if (G.splashed) snprintf(m, sizeof m, "SPLASH!");
   else if (G.banked) snprintf(m, sizeof m, "CASHED OUT %.2fX", cr_frog_multiplier(G.lane));

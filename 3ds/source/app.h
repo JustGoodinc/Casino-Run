@@ -105,8 +105,9 @@ typedef struct {
   // Blackjack: phase 0 idle, 1 player turn, 2 dealer drawing, 3 done
   int deck[52], deckLeft, ph[16], pn, dh[16], dn, phase, timer, natural, peeked, bjBet, dealAnim;
   double bjMult;
-  // River: lane 0 bank .. 5 far shore
-  int crossing, lane, hop, splashed, banked, riverBet;
+  // River: lane 0 left bank, 1-4 still logs, 5 safe shore (right). hopFail is rolled when a hop starts;
+  // sinkT/landT drive the sink + crocodile and the log dip.
+  int crossing, lane, hop, splashed, banked, riverBet, hopFail, sinkT, landT;
   // Horse
   int race, pick, winner, raceBet, raceShoes;
 } games_t;
