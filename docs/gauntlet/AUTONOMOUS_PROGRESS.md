@@ -1,7 +1,7 @@
 # Autonomous Progress: restart checkpoint
 
 **Branch:** work directly on `main` (owner granted push authority 2026-11-08). Every push deploys live to casinorun.fun via GitHub Pages. Run regression (20/20) + validator before pushing.
-**Current gauntlet iteration:** 9 (iterations 1–8 shipped to main, live).
+**Current gauntlet iteration:** 11 (iterations 1–10 shipped to main, live).
 **Owner vault (keep updated):** `\\192.168.1.141\ServerSSD\obsidian\Knowledge\Roblox-AI-Memory\03_PROJECTS\Casino-Run\` (Casino-Run-Current-State, -Design-Bible, -Important-Decisions, -Lessons-Learned). Update it after every milestone, then run `py <vault>\Roblox-AI-Memory\00_START_HERE\tools\build_catalog.py`.
 
 ## Resume in 4 commands
@@ -17,7 +17,7 @@ Then serve the repo root (`py -m http.server 8765`), open `/index.html?nocache=N
 
 ## Working now (verified)
 
-- Gameplay: 21/21 regression after iteration 8 (passes with the window minimised).
+- Gameplay: 22/22 regression after iteration 10 (passes with the window minimised).
 - Assets: 134 sprites, 60 audio clips (53 SFX + 7 music loops), all validator checks PASS; tex3ds atlas 45.9 KB.
 - Per-game music with crossfade and lazy loading; 8 Plinko peg variants.
 - Framed, textured machines with marquees; BET × MULT payout calculation.
@@ -25,6 +25,7 @@ Then serve the repo root (`py -m http.server 8765`), open `/index.html?nocache=N
 ## Known issues
 
 - Leaderboard host does not resolve (Supabase project paused/deleted); the owner must restore it.
+- **HTTPS is broken (owner action):** GitHub Pages has no certificate for `www.casinorun.fun` (https serves the `*.github.io` cert; `https_enforced: false`). The apex A records include an extra `192.64.119.200` (registrar parking) next to the four GitHub IPs, which typically blocks the certificate. Fix: delete that A record at the registrar, then in repo Settings → Pages remove and re-add `www.casinorun.fun`, wait for the certificate, tick Enforce HTTPS. http:// works meanwhile.
 - The audio was judged by ear by the owner ("sounded great") for the batch-1 SFX. The per-game music loops and peg variants have only been checked numerically.
 - Roulette wheel is palette-snapped pixel art (iteration 8); river hazards 2 frames, horses 4 (iteration 7).
 
@@ -33,7 +34,7 @@ Then serve the repo root (`py -m http.server 8765`), open `/index.html?nocache=N
 1. ~~Per-game reward effects + floating numbers~~ (done in iteration 2: `CR.fx.popNumber`, KITS, IMPACT in fx.js).
 2. ~~Roulette wheel~~ (iteration 3).
 3. ~~Host mascot~~ (iteration 3: Dice, `CR.fx.hostMood`).
-3b. ~~River hazard frames~~ (iteration 7). Crash trail + stingers done in iteration 4. 4-frame gallop also iteration 7. Roulette pixel wheel: iteration 8. Next: 3DS-sized layout pass (400×240 top / 320×240 bottom) or rules.js extraction.
+3b. ~~River hazard frames~~ (iteration 7). Crash trail + stingers done in iteration 4. 4-frame gallop also iteration 7. Roulette pixel wheel: iteration 8. rules.js stage 1a: iteration 10. Next: stage 1b (settlement + goal/timer into rules.js), then 3DS-sized layout pass.
 4. Collection-wide regression + 375 / 400×240 / 320×240 checks; then commit.
 
 ## Files touched by the gauntlet
