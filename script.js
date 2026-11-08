@@ -1,3 +1,9 @@
+// Pure rules (outcomes, odds, hand values) live in rules.js; see docs/3ds/PORTING_PLAN.md stage 1.
+const R = CR.rules;
+let { plinkoMultipliers, plinkoSlotOdds, rollPlinkoSlot, redNumbers, getRouletteColor,
+  getRandomRouletteNumberForColor, generateCrashPoint, getFrogBaseCrashChance, getFrogMultiplier,
+  getCardValue, getHandValue, isBlackjack } = R;
+
 let balance = 100;
 let goal = 300;
 let timeLeft = 120;
@@ -1353,16 +1359,15 @@ function generateShopRotation() {
   const pickedItems = [];
 
   const guaranteedEasterEgg =
-    easterEggItems[Math.floor(Math.random() * easterEggItems.length)];
+    R.pick(easterEggItems);
 
   pickedItems.push(guaranteedEasterEgg);
 
-  const shuffledNormalItems = [...normalItems].sort(() => Math.random() - 0.5);
+  const shuffledNormalItems = R.shuffle(normalItems);
 
   pickedItems.push(...shuffledNormalItems.slice(0, 3));
 
-  currentShopSlots = pickedItems
-    .sort(() => Math.random() - 0.5)
+  currentShopSlots = R.shuffle(pickedItems)
     .map((item) => {
       return {
         itemId: item.id,
@@ -1714,7 +1719,7 @@ function useInventoryItem(itemId) {
       return;
     }
 
-    const refundedItemId = refundableItems[Math.floor(Math.random() * refundableItems.length)];
+    const refundedItemId = R.pick(refundableItems);
     const removeIndex = consumedItemIds.indexOf(refundedItemId);
 
     if (removeIndex >= 0) {
@@ -2597,7 +2602,7 @@ function flipRescueCoin() {
 
   coinFlipUses++;
 
-  let playerWins = Math.random() < 0.5;
+  let playerWins = R.rand() < 0.5;
 
   if (hasItem("doubleHeadedCoin")) {
     playerWins = true;
@@ -2795,22 +2800,6 @@ const plinkoBtn = document.getElementById("plinko-btn");
 let pegs = [];
 let activePlinkoBalls = 0;
 
-const plinkoMultipliers = [0, 0.5, 1, 2, 5];
-// Slot odds, paired with plinkoMultipliers. Return per $1 = 0.23*0.5 + 0.18*1 + 0.13*2 + 0.08*5 = 0.955.
-// (The old pure-physics drop returned ~1.83-1.89 and varied with screen width.)
-const plinkoSlotOdds = [0.38, 0.23, 0.18, 0.13, 0.08];
-
-function rollPlinkoSlot() {
-  let roll = Math.random();
-
-  for (let i = 0; i < plinkoSlotOdds.length; i++) {
-    roll -= plinkoSlotOdds[i];
-    if (roll < 0) return i;
-  }
-
-  return 0;
-}
-
 function createPegs() {
   if (!board || !pegsContainer) return;
   if (board.clientWidth < 100 || board.clientHeight < 100) return;
@@ -2924,7 +2913,7 @@ function dropPlinkoBall(bet) {
   let targetSlot = rollPlinkoSlot();
 
   if (activeWeightedBall > 0) {
-    targetSlot = Math.min(targetSlot + 1 + Math.floor(Math.random() * 2), plinkoMultipliers.length - 1);
+    targetSlot = Math.min(targetSlot + 1 + R.randInt(2), plinkoMultipliers.length - 1);
     activeWeightedBall--;
   }
 
@@ -3109,30 +3098,6 @@ let selectedRouletteBet = null;
 let rouletteSpinning = false;
 let rouletteSpinCount = 0;
 
-const redNumbers = new Set([
-  1, 3, 5, 7, 9,
-  12, 14, 16, 18,
-  19, 21, 23, 25, 27,
-  30, 32, 34, 36
-]);
-
-function getRouletteColor(number) {
-  if (number === 0) return "green";
-  return redNumbers.has(number) ? "red" : "black";
-}
-
-function getRandomRouletteNumberForColor(color) {
-  const options = [];
-
-  for (let i = 0; i <= 36; i++) {
-    if (getRouletteColor(i) === color) {
-      options.push(i);
-    }
-  }
-
-  return options[Math.floor(Math.random() * options.length)];
-}
-
 // Gauntlet 8: the wheel is pixel art. Pockets, frets and cone are drawn at half resolution and
 // upscaled 2x (the sprites' grid); numbers go on at full res in the pixel font. Every pixel is then
 // snapped to the palette with hard alpha, so no antialiased edges remain.
@@ -3306,11 +3271,7 @@ function spinRoulette(bet, isFreeVinylSpin = false) {
     activeRouletteMagnet = false;
   }
 
-  if (magnetApplies && Math.random() < 0.55) {
-    result = getRandomRouletteNumberForColor(betColor);
-  } else {
-    result = Math.floor(Math.random() * 37);
-  }
+  result = R.rollRoulette(magnetApplies ? betColor : null);
 
   const segmentAngle = 360 / 37;
 
@@ -3405,12 +3366,6 @@ let crashMultiplier = 1;
 let crashPoint = 0;
 let crashStartTime = 0;
 let crashAnimationFrame = null;
-
-// P(crash point > m) = 0.96 / m, so cashing out at ANY target returns 0.96 per $1.
-// ~4% of rounds crash instantly at 1.00x; capped at 100x. (Old curve returned up to 1.34.)
-function generateCrashPoint() {
-  return Math.min(100, Math.max(1, 0.96 / (1 - Math.random())));
-}
 
 function updateCrashGlow(multiplier, crashed = false) {
   if (crashed) {
@@ -3687,53 +3642,7 @@ function createBlackjackDeck() {
   const suits = ["♠", "♥", "♦", "♣"];
   const ranks = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
 
-  const deck = [];
-
-  suits.forEach((suit) => {
-    ranks.forEach((rank) => {
-      deck.push({ rank, suit });
-    });
-  });
-
-  for (let i = deck.length - 1; i > 0; i--) {
-    const randomIndex = Math.floor(Math.random() * (i + 1));
-    const temp = deck[i];
-
-    deck[i] = deck[randomIndex];
-    deck[randomIndex] = temp;
-  }
-
-  return deck;
-}
-
-function getCardValue(card) {
-  if (card.rank === "A") return 11;
-  if (["J", "Q", "K"].includes(card.rank)) return 10;
-  return Number(card.rank);
-}
-
-function getHandValue(hand) {
-  let total = 0;
-  let aces = 0;
-
-  hand.forEach((card) => {
-    total += getCardValue(card);
-
-    if (card.rank === "A") {
-      aces++;
-    }
-  });
-
-  while (total > 21 && aces > 0) {
-    total -= 10;
-    aces--;
-  }
-
-  return total;
-}
-
-function isBlackjack(hand) {
-  return hand.length === 2 && getHandValue(hand) === 21;
+  return R.shuffledDeck(suits, ranks);
 }
 
 function isJesterHatActive() {
@@ -4148,22 +4057,6 @@ function startFrogRoadRound() {
   updateFrogButtons();
 }
 
-function getFrogBaseCrashChance(lane) {
-  return Math.min(0.12 + lane * 0.08, 0.55);
-}
-
-// Multiplier = 0.96 / chance of surviving to this lane, so cashing out at any lane returns
-// 0.96 per $1 without Floaties (lane 1 1.20x ... lane 5 9.69x). Old curve returned up to 1.23.
-function getFrogMultiplier(lane) {
-  let survival = 1;
-
-  for (let i = 1; i <= lane; i++) {
-    survival *= 1 - getFrogBaseCrashChance(i);
-  }
-
-  return 0.96 / survival;
-}
-
 function getFrogCrashChance(lane) {
   let chance = getFrogBaseCrashChance(lane);
 
@@ -4202,7 +4095,7 @@ function hopFrogForward() {
     frogPlayer.classList.remove("hopping");
 
     const crashChance = getFrogCrashChance(frogLane);
-    const frogHit = Math.random() < crashChance;
+    const frogHit = R.rand() < crashChance;
 
     if (frogHit) {
       loseFrogRoadRound();
@@ -4405,7 +4298,7 @@ function startHorseRace() {
   horseBet = bet;
   horseRaceActive = true;
   horseRaceBusy = true;
-  horseWinner = Math.floor(Math.random() * 4);
+  horseWinner = R.randInt(4);
   horsePositions = [0, 0, 0, 0];
 
   horseRunners.forEach((horse) => {

@@ -113,3 +113,19 @@
 **Critique → fix:** the first render showed pockets in numeric order 0-36, so same-colour pockets sat side by side (10/11 black, 18/19 red). Pockets now follow the European wheel order (`WHEEL_ORDER`), so red/black alternate. **Odds unchanged:** the result is still rolled uniformly first; only the pocket the wheel rotates to was remapped (`WHEEL_ORDER.indexOf(result)`).
 
 **Tests:** new regression check (wheel order has all 37 numbers once and alternates colours); regression **21/21** in 40 s. Evidence: `screenshots/iter-8/wheel-pixel-draft.png` → `wheel-pixel-final.png`.
+
+## Iteration 9 (2026-11-08): phone-width check of the new art
+
+Verification only, at 375×812 in the visible pane. Roulette: wheel centred in the bowl (offset 0,0), no horizontal scroll; a forced spin to 17 put the ball in the black pocket between 25 and 34 under the pointer, which is 17 in the European order. River: each hazard shows exactly one frame, and the mirrored croc and canoe face the way they travel (checked at 8× zoom). Race: each horse shows one gallop frame with no strip bleed. No changes were needed.
+
+## Iteration 10 (2026-11-08): rules.js, 3DS port stage 1a
+
+**Goal:** stage 1 of `docs/3ds/PORTING_PLAN.md`: pure rules out of the DOM code with a seedable RNG, so the C port can be checked against the same seed.
+
+**Implemented:** new `rules.js` (`CR.rules`): Plinko slot odds and roll, roulette colours / pocket roll / Magnet pull, crash point, river crash chance and multiplier, deck shuffle, card and hand values, blackjack, plus `rand`, `randInt`, `pick` and `shuffle`. `script.js` binds them with `let` (so tests can still stub them); 123 lines removed. All 14 outcome-deciding `Math.random` calls now go through `CR.rules.rand()`; the 18 left are sound pitch and ball wobble. `rand()` reads `Math.random` at call time unless `CR.rules.seed(n)` switches to mulberry32.
+
+**Behaviour:** payouts and odds are unchanged, with the same number and order of random draws per game. One deliberate fix: the shop used `sort(() => Math.random() - 0.5)`, a biased shuffle, and now uses Fisher-Yates. Shop stock is still 4 unique items, and all 18 items appeared across 2,000 rotations.
+
+**Tests:** new check "Seeded rules are deterministic" (seed 42 twice gives identical outcomes; seed 7 differs). Regression **22/22** in 30 s.
+
+**Still in stage 1:** settlement (`applyRoundWin`, `processFullLoss`, Hot Streak, items) and goal/timer progression still live in `script.js` alongside DOM updates.

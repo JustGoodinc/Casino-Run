@@ -82,6 +82,11 @@
     const alternates = order.slice(1).every((n, i) => i === 0 || getRouletteColor(n) !== getRouletteColor(order[i]));
     check("Roulette wheel order: 37 unique, red/black alternate", new Set(order).size === 37 && order.every((n) => n >= 0 && n <= 36) && alternates);
 
+    // Rules module (3DS stage 1): the same seed gives the same outcomes; seed(null) goes back to Math.random.
+    const sample = () => [CR.rules.rollPlinkoSlot(), CR.rules.generateCrashPoint(), CR.rules.rollRoulette(), CR.rules.shuffledDeck(["s"], ["A", "2", "3", "4"]).map((c) => c.rank).join("")].join("|");
+    CR.rules.seed(42); const s1 = sample(); CR.rules.seed(42); const s2 = sample(); CR.rules.seed(7); const s3 = sample(); CR.rules.seed(null);
+    check("Seeded rules are deterministic", s1 === s2 && s1 !== s3, `${s1} / ${s3}`);
+
     const slotCounts = [0, 0, 0, 0, 0];
     for (let i = 0; i < N; i++) slotCounts[rollPlinkoSlot()]++;
     const plinkoEv = slotCounts.reduce((sum, c, i) => sum + (c / N) * plinkoMultipliers[i], 0);
