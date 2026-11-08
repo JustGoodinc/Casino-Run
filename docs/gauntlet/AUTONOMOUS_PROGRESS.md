@@ -1,7 +1,7 @@
 # Autonomous Progress: restart checkpoint
 
 **Branch:** work directly on `main` (owner granted push authority 2026-11-08). Every push deploys live to casinorun.fun via GitHub Pages. Run regression (20/20) + validator before pushing.
-**Current gauntlet iteration:** 13 (iterations 1–12 shipped to main, live).
+**Current gauntlet iteration:** 14 (iterations 1–13 shipped to main, live).
 **Owner vault (keep updated):** `\\192.168.1.141\ServerSSD\obsidian\Knowledge\Roblox-AI-Memory\03_PROJECTS\Casino-Run\` (Casino-Run-Current-State, -Design-Bible, -Important-Decisions, -Lessons-Learned). Update it after every milestone, then run `py <vault>\Roblox-AI-Memory\00_START_HERE\tools\build_catalog.py`.
 
 ## Resume in 4 commands
@@ -34,7 +34,7 @@ Then serve the repo root (`py -m http.server 8765`), open `/index.html?nocache=N
 1. ~~Per-game reward effects + floating numbers~~ (done in iteration 2: `CR.fx.popNumber`, KITS, IMPACT in fx.js).
 2. ~~Roulette wheel~~ (iteration 3).
 3. ~~Host mascot~~ (iteration 3: Dice, `CR.fx.hostMood`).
-3b. ~~River hazard frames~~ (iteration 7). Crash trail + stingers done in iteration 4. 4-frame gallop also iteration 7. Roulette pixel wheel: iteration 8. rules.js stage 1a: iteration 10. Stage 1b: iteration 11. Stage 2 C core: iteration 12 (3ds/source/rules.c, matches rules.js on 16 seeds). Next: stage 3 citro2d renderer skeleton (3ds/Makefile, top+bottom screens, sprites.t3x).
+3b. ~~River hazard frames~~ (iteration 7). Crash trail + stingers done in iteration 4. 4-frame gallop also iteration 7. Roulette pixel wheel: iteration 8. rules.js stage 1a: iteration 10. Stage 1b: iteration 11. Stage 2 C core: iteration 12 (3ds/source/rules.c, matches rules.js on 16 seeds). Stage 3 slice: iteration 13 (3ds/ builds casino-run.3dsx; not run). Next: pixel font on 3DS, then the other 5 games on 3DS; web: next weakest screen from GAUNTLET_STATUS.
 4. Collection-wide regression + 375 / 400×240 / 320×240 checks; then commit.
 
 ## Files touched by the gauntlet
