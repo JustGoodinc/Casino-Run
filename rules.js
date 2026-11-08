@@ -97,7 +97,13 @@ CR.rules = (() => {
     return { tickets, insurance, cashback, total: insurance + cashback };
   }
 
+  // Run state after a settled round, in priority order: time up beats goal hit beats broke.
+  const TIME_BOTTLE_SECONDS = 30;
+  const runState = (timeLeft, balance, goal) =>
+    timeLeft <= 0 ? "timeout" : balance >= goal ? "goal" : balance < 1 ? "broke" : "play";
+
   return {
+    TIME_BOTTLE_SECONDS, runState,
     START, nextGoal, goalCutterGoal, coinFlipRescue,
     streakBonusRate, hulaGirlBonus, streakBonus, greaseFireBurn, lossRefund,
     seed: (n) => { seeded = n == null ? null : mulberry32(n >>> 0); },

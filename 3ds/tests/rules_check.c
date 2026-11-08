@@ -27,6 +27,11 @@ int main(void) {
     const cr_vector *v = &CR_VECTORS[0];
     for (int lane = 0; lane <= 5; lane++) CHECK(cr_frog_multiplier(lane) == CR_FROG_MULT[lane], "frog lane %d", lane);
   }
+  {
+    const cr_vector *v = &CR_VECTORS[0];
+    CHECK(cr_run_state(0, 500, 300) == CR_TIMEOUT && cr_run_state(5, 300, 300) == CR_GOAL
+      && cr_run_state(5, 0.5, 300) == CR_BROKE && cr_run_state(5, 1, 300) == CR_PLAY, "run state");
+  }
   printf(fails ? "%d FAILED\n" : "rules.c matches rules.js (%d failures)\n", fails);
   return fails != 0;
 }

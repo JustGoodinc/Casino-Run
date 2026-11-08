@@ -118,3 +118,7 @@ cr_refund cr_loss_refund(double bet, int insurance_count, int cashback_active) {
   out.total = out.insurance + out.cashback;
   return out;
 }
+
+int cr_run_state(int time_left, double balance, double goal) {
+  return time_left <= 0 ? CR_TIMEOUT : balance >= goal ? CR_GOAL : balance < 1 ? CR_BROKE : CR_PLAY;
+}

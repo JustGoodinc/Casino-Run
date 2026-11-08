@@ -42,4 +42,8 @@ double cr_grease_fire_burn(double balance);
 typedef struct { int tickets; double insurance, cashback, total; } cr_refund;
 cr_refund cr_loss_refund(double bet, int insurance_count, int cashback_active);
 
+// Run state after a settled round: time up beats goal hit beats broke.
+enum { CR_PLAY, CR_TIMEOUT, CR_GOAL, CR_BROKE, CR_TIME_BOTTLE_SECONDS = 30 };
+int cr_run_state(int time_left, double balance, double goal);
+
 #endif

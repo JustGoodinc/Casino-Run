@@ -1734,7 +1734,7 @@ function useInventoryItem(itemId) {
   }
 
   if (itemId === "timeBottle") {
-    timeLeft += 30;
+    timeLeft += R.TIME_BOTTLE_SECONDS;
     removeItemFromInventory(itemId, true);
     updateUI();
     closeItemPopup();
@@ -4411,20 +4411,10 @@ function checkGameState() {
     return;
   }
 
-  if (timeLeft <= 0) {
-    showGameOverScreen();
-    return;
-  }
-
-  if (balance >= goal) {
-    showGoalPopup();
-    return;
-  }
-
-  if (balance < 1) {
-    showCoinFlipPopup();
-    return;
-  }
+  const state = R.runState(timeLeft, balance, goal);
+  if (state === "timeout") return showGameOverScreen();
+  if (state === "goal") return showGoalPopup();
+  if (state === "broke") return showCoinFlipPopup();
 
   updateDangerFlash();
 }

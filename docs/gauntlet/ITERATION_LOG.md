@@ -159,3 +159,9 @@ Verification only, at 375×812 in the visible pane. Roulette: wheel centred in t
 **Implemented:** the web game's glyph atlas (`assets/fonts/casino-run-pixel-atlas.png`, white 5×7 glyphs in 6×9 cells) is packed into the 3DS sprite sheet. `3ds/tests/make_font.mjs` turns its JSON into `3ds/source/font_glyphs.h` (63 glyphs: A–Z, 0–9, punctuation, `$ % /`). `text()` in `main.c` cuts a sub-texture per glyph, tints it to a palette colour and draws it at an integer scale (2× HUD and slot labels, 1× controls line), centred via `textW()`. The system font and the `C2D_TextBuf` are gone, so on-device text now matches the web font.
 
 **Tests:** `make` builds clean, no warnings. Not run on device or emulator, so glyph UVs are unverified on screen.
+
+## Iteration 15 (2026-11-08): run state into rules (stage 1 complete)
+
+**Implemented:** `runState(timeLeft, balance, goal)` in `rules.js` (time up, then goal hit, then broke, then play: the same priority as before) and `TIME_BOTTLE_SECONDS`. `checkGameState` now reads the state from rules and keeps only the screen changes. Mirrored in C as `cr_run_state` / `CR_TIME_BOTTLE_SECONDS`. The 1-second `setInterval` tick stays in `script.js`, because it is the platform clock (on 3DS it becomes the frame loop).
+
+**Tests:** web regression **24/24** (new "Run state priority"); C `rules_check` 0 failures including run state; regenerated vectors identical (no rule values moved); `.3dsx` builds clean.
