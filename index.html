@@ -13,22 +13,27 @@
   <meta name="apple-mobile-web-app-title" content="Casino Run" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 
-  <link rel="stylesheet" href="./style.css?v=32" />
-  <link rel="stylesheet" href="./theme-cabinet.css?v=32" />
+  <link rel="stylesheet" href="./style.css?v=33" />
+  <link rel="stylesheet" href="./theme-cabinet.css?v=33" />
   <link rel="preload" href="./assets/fonts/casino-run-pixel.ttf" as="font" type="font/ttf" crossorigin />
 </head>
 <body>
 
   <div id="title-screen" class="title-screen">
     <div class="title-card">
+      <div class="bulbs title-bulbs" aria-hidden="true"><span class="bulb"></span><span class="bulb"></span><span class="bulb"></span><span class="bulb"></span><span class="bulb"></span><span class="bulb"></span><span class="bulb"></span><span class="bulb"></span><span class="bulb"></span><span class="bulb"></span><span class="bulb"></span><span class="bulb"></span></div>
       <h1 class="title-logo" aria-label="Casino Run">
         <img src="assets/sprites/ui/logo.png" alt="" draggable="false" />
         <span class="dev-u" title="Dev secret">u</span>
       </h1>
+      <div class="bulbs title-bulbs" aria-hidden="true"><span class="bulb"></span><span class="bulb"></span><span class="bulb"></span><span class="bulb"></span><span class="bulb"></span><span class="bulb"></span><span class="bulb"></span><span class="bulb"></span><span class="bulb"></span><span class="bulb"></span><span class="bulb"></span><span class="bulb"></span></div>
       <p>Make the goal before time runs out.</p>
       <p class="title-subtext">Win big. Risk more. Cash out before it all disappears.</p>
 
-      <button id="play-btn" class="play-btn">PLAY</button>
+      <div class="title-play-row">
+        <div class="host host-title cheer" aria-hidden="true"></div>
+        <button id="play-btn" class="play-btn">PLAY</button>
+      </div>
       <button id="how-to-play-btn" class="how-to-play-btn" type="button">HOW TO PLAY</button>
       <button class="how-to-play-btn open-settings-btn" type="button">SETTINGS</button>
     </div>
@@ -612,9 +617,9 @@
     }
   </script>
 
-  <script src="./audio.js?v=32"></script>
-  <script src="./fx.js?v=32"></script>
-  <script src="./script.js?v=32"></script>
+  <script src="./audio.js?v=33"></script>
+  <script src="./fx.js?v=33"></script>
+  <script src="./script.js?v=33"></script>
 
 </body>
 </html>

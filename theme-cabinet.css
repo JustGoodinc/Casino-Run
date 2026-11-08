@@ -365,6 +365,14 @@ body {
 .run-history-row { font-size: 20px; }
 @media (max-width: 500px) { .word-heading .sprite { zoom: 2; } .host.host-big { zoom: 1.5; } }
 
+/* ---------- Iteration 6: living title screen ---------- */
+.title-bulbs { margin: 6px 0; }
+.title-play-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.title-play-row .play-btn { flex: 1; margin: 0 !important; }
+.host.host-title { zoom: 1.5; animation: hostJump 0.6s steps(2) infinite; }
+.play-btn { animation: playPulse 1.2s steps(2) infinite; }
+@keyframes playPulse { 50% { box-shadow: inset 0 -4px 0 var(--goldDark), 0 4px 0 var(--ink), 0 0 0 3px var(--cream) !important; } }
+
 /* ---------- Reduced motion ---------- */
 .reduced-motion *, .reduced-motion *::before, .reduced-motion *::after { animation-duration: 1ms !important; animation-iteration-count: 1 !important; transition-duration: 1ms !important; }
 .reduced-motion .frog-player, .reduced-motion .horse-runner.racing { animation: none !important; }

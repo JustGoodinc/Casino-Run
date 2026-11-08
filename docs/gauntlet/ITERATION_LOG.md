@@ -79,3 +79,13 @@
 **Implemented:** pixel word headings (popping in, with an aria-label for screen readers); a 2× Dice on goal/cash-out (cheering) and game over (sweating); stats in an inset ink box with the final balance in gold 30px; pixel-framed balance graph; cards scroll inside the viewport (`max-height: 100dvh − 32px`).
 
 **Tests:** all 4 headings load, 3 large hosts present, game-over screen reviewed by screenshot; regression 20/20.
+
+## Iteration 6 (2026-11-08): living title screen
+
+**Weakness:** the title was the most static screen, where both references are lively.
+
+**Implemented:** chasing marquee bulb rows above and below the logo; Dice bouncing beside a pulsing PLAY button. No new assets (reuses `ui/bulb` and `characters/host`).
+
+**Tests:** regression 20/20 (includes the dev easter egg via the logo's "u" hotspot). Evidence: `screenshots/iter-5-6/`.
+
+**Vault:** project notes now live in the owner's Obsidian vault (`Roblox-AI-Memory/03_PROJECTS/Casino-Run/`); update them after each milestone.
