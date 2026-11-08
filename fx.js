@@ -238,6 +238,20 @@ CR.MACHINES = {
   "horse-screen": ["DERBY DASH", "#7EDD65"],
   "shop-screen": ["CASINO SHOP", "#9B7BF0"],
 };
+// Phones: the floating bag covered full-width buttons (owner screenshot: SPIN). Under 500px it docks
+// into the HUD streak row instead; on wider screens it floats beside the game column as before.
+document.addEventListener("DOMContentLoaded", () => {
+  const mq = matchMedia("(max-width: 500px)");
+  const place = () => {
+    const bag = document.getElementById("inventory-sidebar"), row = document.querySelector(".hud-streak");
+    if (!bag || !row) return;
+    if (mq.matches) row.insertBefore(bag, row.querySelector(".settings-btn"));
+    else document.getElementById("game-wrapper").prepend(bag);
+  };
+  mq.addEventListener("change", place);
+  place();
+});
+
 document.addEventListener("DOMContentLoaded", () => {
   Object.entries(CR.MACHINES).forEach(([id, [title, accent]]) => {
     const screen = document.getElementById(id);

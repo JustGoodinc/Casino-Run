@@ -68,4 +68,4 @@
 
 **Tests:** validator PASS (66 clips). Regression 19/20 on the first run. The Plinko drop timed out because the pane was throttled to 2 fps; re-run in isolation, it paid exactly $140 (PASS). The test's wait was raised from 60 s to 180 s.
 
-**Still open:** the floating ITEMS bag covers the right end of full-width buttons (e.g. SPIN) on phones; the next fix moves it into the HUD on small screens.
+**Bag fix (same iteration, owner screenshot):** under 500px the ITEMS bag docks into the HUD streak row as an icon + count button, and its item list opens as a dropdown that wraps in rows. On wider screens it floats beside the column as before. Verified at 390px (in the HUD, items in rows of 3, no overflow) and on desktop (floating, `position: fixed`). Regression 20/20.
