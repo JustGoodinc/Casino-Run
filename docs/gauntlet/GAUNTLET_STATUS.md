@@ -34,10 +34,12 @@
 | 11 | Settlement formulas into `rules.js` (stage 1b) | 23/23 (37151ca) |
 | 12 | C rules core matching JS seed for seed (stage 2) | 0 failures (eb55d35) |
 | 13 | First `.3dsx` build: Plinko slice (stage 3) | builds clean, not run (b290efb) |
+| 14 | Pixel font on 3DS (web glyph atlas) | builds clean, not run (cc48a88) |
+| 15 | Run state into rules.js + rules.c; stage 1 complete | 24/24, C 0 failures (ea4be05) |
 
 ## Next priorities
 
 1. Owner: fix HTTPS (DNS A record `192.64.119.200` beside the GitHub IPs blocks the certificate) and restore Supabase.
 2. Owner: listen to the per-game music, peg variants and stingers (only checked numerically).
 3. 3DS: pixel font (`font.t3x`) for on-device text, then the other five games' screens; run on an emulator or hardware.
-4. Web: timer tick and round state machine into `rules.js` (the last part of stage 1).
+4. ~~Run state into rules.js~~ (iteration 15; stage 1 complete). Next 3DS: run the .3dsx in an emulator, then the other five game screens.
