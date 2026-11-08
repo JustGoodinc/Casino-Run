@@ -24,3 +24,20 @@
 **Evidence:** `screenshots/iter-1/`.
 
 **Remaining:** generic coin bursts in every game; no floating numbers at the impact point; roulette wheel and hazards are flat; no mascot.
+
+## Iteration 2 (2026-11-07)
+
+**Weakness targeted:** every game celebrated with the same coins in the same place; no Nubby-style number at the point of impact.
+
+**Assets created:** `fx/droplet`, `fx/minicard`, `fx/shoe` (validated; tex3ds atlas 46.1 KB).
+
+**Implemented (`fx.js`, `theme-cabinet.css`):**
+- Impact anchors per game: landed Plinko slot, roulette wheel, crash multiplier, player hand, elephant, winning horse.
+- Per-game debris kits: Plinko coins + sparkles · Roulette red/gold chips · Crash stars + cyan chips · Blackjack mini cards + gold chips · River water droplets · Horses horseshoes + confetti. Tier 4+ adds the shared chips and stars on top.
+- Floating pixel numbers: "+$N" at the impact point. Tiers 2–3 do a quick rise; 4–5 expand to 40/60px and wobble. Losses show a red "−$N". All fade instead of moving in reduced-motion mode.
+
+**Tests:** regression 20/20; live horse win showed +$75.00 (tier 4) and 28 particles at the winner.
+
+**QA finding (environment):** browser-pane screenshots lag one capture behind the page, and CSS animations can stall while the pane throttles. Verify transient effects by reading DOM state, or seek animations (`a.currentTime = N; a.pause()`), then capture twice.
+
+**Evidence:** `screenshots/iter-2/horse-bigwin-number.jpg`, `horse-shoe-particles.jpg`.

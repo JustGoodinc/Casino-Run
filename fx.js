@@ -12,7 +12,7 @@ CR.fx = (() => {
   document.addEventListener("DOMContentLoaded", () => document.body.appendChild(canvas));
   const ctx = canvas.getContext("2d");
   const sprites = {};
-  ["fx/coin", "fx/chip-red", "fx/chip-gold", "fx/chip-cyan", "fx/sparkle", "fx/star", "fx/confetti"].forEach((id) => {
+  ["fx/coin", "fx/chip-red", "fx/chip-gold", "fx/chip-cyan", "fx/sparkle", "fx/star", "fx/confetti", "fx/droplet", "fx/minicard", "fx/shoe"].forEach((id) => {
     const im = new Image();
     im.src = SPRITE(id);
     sprites[id] = im;
@@ -69,7 +69,9 @@ CR.fx = (() => {
     const n = Math.round(count * quality());
     for (let k = 0; k < n; k++) {
       const a = Math.random() * Math.PI * 2, s = speed * (0.4 + Math.random() * 0.6);
-      spawn({ id: kinds[k % kinds.length], x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s - up, g: gravity, life: life * (0.7 + Math.random() * 0.5), rot: 0, spin: (Math.random() - 0.5) * 6, frame: 0 });
+      const id = kinds[k % kinds.length];
+      const strip = id === "fx/confetti"; // 5 colour frames of 3px
+      spawn({ id, x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s - up, g: gravity, life: life * (0.7 + Math.random() * 0.5), rot: 0, spin: (Math.random() - 0.5) * 6, frame: strip ? k % 5 : 0, frameW: strip ? 3 : undefined });
     }
   }
 
@@ -104,9 +106,18 @@ CR.fx = (() => {
     setTimeout(() => target.classList.remove("fx-shake"), 320);
   }
 
+  // Where the result physically happened, per game (falls back to the board, then the screen).
+  const IMPACT = {
+    "plinko-screen": ".slot.slot-hit, #board",
+    "roulette-screen": "#roulette-canvas",
+    "crash-screen": "#crash-multiplier",
+    "blackjack-screen": "#player-hand",
+    "frog-screen": "#frog-player",
+    "horse-screen": ".horse-runner.winner, #horse-board",
+  };
   function anchor() {
     const screen = document.querySelector(".screen.active-screen");
-    const el = (screen && screen.querySelector("#board, #wheel-container, .crash-card, #blackjack-board, #frog-board, #horse-board")) || screen;
+    const el = (screen && (screen.querySelector(IMPACT[screen.id] || "_") || screen.querySelector("#board, #wheel-container, .crash-card, #blackjack-board, #frog-board, #horse-board"))) || screen;
     if (!el) return { x: innerWidth / 2, y: innerHeight / 2 };
     const r = el.getBoundingClientRect();
     return { x: r.left + r.width / 2, y: Math.max(80, r.top + r.height * 0.4) };
@@ -137,25 +148,50 @@ CR.fx = (() => {
     m._hot = setTimeout(() => m.classList.remove("hot"), ms);
   }
 
-  function celebrate({ profit, bet, streak = 0, special }) {
+  // Each game's own debris; big tiers mix in chips and stars on top.
+  const KITS = {
+    Plinko: ["fx/coin", "fx/sparkle"],
+    Roulette: ["fx/chip-red", "fx/chip-gold"],
+    Crash: ["fx/star", "fx/sparkle", "fx/chip-cyan"],
+    Blackjack: ["fx/minicard", "fx/chip-gold"],
+    "Elephant River": ["fx/droplet", "fx/sparkle"],
+    "Horse Race": ["fx/shoe", "fx/confetti"],
+  };
+
+  // Floating pixel number at the impact point: small = quick bounce, big = expanding wobble.
+  function popNumber(text, x, y, tier = 2, color = "#7EDD65") {
+    const el = document.createElement("div");
+    el.className = `fx-num fx-num-t${tier}` + (quality() === 0 ? " fx-word-calm" : "");
+    el.textContent = text;
+    el.style.left = `${x}px`;
+    el.style.top = `${y}px`;
+    el.style.color = color;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 1100);
+  }
+
+  function celebrate({ profit, bet, streak = 0, special, game }) {
     if (!(profit > 0)) return 0;
     const tier = tierFor(profit, bet, streak);
     const t = TIERS[tier];
     const at = anchor();
+    const kit = KITS[game] ? (tier >= 4 ? [...KITS[game], ...t.kinds] : KITS[game]) : t.kinds;
     marqueeHot(400 + tier * 400);
     CR.audio.play(t.sound);
     if (streak >= 1) CR.audio.play(`streak_${Math.min(5, streak)}`, { when: 0.08, gain: 0.8 });
-    word(special || t.word, at.x, at.y - 30, tier >= 4 ? 4 : 3);
-    burst(at.x, at.y, { count: t.count, kinds: t.kinds, speed: 180 + tier * 60 });
+    word(special || t.word, at.x, at.y - 46, tier >= 4 ? 4 : 3);
+    popNumber(`+$${profit.toFixed(2)}`, at.x, at.y + 6, tier, tier >= 4 ? "#F4C34E" : "#7EDD65");
+    burst(at.x, at.y, { count: t.count, kinds: kit, speed: 180 + tier * 60 });
     if (tier >= 5) setTimeout(() => burst(at.x, at.y, { count: 30, kinds: ["fx/star", "fx/coin"], speed: 420, up: 380 }), 180);
     shake(t.shake);
     return tier;
   }
 
   const LOSS_WORD = { Plinko: "miss", Roulette: "miss", Crash: "crashed", Blackjack: "bust", "Elephant River": "splash", "Horse Race": "miss" };
-  function loss(gameName, wordId) {
+  function loss(gameName, amount, wordId) {
     const at = anchor();
-    word(wordId || LOSS_WORD[gameName] || "miss", at.x, at.y - 20, 3);
+    word(wordId || LOSS_WORD[gameName] || "miss", at.x, at.y - 30, 3);
+    if (amount > 0) popNumber(`-$${amount.toFixed(2)}`, at.x, at.y + 8, 1, "#FF7A72");
     shake(2);
   }
 
@@ -169,7 +205,7 @@ CR.fx = (() => {
     shake(5);
   }
 
-  return { burst, confetti, word, shake, celebrate, loss, goal, tierFor, anchor, marqueeHot, count: () => parts.length };
+  return { burst, confetti, word, shake, celebrate, loss, goal, tierFor, anchor, marqueeHot, popNumber, count: () => parts.length };
 })();
 
 /* ---------- Machine marquees: a named sign with chasing bulbs above every game ---------- */

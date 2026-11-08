@@ -1,5 +1,5 @@
 {
- "generated": "2026-11-08T07:04:27.999Z",
+ "generated": "2026-11-08T07:09:22.874Z",
  "sprites": [
   {
    "id": "items/doubleHeadedCoin",
@@ -1124,6 +1124,39 @@
    "bytes": 110
   },
   {
+   "id": "fx/droplet",
+   "group": "fx",
+   "game": "river",
+   "file": "sprites/fx/droplet.png",
+   "frameW": 7,
+   "frameH": 8,
+   "frames": 1,
+   "fps": 0,
+   "bytes": 115
+  },
+  {
+   "id": "fx/minicard",
+   "group": "fx",
+   "game": "blackjack",
+   "file": "sprites/fx/minicard.png",
+   "frameW": 8,
+   "frameH": 9,
+   "frames": 1,
+   "fps": 0,
+   "bytes": 120
+  },
+  {
+   "id": "fx/shoe",
+   "group": "fx",
+   "game": "horse",
+   "file": "sprites/fx/shoe.png",
+   "frameW": 8,
+   "frameH": 8,
+   "frames": 1,
+   "fps": 0,
+   "bytes": 120
+  },
+  {
    "id": "words/nice",
    "group": "words",
    "game": "shared",
@@ -2110,7 +2143,7 @@
  ],
  "tex3ds": {
   "ok": true,
-  "note": "134 sprites -> sprites.t3x 45.9 KB (134 header defines); font.t3x 0.6 KB (A8)",
-  "checked": "2026-11-08T07:04:29.675Z"
+  "note": "137 sprites -> sprites.t3x 46.1 KB (137 header defines); font.t3x 0.6 KB (A8)",
+  "checked": "2026-11-08T07:09:24.606Z"
  }
 }

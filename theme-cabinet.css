@@ -299,6 +299,15 @@ body {
 @keyframes jackpotHue { 25% { color: var(--cyan); } 50% { color: var(--pink-c); } 75% { color: var(--green-c); } }
 .money-popup-card.tier-2 .money-popup-main { font-size: 40px !important; color: var(--green-c) !important; }
 
+/* ---------- Gauntlet iteration 2: floating score numbers at the impact point ---------- */
+.fx-num { position: fixed; z-index: 1000002; pointer-events: none; transform: translate(-50%, -50%); white-space: nowrap;
+  text-shadow: 2px 0 var(--ink), -2px 0 var(--ink), 0 2px var(--ink), 0 -2px var(--ink), 3px 3px 0 var(--ink);
+  animation: numRise 1000ms var(--ease-pop) forwards; }
+.fx-num-t1 { font-size: 20px; } .fx-num-t2 { font-size: 20px; } .fx-num-t3 { font-size: 30px; }
+.fx-num-t4 { font-size: 40px; animation-name: numBig; } .fx-num-t5 { font-size: 60px; animation-name: numBig; }
+@keyframes numRise { 0% { transform: translate(-50%, -20%) scale(0.5); opacity: 0; } 15% { transform: translate(-50%, -60%) scale(1.15); opacity: 1; } 30% { transform: translate(-50%, -70%) scale(1); } 80% { opacity: 1; } 100% { transform: translate(-50%, -150%); opacity: 0; } }
+@keyframes numBig { 0% { transform: translate(-50%, -50%) scale(0.3); opacity: 0; } 18% { transform: translate(-50%, -60%) scale(1.4) rotate(-4deg); opacity: 1; } 30% { transform: translate(-50%, -60%) scale(1) rotate(2deg); } 42% { transform: translate(-50%, -62%) rotate(-1deg); } 85% { opacity: 1; } 100% { transform: translate(-50%, -140%) scale(1.05); opacity: 0; } }
+
 /* ---------- Reduced motion ---------- */
 .reduced-motion *, .reduced-motion *::before, .reduced-motion *::after { animation-duration: 1ms !important; animation-iteration-count: 1 !important; transition-duration: 1ms !important; }
 .reduced-motion .frog-player, .reduced-motion .horse-runner.racing { animation: none !important; }

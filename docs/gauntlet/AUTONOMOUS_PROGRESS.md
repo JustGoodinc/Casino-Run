@@ -1,7 +1,7 @@
 # Autonomous Progress: restart checkpoint
 
 **Branch:** `redesign/audiovisual` (never pushed; `main` deploys to GitHub Pages, so don't merge without the owner).
-**Current gauntlet iteration:** 2 (iteration 1 committed).
+**Current gauntlet iteration:** 3 (iterations 1–2 committed).
 
 ## Resume in 4 commands
 
@@ -29,7 +29,7 @@ Then serve the repo root (`py -m http.server 8765`), open `/index.html?nocache=N
 
 ## Next tasks (in order)
 
-1. Per-game reward effects + floating "+$N" numbers at the impact point (fx.js `CR.fx.popNumber`, game-specific particle kinds).
+1. ~~Per-game reward effects + floating numbers~~ (done in iteration 2: `CR.fx.popNumber`, KITS, IMPACT in fx.js).
 2. Roulette wheel sprite (rim, pockets, ball) replacing the canvas fill.
 3. Host mascot sprite in the HUD that reacts to wins and losses.
 4. Collection-wide regression + 375 / 400×240 / 320×240 checks; then commit.

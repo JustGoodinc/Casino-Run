@@ -246,6 +246,10 @@ const FX = {
   sparkle: () => grid(["...w...", "...c...", "..ccc..", "wcwwwcw", "..ccc..", "...c...", "...w..."]),
   star: () => grid(["....g....", "....g....", "...ggg...", "..gwwwg..", "gggwwwggg", "..gwwwg..", "...ggg...", "....g....", "....g...."]),
   confetti: () => canvas(15, 3, (i) => ["red", "cyan", "gold", "green", "pink"].forEach((c, n) => i.rect(n * 3, 0, 2, 3, c))),
+  // Per-game particle kits (gauntlet iteration 2): each game celebrates with its own debris.
+  droplet: () => grid(["..c..", ".cc..", ".cwc.", "cccbc", "cbbbc", ".bbb."]),
+  minicard: () => grid(["eeeeee", "errree", "errrre", "eerrre", "eeeree", "eeeeee", "EEEEEE"]),
+  shoe: () => grid(["gg..gg", "gG..gG", "gg..gg", "gg..gg", ".gggg.", "..GG.."]),
 };
 
 // ---------- Words (popups) + logo, drawn with the pixel font ----------
@@ -352,6 +356,9 @@ export const SPRITES = [
   { id: "fx/sparkle", group: "fx", game: "shared", frames: one(FX.sparkle), outline: false },
   { id: "fx/star", group: "fx", game: "shared", frames: one(FX.star) },
   { id: "fx/confetti", group: "fx", game: "shared", frames: one(FX.confetti), outline: false },
+  { id: "fx/droplet", group: "fx", game: "river", frames: one(FX.droplet) },
+  { id: "fx/minicard", group: "fx", game: "blackjack", frames: one(FX.minicard) },
+  { id: "fx/shoe", group: "fx", game: "horse", frames: one(FX.shoe) },
   ...Object.entries(WORDS).map(([id, [text, color]]) => ({ id: `words/${id}`, group: "words", game: "shared", frames: one(() => word(text, color)), outline: false, label: text })),
   { id: "ui/logo", group: "ui", game: "shared", frames: one(logo), outline: false },
   ...Object.entries(TILES).map(([id, fn]) => ({ id: `tiles/${id}`, group: "tiles", game: "shared", frames: one(fn), outline: false })),

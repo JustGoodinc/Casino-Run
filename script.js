@@ -783,7 +783,7 @@ function applyRoundWin(payout, bet, bonusLines = [], gameName = "Game") {
   // Presentation only: tier from settled profit vs stake (fx.js). Doesn't change any amount.
   lastSettlement = { bet, profit: finalPayout - bet, streak: currentWinStreak };
   const naturalBlackjack = gameName === "Blackjack" && payout === bet * 2.5;
-  CR.fx.celebrate({ profit: finalPayout - bet, bet, streak: currentWinStreak, special: naturalBlackjack ? "blackjack" : undefined });
+  CR.fx.celebrate({ profit: finalPayout - bet, bet, streak: currentWinStreak, special: naturalBlackjack ? "blackjack" : undefined, game: gameName });
 
   return {
     payout: finalPayout,
@@ -1914,7 +1914,7 @@ function processFullLoss(bet, gameName = "Game") {
 
   // Loss feedback: game-specific word (MISS / CRASHED / BUST / SPLASH) and a short shake.
   // Crash and River already play their own impact sounds.
-  CR.fx.loss(gameName);
+  CR.fx.loss(gameName, Math.abs(bet));
   if (gameName !== "Crash" && gameName !== "Elephant River") CR.audio.play(gameName === "Blackjack" ? "bust" : "lose");
 
   if (refund > 0) {
