@@ -1,5 +1,5 @@
 {
- "generated": "2026-11-08T06:43:06.062Z",
+ "generated": "2026-11-08T07:04:27.999Z",
  "sprites": [
   {
    "id": "items/doubleHeadedCoin",
@@ -1325,6 +1325,171 @@
    "frames": 1,
    "fps": 0,
    "bytes": 809
+  },
+  {
+   "id": "tiles/cabinet",
+   "group": "tiles",
+   "game": "shared",
+   "file": "sprites/tiles/cabinet.png",
+   "frameW": 32,
+   "frameH": 32,
+   "frames": 1,
+   "fps": 0,
+   "bytes": 183
+  },
+  {
+   "id": "tiles/plate",
+   "group": "tiles",
+   "game": "shared",
+   "file": "sprites/tiles/plate.png",
+   "frameW": 32,
+   "frameH": 32,
+   "frames": 1,
+   "fps": 0,
+   "bytes": 173
+  },
+  {
+   "id": "tiles/water",
+   "group": "tiles",
+   "game": "shared",
+   "file": "sprites/tiles/water.png",
+   "frameW": 32,
+   "frameH": 16,
+   "frames": 1,
+   "fps": 0,
+   "bytes": 168
+  },
+  {
+   "id": "tiles/turf",
+   "group": "tiles",
+   "game": "shared",
+   "file": "sprites/tiles/turf.png",
+   "frameW": 32,
+   "frameH": 32,
+   "frames": 1,
+   "fps": 0,
+   "bytes": 328
+  },
+  {
+   "id": "tiles/velvet",
+   "group": "tiles",
+   "game": "shared",
+   "file": "sprites/tiles/velvet.png",
+   "frameW": 32,
+   "frameH": 32,
+   "frames": 1,
+   "fps": 0,
+   "bytes": 187
+  },
+  {
+   "id": "tiles/felt",
+   "group": "tiles",
+   "game": "shared",
+   "file": "sprites/tiles/felt.png",
+   "frameW": 16,
+   "frameH": 16,
+   "frames": 1,
+   "fps": 0,
+   "bytes": 131
+  },
+  {
+   "id": "tiles/stars",
+   "group": "tiles",
+   "game": "shared",
+   "file": "sprites/tiles/stars.png",
+   "frameW": 64,
+   "frameH": 64,
+   "frames": 1,
+   "fps": 0,
+   "bytes": 301
+  },
+  {
+   "id": "frames/plinko",
+   "group": "frames",
+   "game": "plinko",
+   "file": "sprites/frames/plinko.png",
+   "frameW": 24,
+   "frameH": 24,
+   "frames": 1,
+   "fps": 0,
+   "bytes": 178
+  },
+  {
+   "id": "frames/roulette",
+   "group": "frames",
+   "game": "roulette",
+   "file": "sprites/frames/roulette.png",
+   "frameW": 24,
+   "frameH": 24,
+   "frames": 1,
+   "fps": 0,
+   "bytes": 177
+  },
+  {
+   "id": "frames/crash",
+   "group": "frames",
+   "game": "crash",
+   "file": "sprites/frames/crash.png",
+   "frameW": 24,
+   "frameH": 24,
+   "frames": 1,
+   "fps": 0,
+   "bytes": 178
+  },
+  {
+   "id": "frames/blackjack",
+   "group": "frames",
+   "game": "blackjack",
+   "file": "sprites/frames/blackjack.png",
+   "frameW": 24,
+   "frameH": 24,
+   "frames": 1,
+   "fps": 0,
+   "bytes": 168
+  },
+  {
+   "id": "frames/river",
+   "group": "frames",
+   "game": "river",
+   "file": "sprites/frames/river.png",
+   "frameW": 24,
+   "frameH": 24,
+   "frames": 1,
+   "fps": 0,
+   "bytes": 178
+  },
+  {
+   "id": "frames/horse",
+   "group": "frames",
+   "game": "horse",
+   "file": "sprites/frames/horse.png",
+   "frameW": 24,
+   "frameH": 24,
+   "frames": 1,
+   "fps": 0,
+   "bytes": 178
+  },
+  {
+   "id": "frames/shop",
+   "group": "frames",
+   "game": "shop",
+   "file": "sprites/frames/shop.png",
+   "frameW": 24,
+   "frameH": 24,
+   "frames": 1,
+   "fps": 0,
+   "bytes": 178
+  },
+  {
+   "id": "ui/bulb",
+   "group": "ui",
+   "game": "shared",
+   "file": "sprites/ui/bulb.png",
+   "frameW": 7,
+   "frameH": 7,
+   "frames": 2,
+   "fps": 4,
+   "bytes": 132
   }
  ],
  "fonts": [
@@ -1945,7 +2110,7 @@
  ],
  "tex3ds": {
   "ok": true,
-  "note": "119 sprites -> sprites.t3x 37.8 KB (119 header defines); font.t3x 0.6 KB (A8)",
-  "checked": "2026-11-08T07:01:59.442Z"
+  "note": "134 sprites -> sprites.t3x 45.9 KB (134 header defines); font.t3x 0.6 KB (A8)",
+  "checked": "2026-11-08T07:04:29.675Z"
  }
 }

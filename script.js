@@ -781,6 +781,7 @@ function applyRoundWin(payout, bet, bonusLines = [], gameName = "Game") {
   recordRoundResult(gameName, baseProfit > 0 ? "Win" : "Push", finalPayout - bet);
 
   // Presentation only: tier from settled profit vs stake (fx.js). Doesn't change any amount.
+  lastSettlement = { bet, profit: finalPayout - bet, streak: currentWinStreak };
   const naturalBlackjack = gameName === "Blackjack" && payout === bet * 2.5;
   CR.fx.celebrate({ profit: finalPayout - bet, bet, streak: currentWinStreak, special: naturalBlackjack ? "blackjack" : undefined });
 
@@ -845,9 +846,15 @@ function clearPopupQueue() {
 // Cascading payout (visual bible section 5): base payout, then each bonus line lands with a rising
 // tick, then the total pops. About 0.5 s + 0.26 s per line; any tap skips to the total.
 // Money was already settled before this runs, so the animation never blocks or changes amounts.
+// Set by applyRoundWin right before the winning changeBalance(); lets the cascade show Bet x Mult.
+// Refunds and rescues have no settlement, so their popup shows only the amount.
+let lastSettlement = null;
+
 function showMoneyGainPopup(amount, bonusLines = []) {
   if (!moneyPopupLayer || amount <= 0) return;
 
+  const settle = lastSettlement;
+  lastSettlement = null;
   moneyPopupActive = true;
   const lineDelay = 260;
   // Must outlast finish() + its 760 ms exit, so the next queued popup never shares the layer with this one.
@@ -879,6 +886,24 @@ function showMoneyGainPopup(amount, bonusLines = []) {
     let running = 0;
     mainNumber.textContent = "+$0.00";
 
+    // Bet x Mult = Win: the multiplier box climbs as each bonus line lands.
+    let multBox = null;
+    const setMult = (value) => {
+      if (!multBox) return;
+      multBox.firstChild.textContent = `${value.toFixed(2)}X`;
+      multBox.classList.remove("bump");
+      void multBox.offsetWidth;
+      multBox.classList.add("bump");
+    };
+    if (settle && settle.bet > 0) {
+      card.classList.add(`tier-${CR.fx.tierFor(settle.profit, settle.bet, settle.streak)}`);
+      const row = document.createElement("div");
+      row.className = "calc-row";
+      row.innerHTML = `<div class="calc-box calc-bet"><span>$${settle.bet}</span><small>BET</small></div><span class="calc-x">X</span><div class="calc-box calc-mult"><span>0.00X</span><small>MULT</small></div>`;
+      multBox = row.querySelector(".calc-mult");
+      card.appendChild(row);
+    }
+
     card.appendChild(mainNumber);
     if (lineElements.length) card.appendChild(linesWrapper);
     const skip = document.createElement("div");
@@ -897,6 +922,7 @@ function showMoneyGainPopup(amount, bonusLines = []) {
       timers.forEach(clearTimeout);
       lineElements.forEach((el) => el.classList.add("show"));
       mainNumber.textContent = `+$${amount.toFixed(2)}`;
+      if (settle) setMult(amount / settle.bet);
       mainNumber.animate([{ transform: "scale(1.35)" }, { transform: "scale(1)" }], { duration: 240, easing: "cubic-bezier(.34,1.56,.64,1)" });
       CR.audio.play("payout_total");
       timers.push(setTimeout(() => {
@@ -921,6 +947,7 @@ function showMoneyGainPopup(amount, bonusLines = []) {
         el.classList.add("show");
         running = Math.min(amount, running + parsed[k]);
         mainNumber.textContent = `+$${running.toFixed(2)}`;
+        if (settle) setMult(running / settle.bet);
         CR.audio.play("cascade_tick", { rate: 1 + k * 0.15 });
       }, 300 + k * lineDelay));
     });
@@ -3372,8 +3399,7 @@ function drawCrashGraph(multiplier, crashed = false) {
   crashCtx.clearRect(0, 0, width, height);
   crashCtx.imageSmoothingEnabled = false;
 
-  crashCtx.fillStyle = "#191727";
-  crashCtx.fillRect(0, 0, width, height);
+  // Transparent: the crash card's scrolling starfield tile shows through behind the curve.
 
   crashCtx.strokeStyle = "#3B3752";
   crashCtx.lineWidth = 1;

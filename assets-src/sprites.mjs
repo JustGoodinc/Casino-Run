@@ -276,6 +276,59 @@ function logo() {
   return img;
 }
 
+// ---------- Environment: playfield tiles, cabinet frames, marquee bulbs (gauntlet iteration 1) ----------
+// Tiles repeat seamlessly (patterns use x/y modulo the tile size); frames are 24x24 9-slice images
+// (8px slices) for CSS border-image. Deterministic LCG keeps scattered details reproducible.
+const lcg = (seed) => () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296);
+const TILES = {
+  cabinet: () => canvas(32, 32, (i) => {
+    i.rect(0, 0, 32, 32, "cabinet");
+    for (let y = 0; y < 32; y++) for (let x = 0; x < 32; x++) if ((x + y) % 16 === 0 || (x - y + 32) % 16 === 0) i.set(x, y, "panel");
+    [[8, 0], [24, 16], [8, 16], [24, 0]].forEach(([x, y]) => i.set(x, y + 8, "panelHi"));
+  }),
+  plate: () => canvas(32, 32, (i) => {
+    i.rect(0, 0, 32, 32, "panel").rect(0, 0, 32, 1, "panelHi").rect(0, 0, 1, 32, "panelHi").rect(0, 31, 32, 1, "ink").rect(31, 0, 1, 32, "ink");
+    for (let y = 4; y < 28; y += 3) for (let x = 3 + (y % 2); x < 29; x += 6) i.set(x, y, "cabinet");
+    [[3, 3], [28, 3], [3, 28], [28, 28]].forEach(([x, y]) => i.set(x, y, "grey").set(x + 1, y, "greyDark").set(x, y + 1, "greyDark").set(x - 1, y - 1, "panelHi"));
+  }),
+  water: () => canvas(32, 16, (i) => {
+    i.rect(0, 0, 32, 16, "blue");
+    for (let x = 0; x < 32; x++) {
+      const c1 = 3 + Math.round(Math.sin((x / 32) * Math.PI * 2) * 1.2), c2 = 11 + Math.round(Math.sin((x / 32) * Math.PI * 2 + 2) * 1.2);
+      i.set(x, c1, "cyan").set(x, c1 + 1, "blueDark").set(x, c2, "cyanDark").set(x, c2 + 1, "blueDark");
+    }
+    [[5, 2], [21, 10], [13, 7]].forEach(([x, y]) => i.set(x, y, "white"));
+  }),
+  turf: () => canvas(32, 32, (i) => {
+    const r = lcg(7);
+    for (let x = 0; x < 32; x++) i.rect(x, 0, 1, 32, Math.floor(x / 8) % 2 ? "felt" : "greenDark");
+    for (let k = 0; k < 40; k++) { const x = Math.floor(r() * 32), y = Math.floor(r() * 31); i.set(x, y, "green").set(x, y + 1, Math.floor(x / 8) % 2 ? "greenDark" : "felt"); }
+  }),
+  velvet: () => canvas(32, 32, (i) => {
+    i.rect(0, 0, 32, 32, "redDark");
+    for (let y = 0; y < 32; y++) for (let x = 0; x < 32; x++) if ((x + y) % 16 === 0 || (x - y + 32) % 16 === 0) i.set(x, y, "red");
+    [[0, 0], [16, 16], [16, 0], [0, 16]].forEach(([x, y]) => i.set(x, y, "gold").set((x + 1) % 32, y, "goldDark"));
+  }),
+  felt: () => canvas(16, 16, (i) => {
+    i.rect(0, 0, 16, 16, "felt");
+    for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) if ((x * 3 + y * 5) % 11 === 0) i.set(x, y, "greenDark");
+  }),
+  stars: () => canvas(64, 64, (i) => {
+    const r = lcg(42);
+    i.rect(0, 0, 64, 64, "cabinet");
+    for (let k = 0; k < 26; k++) i.set(Math.floor(r() * 64), Math.floor(r() * 64), ["panelHi", "purpleLight", "cyan", "white"][k % 4]);
+    [[12, 40], [48, 14]].forEach(([x, y]) => i.set(x, y, "white").set(x - 1, y, "cyan").set(x + 1, y, "cyan").set(x, y - 1, "cyan").set(x, y + 1, "cyan"));
+  }),
+};
+const FRAME_ACCENTS = { plinko: "orange", roulette: "red", crash: "cyan", blackjack: "gold", river: "pink", horse: "green", shop: "purpleLight" };
+const frame = (accent) => canvas(24, 24, (i) => {
+  const ring = (d, c) => { i.rect(d, d, 24 - 2 * d, 1, c).rect(d, 23 - d, 24 - 2 * d, 1, c).rect(d, d, 1, 24 - 2 * d, c).rect(23 - d, d, 1, 24 - 2 * d, c); };
+  ring(0, "ink"); ring(1, "grey"); ring(2, "greyDark"); ring(3, accent); ring(4, accent); ring(5, "ink");
+  i.rect(1, 1, 22, 1, "white").rect(1, 1, 1, 22, "grey"); // top-left light on the metal
+  [[2, 2], [19, 2], [2, 19], [19, 19]].forEach(([x, y]) => i.rect(x, y, 3, 3, "gold").set(x, y, "cream").set(x + 2, y + 2, "goldDark"));
+});
+const bulb = () => [canvas(7, 7, (i) => { i.ball(3, 3, 2, "gold", "white", "orange"); }), canvas(7, 7, (i) => { i.ball(3, 3, 2, "brownDark", "brown", "ink"); })];
+
 // ---------- Registry ----------
 const one = (fn) => () => [fn()];
 const HORSE_SILKS = ["red", "cyan", "gold", "green"];
@@ -301,4 +354,7 @@ export const SPRITES = [
   { id: "fx/confetti", group: "fx", game: "shared", frames: one(FX.confetti), outline: false },
   ...Object.entries(WORDS).map(([id, [text, color]]) => ({ id: `words/${id}`, group: "words", game: "shared", frames: one(() => word(text, color)), outline: false, label: text })),
   { id: "ui/logo", group: "ui", game: "shared", frames: one(logo), outline: false },
+  ...Object.entries(TILES).map(([id, fn]) => ({ id: `tiles/${id}`, group: "tiles", game: "shared", frames: one(fn), outline: false })),
+  ...Object.entries(FRAME_ACCENTS).map(([game, accent]) => ({ id: `frames/${game}`, group: "frames", game, frames: one(() => frame(accent)), outline: false })),
+  { id: "ui/bulb", group: "ui", game: "shared", frames: bulb, outline: false, fps: 4 },
 ];

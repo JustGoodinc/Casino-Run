@@ -128,11 +128,21 @@ CR.fx = (() => {
     5: { word: "jackpot", sound: "jackpot", count: 60, kinds: ["fx/coin", "fx/chip-red", "fx/chip-gold", "fx/chip-cyan", "fx/star", "fx/sparkle"], shake: 6 },
   };
 
+  // Playfield reaction: the active machine's marquee bulbs race and its title flashes, longer for bigger tiers.
+  function marqueeHot(ms) {
+    const m = document.querySelector(".screen.active-screen .marquee");
+    if (!m || quality() === 0) return;
+    m.classList.add("hot");
+    clearTimeout(m._hot);
+    m._hot = setTimeout(() => m.classList.remove("hot"), ms);
+  }
+
   function celebrate({ profit, bet, streak = 0, special }) {
     if (!(profit > 0)) return 0;
     const tier = tierFor(profit, bet, streak);
     const t = TIERS[tier];
     const at = anchor();
+    marqueeHot(400 + tier * 400);
     CR.audio.play(t.sound);
     if (streak >= 1) CR.audio.play(`streak_${Math.min(5, streak)}`, { when: 0.08, gain: 0.8 });
     word(special || t.word, at.x, at.y - 30, tier >= 4 ? 4 : 3);
@@ -151,6 +161,7 @@ CR.fx = (() => {
 
   function goal() {
     const at = anchor();
+    marqueeHot(2500);
     CR.audio.play("goal_fanfare");
     word("goal", innerWidth / 2, innerHeight * 0.3, 5);
     confetti(80);
@@ -158,8 +169,31 @@ CR.fx = (() => {
     shake(5);
   }
 
-  return { burst, confetti, word, shake, celebrate, loss, goal, tierFor, anchor, count: () => parts.length };
+  return { burst, confetti, word, shake, celebrate, loss, goal, tierFor, anchor, marqueeHot, count: () => parts.length };
 })();
+
+/* ---------- Machine marquees: a named sign with chasing bulbs above every game ---------- */
+CR.MACHINES = {
+  "plinko-screen": ["THE PEG FOUNDRY", "#FF9E45"],
+  "roulette-screen": ["THE RUBY WHEEL", "#FF7A72"],
+  "crash-screen": ["ROCKET RUCKUS", "#37D9E8"],
+  "blackjack-screen": ["THE TWENTY-ONE CLUB", "#F4C34E"],
+  "frog-screen": ["ELEPHANT RIVER", "#FF8CC6"],
+  "horse-screen": ["DERBY DASH", "#7EDD65"],
+  "shop-screen": ["CASINO SHOP", "#9B7BF0"],
+};
+document.addEventListener("DOMContentLoaded", () => {
+  Object.entries(CR.MACHINES).forEach(([id, [title, accent]]) => {
+    const screen = document.getElementById(id);
+    if (!screen || screen.querySelector(".marquee")) return;
+    const bulbs = '<div class="bulbs" aria-hidden="true">' + '<span class="bulb"></span>'.repeat(16) + "</div>";
+    const m = document.createElement("div");
+    m.className = "marquee";
+    m.style.setProperty("--accent", accent);
+    m.innerHTML = `${bulbs}<div class="marquee-title">${title}</div>${bulbs}`;
+    screen.prepend(m);
+  });
+});
 
 /* ---------------- HUD ---------------- */
 CR.hud = (() => {
