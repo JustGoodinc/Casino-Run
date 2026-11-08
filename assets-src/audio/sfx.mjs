@@ -97,6 +97,16 @@ export const SFX = {
   item_break: ["game", () => mix([[noise({ dur: 0.25, decay: 18, hp: 3000 })], ...[3100, 4200, 5300].map((f, k) => [bell({ f, ratio: 1.73, index: 2, dur: 0.2, decay: 20, vol: 0.5 }), k * 0.025])])],
   grease_fire: ["game", () => mix([[noise({ dur: 0.6, env: { a: 0.15, d: 0.3, s: 0.3, r: 0.15 }, lp: (t) => 400 + t * 5000 })], ...[0, 1, 2, 3, 4, 5].map((k) => [noise({ dur: 0.02, decay: 200, hp: 2500, vol: 0.6 }), 0.1 + k * 0.07])])],
 
+  // ---- Per-game big-win stingers (gauntlet iteration 4) ----
+  // Played on tier 4+ wins on top of the tier sound, using each game's own music instruments
+  // (V, defined below; these run at build time, after the module has loaded).
+  sting_plinko: ["score", () => seq([96, 93, 91, 88, 86, 84, 88, 91, 96], 0.045, (n, k) => V.pluck(n, k === 8 ? 0.5 : 0.12))],
+  sting_roulette: ["score", () => mix([[seq([74, 77, 81, 86], 0.07, (n) => V.accordion(n, 0.12))], [V.accordion(86, 0.6), 0.3], [V.accordion(81, 0.6), 0.3], ...[0, 0.05, 0.12].map((t) => [K.castanet(), 0.3 + t])])],
+  sting_crash: ["score", () => mix([[tone({ f: 220, f1: 1760, dur: 0.35, type: "saw", env: { a: 0.01, d: 0.3, s: 0.5, r: 0.05 }, lp: (t) => 800 + t * 12000, vol: 0.5 })], [V.synth(88, 0.45), 0.33], [V.synth(95, 0.45), 0.33], [K.kick(), 0.33]])],
+  sting_blackjack: ["score", () => mix([[mix([65, 69, 72, 76].map((n) => [V.keys(n, 0.7)])).map((v) => v * 2.5)], [V.mute(81, 0.18), 0.05], [V.mute(77, 0.18), 0.2], [tone({ f: midi(84), f1: midi(72), dur: 0.45, type: "square", env: { a: 0.02, d: 0.3, s: 0.4, r: 0.1 }, lp: 1300, vol: 0.3 }), 0.35], [K.ride(), 0.05]])],
+  sting_river: ["score", () => mix([[seq([79, 83, 86, 91, 95], 0.06, (n) => V.marimba(n, 0.2))], [noise({ dur: 0.4, decay: 7, lp: 1400, vol: 0.5 }), 0.32], [V.marimba(91, 0.4), 0.32]])],
+  sting_horse: ["score", () => mix([[seq([69, 73, 76, 81, 76, 81], 0.08, (n, k) => V.brass(n, k === 5 ? 0.5 : 0.1))], ...[0, 0.09, 0.18, 0.36, 0.45].map((t) => [K.block(), t])])],
+
   // ---- Progression ----
   goal_fanfare: ["big", () => echo(mix([
     [seq([67, 72, 76, 79], 0.1, (n) => tone({ f: midi(n), dur: 0.12, type: "square", env: { a: 0.004, d: 0.05, s: 0.7, r: 0.02 }, lp: 3500, vol: 0.6 }))],

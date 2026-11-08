@@ -57,3 +57,15 @@
 **Evidence:** `screenshots/iter-3/`.
 
 **Remaining:** river hazards and horses could use more animation frames; crash rocket trail; per-game sound stingers on big wins; the web layout isn't a 3DS layout (Studio mockups are); the music loops haven't been judged by ear.
+
+## Iteration 4 (2026-11-08), on `main`, deployed
+
+**Owner bug report (iPhone screenshot):** the roulette wheel sat off-centre in its bowl on phones. **Cause:** `style.css` shrinks `#roulette-canvas` to 260px under 500px wide, while the bowl hole is sized for 300px. **Fix:** the canvas is pinned at 300px and the whole wheel assembly scales (`zoom` 0.86 ≤500px, 0.78 ≤360px). **Verified at 390px:** the wheel and bowl centres coincide (offset 0,0); no overflow.
+
+**Audio:** 6 per-game big-win stingers (`sting_*`) built from each game's music instruments, played on tier-4+ wins 180 ms after the tier sound. Verified: a Crash tier-4 win played `win_large` + `sting_crash`.
+
+**Visual:** Crash exhaust trail (10 flickering pixel puffs, gold → orange → red → smoke); river hazards bob on the water (staggered per lane, uses `translate` so the mirrored sprites keep their flip).
+
+**Tests:** validator PASS (66 clips). Regression 19/20 on the first run. The Plinko drop timed out because the pane was throttled to 2 fps; re-run in isolation, it paid exactly $140 (PASS). The test's wait was raised from 60 s to 180 s.
+
+**Still open:** the floating ITEMS bag covers the right end of full-width buttons (e.g. SPIN) on phones; the next fix moves it into the HUD on small screens.

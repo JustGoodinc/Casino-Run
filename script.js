@@ -3477,6 +3477,18 @@ function drawCrashGraph(multiplier, crashed = false) {
   crashCtx.lineJoin = "miter";
   crashCtx.stroke();
 
+  // Exhaust trail: pixel puffs along the last stretch of the curve, hot near the rocket, smoke behind.
+  if (!crashed && points.length > 12) {
+    const flicker = Math.floor(performance.now() / 60);
+    for (let k = 1; k <= 10; k++) {
+      const p = points[points.length - 1 - k * 2];
+      if (!p) break;
+      const size = Math.max(2, 7 - Math.floor(k / 2)) + ((k + flicker) % 2);
+      crashCtx.fillStyle = k < 3 ? "#F4C34E" : k < 5 ? "#FF9E45" : k < 7 ? "#F45B58" : "#5B5772";
+      crashCtx.fillRect(Math.round(p.x - size / 2 + ((k * 7 + flicker) % 3) - 1), Math.round(p.y - size / 2 + ((k * 5 + flicker) % 3) - 1), size, size);
+    }
+  }
+
   // Pixel rocket rides the tip of the curve, nose along the curve's direction (2 flame frames).
   const tip = points[points.length - 1], prev = points[points.length - 4] || points[0];
   if (crashRocketSprite.complete && crashRocketSprite.naturalWidth && !crashed) {

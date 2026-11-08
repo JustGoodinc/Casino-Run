@@ -93,7 +93,8 @@
     plinkoBtn.click();
     rollPlinkoSlot = realRoll;
     // Poll rather than a fixed wait: a background tab throttles requestAnimationFrame.
-    for (let i = 0; i < 600 && activePlinkoBalls > 0; i++) await wait(100);
+    // Up to 3 min: a throttled tab can drop to ~2 fps and the physics advances per frame.
+    for (let i = 0; i < 1800 && activePlinkoBalls > 0; i++) await wait(100);
     check("Plinko pays the rolled slot", balance === 140 && activePlinkoBalls === 0, `balance ${balance}`);
 
     // Roulette Magnet ignores green and stays active.

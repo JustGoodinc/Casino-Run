@@ -158,6 +158,12 @@ CR.fx = (() => {
     "Horse Race": ["fx/shoe", "fx/confetti"],
   };
 
+  // Big-win (tier 4+) signature flourish per game, built from that game's music instruments.
+  const STING = {
+    Plinko: "sting_plinko", Roulette: "sting_roulette", Crash: "sting_crash",
+    Blackjack: "sting_blackjack", "Elephant River": "sting_river", "Horse Race": "sting_horse",
+  };
+
   // Floating pixel number at the impact point: small = quick bounce, big = expanding wobble.
   function popNumber(text, x, y, tier = 2, color = "#7EDD65") {
     const el = document.createElement("div");
@@ -189,6 +195,7 @@ CR.fx = (() => {
     const kit = KITS[game] ? (tier >= 4 ? [...KITS[game], ...t.kinds] : KITS[game]) : t.kinds;
     marqueeHot(400 + tier * 400);
     CR.audio.play(t.sound);
+    if (tier >= 4 && STING[game]) CR.audio.play(STING[game], { when: 0.18, gain: 0.85 });
     if (streak >= 1) CR.audio.play(`streak_${Math.min(5, streak)}`, { when: 0.08, gain: 0.8 });
     word(special || t.word, at.x, at.y - 46, tier >= 4 ? 4 : 3);
     popNumber(`+$${profit.toFixed(2)}`, at.x, at.y + 6, tier, tier >= 4 ? "#F4C34E" : "#7EDD65");

@@ -2054,6 +2054,66 @@
    "loop": false
   },
   {
+   "id": "sting_plinko",
+   "category": "score",
+   "file": "audio/sting_plinko.wav",
+   "seconds": 0.86,
+   "peakDb": -3.92,
+   "rmsDb": -15.46,
+   "bytes": 37970,
+   "loop": false
+  },
+  {
+   "id": "sting_roulette",
+   "category": "score",
+   "file": "audio/sting_roulette.wav",
+   "seconds": 0.9,
+   "peakDb": -3.92,
+   "rmsDb": -14.46,
+   "bytes": 39734,
+   "loop": false
+  },
+  {
+   "id": "sting_crash",
+   "category": "score",
+   "file": "audio/sting_crash.wav",
+   "seconds": 0.780045351473923,
+   "peakDb": -3.92,
+   "rmsDb": -18.18,
+   "bytes": 34444,
+   "loop": false
+  },
+  {
+   "id": "sting_blackjack",
+   "category": "score",
+   "file": "audio/sting_blackjack.wav",
+   "seconds": 0.8,
+   "peakDb": -3.92,
+   "rmsDb": -15.95,
+   "bytes": 35324,
+   "loop": false
+  },
+  {
+   "id": "sting_river",
+   "category": "score",
+   "file": "audio/sting_river.wav",
+   "seconds": 0.72,
+   "peakDb": -3.92,
+   "rmsDb": -15.94,
+   "bytes": 31796,
+   "loop": false
+  },
+  {
+   "id": "sting_horse",
+   "category": "score",
+   "file": "audio/sting_horse.wav",
+   "seconds": 0.9,
+   "peakDb": -3.92,
+   "rmsDb": -15.97,
+   "bytes": 39734,
+   "loop": false
+  },
+  {
    "id": "goal_fanfare",
    "category": "big",
    "file": "audio/goal_fanfare.wav",
@@ -2089,7 +2149,7 @@
    "file": "audio/time_tick.wav",
    "seconds": 0.03501133786848073,
    "peakDb": -8.19,
-   "rmsDb": -20.62,
+   "rmsDb": -20.31,
    "bytes": 1588,
    "loop": false
   },
@@ -2139,7 +2199,7 @@
    "file": "audio/music_crash.wav",
    "seconds": 12.8,
    "peakDb": -7.44,
-   "rmsDb": -22.59,
+   "rmsDb": -22.63,
    "bytes": 564524,
    "loop": true
   },
@@ -2159,7 +2219,7 @@
    "file": "audio/music_river.wav",
    "seconds": 16,
    "peakDb": -7.44,
-   "rmsDb": -22.89,
+   "rmsDb": -22.87,
    "bytes": 705644,
    "loop": true
   },
@@ -2177,6 +2237,6 @@
  "tex3ds": {
   "ok": true,
   "note": "140 sprites -> sprites.t3x 51.3 KB (140 header defines); font.t3x 0.6 KB (A8)",
-  "checked": "2026-11-08T07:13:38.008Z"
+  "checked": "2026-11-08T07:32:58.702Z"
  }
 }
