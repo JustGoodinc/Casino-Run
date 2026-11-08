@@ -76,7 +76,30 @@ CR.rules = (() => {
   }
   const pick = (list) => list[randInt(list.length)];
 
+  // Settlement (stage 1b): the money formulas only; inventory/UI side effects stay in script.js.
+  const START = { balance: 100, goal: 300, time: 120 };
+  const nextGoal = (balance) => Math.max(50, Math.ceil(balance * 3)); // goal for the next round
+  const goalCutterGoal = (goal) => Math.max(50, Math.ceil(goal * 0.9));
+  const coinFlipRescue = (goal) => goal * 0.2;
+  const streakBonusRate = (streak) => (streak >= 5 ? 0.5 : streak === 4 ? 0.35 : streak === 3 ? 0.2 : streak === 2 ? 0.1 : 0);
+  const hulaGirlBonus = (baseProfit, count) => (baseProfit > 0 ? baseProfit * 0.1 * count : 0);
+  // Grease Fire triples a real streak bonus (and is used up only then); on a loss it burns 25% of balance.
+  function streakBonus(baseProfit, streak, greaseFire) {
+    const bonus = Math.max(0, baseProfit) * streakBonusRate(streak);
+    return greaseFire && bonus > 0 ? { bonus: bonus * 3, greaseUsed: true } : { bonus, greaseUsed: false };
+  }
+  const greaseFireBurn = (balance) => balance * 0.25;
+  // Full loss: up to 2 Insurance Tickets refund 50% of the bet each; Cashback refunds 5%.
+  function lossRefund(bet, insuranceCount, cashbackActive) {
+    const tickets = Math.min(insuranceCount, 2);
+    const insurance = bet * 0.5 * tickets;
+    const cashback = cashbackActive ? bet * 0.05 : 0;
+    return { tickets, insurance, cashback, total: insurance + cashback };
+  }
+
   return {
+    START, nextGoal, goalCutterGoal, coinFlipRescue,
+    streakBonusRate, hulaGirlBonus, streakBonus, greaseFireBurn, lossRefund,
     seed: (n) => { seeded = n == null ? null : mulberry32(n >>> 0); },
     rand, randInt, shuffle, pick,
     plinkoMultipliers, plinkoSlotOdds, rollPlinkoSlot,

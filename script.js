@@ -649,11 +649,7 @@ function renderRunHistory(containerId) {
 }
 
 function getStreakBonusRate() {
-  if (currentWinStreak >= 5) return 0.5;
-  if (currentWinStreak === 4) return 0.35;
-  if (currentWinStreak === 3) return 0.2;
-  if (currentWinStreak === 2) return 0.1;
-  return 0;
+  return R.streakBonusRate(currentWinStreak);
 }
 
 function getStreakLabel() {
@@ -695,12 +691,9 @@ function handleHotStreakWin(baseProfit, bonusLines = []) {
   currentWinStreak++;
   highestWinStreak = Math.max(highestWinStreak, currentWinStreak);
 
-  const bonusRate = getStreakBonusRate();
-  let streakBonus = Math.max(0, baseProfit) * bonusRate;
-
   // Grease Fire stays lit until a win actually has a streak bonus to triple (per its description).
-  if (greaseFireActive && streakBonus > 0) {
-    streakBonus *= 3;
+  const { bonus: streakBonus, greaseUsed } = R.streakBonus(baseProfit, currentWinStreak, greaseFireActive);
+  if (greaseUsed) {
     bonusLines.push({
       type: "bonus",
       text: "Grease Fire! Triple Hot Streak Bonus!"
@@ -724,7 +717,7 @@ function handleHotStreakWin(baseProfit, bonusLines = []) {
 
 function handleHotStreakLoss() {
   if (greaseFireActive) {
-    const burnAmount = balance * 0.25;
+    const burnAmount = R.greaseFireBurn(balance);
     greaseFireActive = false;
 
     if (burnAmount > 0) {
@@ -768,8 +761,7 @@ function applyRoundWin(payout, bet, bonusLines = [], gameName = "Game") {
   const hulaGirlCount = countItem("luckyHulaGirl");
 
   if (hulaGirlCount > 0 && baseProfit > 0) {
-    const bonusRate = 0.1 * hulaGirlCount;
-    const bonus = baseProfit * bonusRate;
+    const bonus = R.hulaGirlBonus(baseProfit, hulaGirlCount);
 
     if (bonus > 0) {
       finalPayout += bonus;
@@ -1084,7 +1076,7 @@ playBtn.addEventListener("click", () => {
   CR.audio.music(SCREEN_MUSIC[openScreen && openScreen.id] || "music_plinko");
   CR.audio.play("new_round");
   resetRunTracking();
-  goal = Math.max(50, Math.ceil(balance * 3));
+  goal = R.nextGoal(balance);
 
   gameStarted = true;
   runEnded = false;
@@ -1767,7 +1759,7 @@ function useInventoryItem(itemId) {
   }
 
   if (itemId === "goalCutter") {
-    goal = Math.max(50, Math.ceil(goal * 0.9));
+    goal = R.goalCutterGoal(goal);
     removeItemFromInventory(itemId, true);
     updateUI();
     closeItemPopup();
@@ -1888,17 +1880,11 @@ function applyWinBonus(payout, bet, bonusLines = [], gameName = "Game") {
 }
 
 function processFullLoss(bet, gameName = "Game") {
-  let refund = 0;
-  let messageParts = [];
+  const messageParts = [];
+  const { tickets: ticketsToUse, insurance: insuranceRefund, cashback: cashbackRefund, total: refund } =
+    R.lossRefund(bet, countItem("insuranceTicket"), Date.now() < cashbackActiveUntil);
 
-  const insuranceCount = countItem("insuranceTicket");
-
-  if (insuranceCount > 0) {
-    const ticketsToUse = Math.min(insuranceCount, 2);
-    const insuranceRefund = bet * 0.5 * ticketsToUse;
-
-    refund += insuranceRefund;
-
+  if (ticketsToUse > 0) {
     for (let i = 0; i < ticketsToUse; i++) {
       removeItemFromInventory("insuranceTicket", true);
     }
@@ -1908,9 +1894,7 @@ function processFullLoss(bet, gameName = "Game") {
     );
   }
 
-  if (Date.now() < cashbackActiveUntil) {
-    const cashbackRefund = bet * 0.05;
-    refund += cashbackRefund;
+  if (cashbackRefund > 0) {
     messageParts.push(`Cashback returned $${cashbackRefund.toFixed(2)}.`);
   }
 
@@ -2110,9 +2094,9 @@ function resetRunToTitleScreen() {
   devUEasterEggUnlocked = false;
   devUEasterEggClicks = 0;
 
-  balance = 100;
-  goal = 300;
-  timeLeft = 120;
+  balance = R.START.balance;
+  goal = R.START.goal;
+  timeLeft = R.START.time;
   currentRound = 1;
   moneyPopupActive = false;
   currentWinStreak = 0;
@@ -2311,7 +2295,7 @@ function continueRun() {
   goalPopup.classList.add("hidden");
 
   currentRound++;
-  goal = Math.max(50, Math.ceil(balance * 3));
+  goal = R.nextGoal(balance);
   timeLeft = 120;
 
   goalPopupMessage.textContent = "";
@@ -2581,7 +2565,7 @@ function showCoinFlipPopup() {
     `Coin flips left: ${maxCoinFlips - coinFlipUses}`;
 
   coinFlipMessage.textContent =
-    `You dropped under $1. Flip the coin. Win and get $${(goal * 0.2).toFixed(2)}. Lose and the run ends.`;
+    `You dropped under $1. Flip the coin. Win and get $${R.coinFlipRescue(goal).toFixed(2)}. Lose and the run ends.`;
 
   flipCoinBtn.disabled = false;
 
@@ -2627,7 +2611,7 @@ function flipRescueCoin() {
     if (playerWins) {
       coin.classList.add("win");
 
-      const rescueAmount = goal * 0.2;
+      const rescueAmount = R.coinFlipRescue(goal);
 
       balance = rescueAmount;
       recordBalancePoint();

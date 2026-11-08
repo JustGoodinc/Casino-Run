@@ -129,3 +129,11 @@ Verification only, at 375×812 in the visible pane. Roulette: wheel centred in t
 **Tests:** new check "Seeded rules are deterministic" (seed 42 twice gives identical outcomes; seed 7 differs). Regression **22/22** in 30 s.
 
 **Still in stage 1:** settlement (`applyRoundWin`, `processFullLoss`, Hot Streak, items) and goal/timer progression still live in `script.js` alongside DOM updates.
+
+## Iteration 11 (2026-11-08): settlement formulas into rules.js (3DS stage 1b)
+
+**Implemented:** `CR.rules` now also holds the money formulas: `START` (100 / 300 / 120 s), `nextGoal` (balance × 3, minimum 50), `goalCutterGoal` (−10%), `coinFlipRescue` (20% of goal), `streakBonusRate`, `streakBonus` (Grease Fire triples a real bonus and is used up only then), `hulaGirlBonus` (+10% of profit each), `greaseFireBurn` (25% of balance) and `lossRefund` (up to 2 Insurance Tickets at 50% each, plus 5% Cashback). `script.js` keeps only the side effects: consuming items, toasts, popups, HUD. No values changed.
+
+**Tests:** new "Settlement formulas" check pins each formula to its documented value; the existing end-to-end Grease Fire, insurance and goal checks still pass. Regression **23/23** in 30 s.
+
+**Stage 1 status:** all outcome and money rules now live in `rules.js`. Still in `script.js`: the timer tick and run/round state machine, which are tied to DOM timers. The C port (stage 2) can start from `rules.js`, compared against JS by seed.

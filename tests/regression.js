@@ -87,6 +87,14 @@
     CR.rules.seed(42); const s1 = sample(); CR.rules.seed(42); const s2 = sample(); CR.rules.seed(7); const s3 = sample(); CR.rules.seed(null);
     check("Seeded rules are deterministic", s1 === s2 && s1 !== s3, `${s1} / ${s3}`);
 
+    // Settlement formulas (stage 1b) pinned to the documented values.
+    const Rr = CR.rules, lr = Rr.lossRefund(20, 3, true), sb = Rr.streakBonus(10, 2, true);
+    check("Settlement formulas", Rr.nextGoal(100) === 300 && Rr.nextGoal(10) === 50 && Rr.goalCutterGoal(300) === 270
+      && Rr.streakBonusRate(1) === 0 && Rr.streakBonusRate(5) === 0.5 && Rr.hulaGirlBonus(10, 2) === 2
+      && sb.bonus === 3 && sb.greaseUsed && !Rr.streakBonus(10, 1, true).greaseUsed
+      && lr.tickets === 2 && lr.insurance === 20 && lr.cashback === 1 && Rr.coinFlipRescue(300) === 60,
+      JSON.stringify({ lr, sb }));
+
     const slotCounts = [0, 0, 0, 0, 0];
     for (let i = 0; i < N; i++) slotCounts[rollPlinkoSlot()]++;
     const plinkoEv = slotCounts.reduce((sum, c, i) => sum + (c / N) * plinkoMultipliers[i], 0);
