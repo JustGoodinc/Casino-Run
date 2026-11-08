@@ -137,3 +137,13 @@ Verification only, at 375×812 in the visible pane. Roulette: wheel centred in t
 **Tests:** new "Settlement formulas" check pins each formula to its documented value; the existing end-to-end Grease Fire, insurance and goal checks still pass. Regression **23/23** in 30 s.
 
 **Stage 1 status:** all outcome and money rules now live in `rules.js`. Still in `script.js`: the timer tick and run/round state machine, which are tied to DOM timers. The C port (stage 2) can start from `rules.js`, compared against JS by seed.
+
+## Iteration 12 (2026-11-08): C rules core (3DS stage 2)
+
+**Implemented:** `3ds/source/rules.c` + `rules.h` mirror `rules.js` function by function: mulberry32 (bit-identical, uint32), Plinko, roulette with Magnet, crash, river, deck shuffle and hand values, and the settlement formulas. Money stays `double`, like the JS (the 3DS ARM11 has hardware VFP doubles). Cards are `suit * 13 + rank`, in the JS deck order.
+
+**Equivalence check:** `3ds/tests/make_vectors.mjs` runs the real `rules.js` in a Node `vm` and writes `rules_vectors.h` (seeds 1–16: 8 Plinko slots, 4 crash points, 6 roulette spins, 6 Magnet spins, a full 52-card shuffle and the next raw random, plus river multipliers). `rules_check.c` compares them with exact `==` on doubles.
+
+**Results:** built with the TinyCC bundled in an installed app (no host gcc on this PC) and run: **0 failures**. Negative test: changing one vector made it fail (`plinko[0] 2 != 3`, exit 1). The first negative test passed by mistake because the quoted `#include` picked up the real header beside `rules_check.c`, so the test was redone with both files isolated. The files also compile for the 3DS CPU (devkitARM, `-march=armv6k -mfloat-abi=hard -mfpu=vfp -Wall -Wextra`) with no warnings.
+
+**Next 3DS stage:** renderer (citro2d) using the existing `sprites.t3x` atlas.
