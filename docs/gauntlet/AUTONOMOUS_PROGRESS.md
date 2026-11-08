@@ -1,6 +1,6 @@
 # Autonomous Progress: restart checkpoint
 
-**Branch:** `redesign/audiovisual` (never pushed; `main` deploys to GitHub Pages, so don't merge without the owner).
+**Branch:** work directly on `main` (owner granted push authority 2026-11-08). Every push deploys live to casinorun.fun via GitHub Pages. Run regression (20/20) + validator before pushing.
 **Current gauntlet iteration:** 4 (iterations 1–3 committed).
 
 ## Resume in 4 commands
