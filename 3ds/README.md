@@ -16,4 +16,4 @@ make
 
 The output is `casino-run.3dsx`; run it with the Homebrew Launcher or a 3DS emulator.
 
-**Status (2026-11-08):** builds clean (no warnings). It has **not been run yet**, either on hardware or in an emulator (none installed here).
+**Status (2026-11-08):** builds clean and **runs in Azahar 2126.2** at 60 FPS: drop, payout, host mood and bet controls checked (see `docs/gauntlet/ITERATION_LOG.md` iteration 16). Not yet run on real hardware. Azahar is at `C:\Users\admin\Tools\Azahar` on the dev PC; run `azahar.exe casino-run.3dsx`.

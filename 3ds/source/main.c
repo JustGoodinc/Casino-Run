@@ -5,6 +5,7 @@
 #include <citro2d.h>
 #include <stdio.h>
 #include <ctype.h>
+#include <math.h>
 #include "rules.h"
 #include "sprites.h"
 #include "font_glyphs.h"
@@ -45,6 +46,10 @@ static void text(float x, float y, int scale, u32 color, const char *s) {
   const Tex3DS_SubTexture *a = atlas.subtex;
   C2D_ImageTint tint;
   C2D_PlainImageTint(&tint, color, 1.0f);
+  // Whole-pixel positions: a centred line can land on x.5, and nearest sampling then drops each
+  // glyph's left column (seen in Azahar at 1x).
+  x = floorf(x);
+  y = floorf(y);
   float cx = x;
   for (; *s; s++) {
     if (*s == '\n') { cx = x; y += (CR_FONT_CELL_H + 1) * scale; continue; }
@@ -77,6 +82,9 @@ int main(void) {
   C3D_RenderTarget *bottom = C2D_CreateScreenTarget(GFX_BOTTOM, GFX_LEFT);
   sheet = C2D_SpriteSheetLoad("romfs:/gfx/sprites.t3x");
   if (!sheet) svcBreak(USERBREAK_PANIC);
+  // Pixel art: nearest-neighbour sampling. With the default linear filter, 1x glyphs blurred into
+  // their neighbours (seen in Azahar: "A DROP" was unreadable).
+  C3D_TexSetFilter(C2D_SpriteSheetGetImage(sheet, 0).tex, GPU_NEAREST, GPU_NEAREST);
 
   cr_rng rng;
   cr_seed(&rng, (u32)osGetTime());

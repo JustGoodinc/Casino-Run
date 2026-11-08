@@ -165,3 +165,13 @@ Verification only, at 375×812 in the visible pane. Roulette: wheel centred in t
 **Implemented:** `runState(timeLeft, balance, goal)` in `rules.js` (time up, then goal hit, then broke, then play: the same priority as before) and `TIME_BOTTLE_SECONDS`. `checkGameState` now reads the state from rules and keeps only the screen changes. Mirrored in C as `cr_run_state` / `CR_TIME_BOTTLE_SECONDS`. The 1-second `setInterval` tick stays in `script.js`, because it is the platform clock (on 3DS it becomes the frame loop).
 
 **Tests:** web regression **24/24** (new "Run state priority"); C `rules_check` 0 failures including run state; regenerated vectors identical (no rule values moved); `.3dsx` builds clean.
+
+## Iteration 16 (2026-11-08): first run in an emulator (Azahar)
+
+**Setup:** Azahar 2126.2, the official portable Windows MSVC build from `azahar-emu/azahar` GitHub releases (owner approved the install). Unzipped to `C:\Users\admin\Tools\Azahar`; SHA-256 matched GitHub's published asset digest. Launched with `azahar.exe <path>.3dsx`; the window was captured with a PowerShell `CopyFromScreen` script and keys were sent with `keybd_event` (default mapping: A = A, D-pad Up = T).
+
+**Verified on the emulator:** the build boots and holds 60 FPS. Top screen: plate tiles, 7 peg rows, 5 coloured multiplier slots. Bottom screen: logo, pixel-font HUD, Dice. A drops a ball that visibly falls through the pegs, and the bet is taken at once ($100 → $90). It lands in its pre-rolled slot, the slot lights up and the payout is settled (1× = push back to $100). On a 2× win Dice switches to the cheer frame. Up ×3 changed the bet $10 → $13.
+
+**Bug found and fixed:** the 1× controls line was unreadable, with each glyph missing its left column (`text-1x-before.png`). The first guess, linear filtering, did not fix it (nearest filtering was kept anyway, since it is right for pixel art). The real cause was the centred line starting at x.5, so nearest sampling dropped a column. `text()` now floors x and y; the line is clean after the fix (`text-1x-after.png`).
+
+Evidence: `screenshots/iter-16/`.
