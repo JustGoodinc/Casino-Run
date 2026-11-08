@@ -77,6 +77,11 @@
     const riverEv = [1, 2, 3, 4, 5].map((lane) => { survival *= 1 - getFrogBaseCrashChance(lane); return survival * getFrogMultiplier(lane); });
     check("Elephant River EV 0.96 at every lane", riverEv.every((ev) => Math.abs(ev - 0.96) < 1e-9), riverEv.map((e) => e.toFixed(3)).join(" "));
 
+    // Roulette wheel art: every number once, colours alternate around the wheel (0 excepted).
+    const order = WHEEL_ORDER;
+    const alternates = order.slice(1).every((n, i) => i === 0 || getRouletteColor(n) !== getRouletteColor(order[i]));
+    check("Roulette wheel order: 37 unique, red/black alternate", new Set(order).size === 37 && order.every((n) => n >= 0 && n <= 36) && alternates);
+
     const slotCounts = [0, 0, 0, 0, 0];
     for (let i = 0; i < N; i++) slotCounts[rollPlinkoSlot()]++;
     const plinkoEv = slotCounts.reduce((sum, c, i) => sum + (c / N) * plinkoMultipliers[i], 0);

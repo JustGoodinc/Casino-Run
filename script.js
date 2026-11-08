@@ -3133,68 +3133,85 @@ function getRandomRouletteNumberForColor(color) {
   return options[Math.floor(Math.random() * options.length)];
 }
 
-function drawRouletteWheel() {
-  const canvas = rouletteCanvas;
-  const ctx = rouletteCtx;
+// Gauntlet 8: the wheel is pixel art. Pockets, frets and cone are drawn at half resolution and
+// upscaled 2x (the sprites' grid); numbers go on at full res in the pixel font. Every pixel is then
+// snapped to the palette with hard alpha, so no antialiased edges remain.
+const WHEEL_PALETTE = ["#0E0C17", "#191727", "#29263A", "#F4C34E", "#B8862B", "#F45B58", "#A8323A",
+  "#7EDD65", "#3F9447", "#FFF0CE", "#8A5A3B", "#5E3A24"].map((h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16)));
+// European pocket order (red/black alternate). Visual only: the result is rolled uniformly first.
+const WHEEL_ORDER = [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26];
+const POCKET_FACE = { red: "#F45B58", black: "#191727", green: "#7EDD65" };
+const POCKET_FLOOR = { red: "#A8323A", black: "#0E0C17", green: "#3F9447" };
+const wheelArt = document.createElement("canvas");
 
-  const size = canvas.width;
+function snapToPalette(ctx, size) {
+  const img = ctx.getImageData(0, 0, size, size), d = img.data;
+  for (let p = 0; p < d.length; p += 4) {
+    if (d[p + 3] < 128) { d[p + 3] = 0; continue; }
+    let best = WHEEL_PALETTE[0], bestDist = Infinity;
+    for (const c of WHEEL_PALETTE) {
+      const dist = (d[p] - c[0]) ** 2 + (d[p + 1] - c[1]) ** 2 + (d[p + 2] - c[2]) ** 2;
+      if (dist < bestDist) { bestDist = dist; best = c; }
+    }
+    d[p] = best[0]; d[p + 1] = best[1]; d[p + 2] = best[2]; d[p + 3] = 255;
+  }
+  ctx.putImageData(img, 0, 0);
+}
+
+function drawRouletteWheel() {
+  const ctx = rouletteCtx;
+  const size = rouletteCanvas.width;
   const center = size / 2;
   const radius = size / 2 - 4;
-
   const totalNumbers = 37;
   const angleStep = (Math.PI * 2) / totalNumbers;
+  const startOf = (n) => -Math.PI / 2 - angleStep / 2 + n * angleStep;
+
+  // Half-res pixel layer.
+  const half = size / 2, c = half / 2, R = radius / 2;
+  wheelArt.width = wheelArt.height = half;
+  const g = wheelArt.getContext("2d");
+  const band = (r0, r1, a0, a1, fill) => {
+    g.beginPath(); g.arc(c, c, r1, a0, a1); g.arc(c, c, r0, a1, a0, true); g.closePath();
+    g.fillStyle = fill; g.fill();
+  };
+  const circle = (r, stroke, width = 1) => { g.beginPath(); g.arc(c, c, r, 0, Math.PI * 2); g.strokeStyle = stroke; g.lineWidth = width; g.stroke(); };
+
+  band(0, R * 0.3, 0, Math.PI * 2, "#191727"); // centre well under the hub
+  band(R * 0.3, R * 0.46, 0, Math.PI * 2, "#5E3A24"); // wooden cone
+  circle(R * 0.38, "#8A5A3B");
+  for (let n = 0; n < totalNumbers; n++) {
+    const col = getRouletteColor(WHEEL_ORDER[n]), a0 = startOf(n), a1 = a0 + angleStep;
+    band(R * 0.62, R, a0, a1, POCKET_FACE[col]); // number band
+    band(R * 0.46, R * 0.62, a0, a1, POCKET_FLOOR[col]); // pocket floor
+  }
+  g.strokeStyle = "#F4C34E"; g.lineWidth = 1; // frets between pockets
+  for (let n = 0; n < totalNumbers; n++) {
+    const a = startOf(n);
+    g.beginPath(); g.moveTo(c + Math.cos(a) * R * 0.46, c + Math.sin(a) * R * 0.46);
+    g.lineTo(c + Math.cos(a) * R, c + Math.sin(a) * R); g.stroke();
+  }
+  circle(R * 0.62, "#B8862B");
+  circle(R * 0.46, "#F4C34E");
+  circle(R - 0.5, "#0E0C17");
 
   ctx.clearRect(0, 0, size, size);
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(wheelArt, 0, 0, size, size);
 
-  for (let number = 0; number < totalNumbers; number++) {
-    const color = getRouletteColor(number);
-
-    const startAngle = -Math.PI / 2 - angleStep / 2 + number * angleStep;
-    const endAngle = startAngle + angleStep;
-
-    ctx.beginPath();
-    ctx.moveTo(center, center);
-    ctx.arc(center, center, radius, startAngle, endAngle);
-    ctx.closePath();
-
-    if (color === "green") {
-      ctx.fillStyle = "#7EDD65";
-    } else if (color === "red") {
-      ctx.fillStyle = "#F45B58";
-    } else {
-      ctx.fillStyle = "#191727";
-    }
-
-    ctx.fill();
-
-    ctx.strokeStyle = "#F4C34E";
-    ctx.lineWidth = 0.8;
-    ctx.stroke();
-
-    const textAngle = startAngle + angleStep / 2;
-    const textRadius = radius * 0.75;
-
-    const textX = center + Math.cos(textAngle) * textRadius;
-    const textY = center + Math.sin(textAngle) * textRadius;
-
+  ctx.fillStyle = "#FFF0CE";
+  ctx.font = "10px 'Casino Run Pixel', monospace";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  for (let n = 0; n < totalNumbers; n++) {
+    const a = startOf(n) + angleStep / 2, r = radius * 0.81;
     ctx.save();
-    ctx.translate(textX, textY);
-    ctx.rotate(textAngle + Math.PI / 2);
-    ctx.fillStyle = "white";
-    ctx.font = "10px 'Casino Run Pixel', monospace";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText(number.toString(), 0, 0);
+    ctx.translate(center + Math.cos(a) * r, center + Math.sin(a) * r);
+    ctx.rotate(a + Math.PI / 2);
+    ctx.fillText(String(WHEEL_ORDER[n]), 0, 0);
     ctx.restore();
   }
-
-  ctx.beginPath();
-  ctx.arc(center, center, 38, 0, Math.PI * 2);
-  ctx.fillStyle = "#191727";
-  ctx.fill();
-  ctx.strokeStyle = "#F4C34E";
-  ctx.lineWidth = 3;
-  ctx.stroke();
+  snapToPalette(ctx, size);
 
   // Gold turret hub sprite (assets/sprites/roulette/hub.png) at 2x; it rotates with the wheel.
   if (rouletteHubSprite.complete && rouletteHubSprite.naturalWidth) {
@@ -3207,6 +3224,8 @@ function drawRouletteWheel() {
 const rouletteHubSprite = new Image();
 rouletteHubSprite.onload = () => drawRouletteWheel();
 rouletteHubSprite.src = "assets/sprites/roulette/hub.png";
+// Redraw once the pixel font is ready, or the numbers stay in the fallback font.
+document.fonts.load("10px 'Casino Run Pixel'").then(drawRouletteWheel);
 const rouletteBallElement = document.getElementById("roulette-ball");
 
 drawRouletteWheel();
@@ -3299,7 +3318,7 @@ function spinRoulette(bet, isFreeVinylSpin = false) {
 
   const finalRotation =
     rouletteSpinCount * 360 * 6 +
-    (360 - result * segmentAngle);
+    (360 - WHEEL_ORDER.indexOf(result) * segmentAngle);
 
   rouletteCanvas.style.transform = `rotate(${finalRotation}deg)`;
 

@@ -103,3 +103,13 @@
 **Gallop:** horses went from 2 to 4 frames (stretched in the air → front lands → gathered → back pushes); `.racing` steps through all 4 at 0.1 s/frame (same rate as before). Evidence: `screenshots/iter-7/horse-gallop-8x.png`. tex3ds atlas now 56.9 KB.
 
 **Test fix:** the Plinko check failed whenever the app window was minimised, because the browser pauses `requestAnimationFrame` entirely (not just throttles it). The test now drives frames with a 16 ms timer during the drop only. Regression **20/20 in 33 s** with the window hidden (it used to need up to 3 minutes).
+
+## Iteration 8 (2026-11-08): pixel-art roulette wheel
+
+**Weakness:** the pockets and numbers were the last canvas-drawn art with smooth antialiased edges, next to 2x pixel sprites (bowl, hub, ball).
+
+**Implemented (`drawRouletteWheel` in script.js):** pockets, pocket floors (dark shade of each colour), gold frets, a wooden cone and rims are drawn at half resolution and upscaled 2x with smoothing off (the sprites' grid). Numbers go on at full res in the pixel font (crisp at 10px). Then `snapToPalette` snaps every pixel to 12 palette colours with hard alpha: verified 0 partially transparent pixels. The wheel redraws once the pixel font loads (before, the first draw could use the fallback font).
+
+**Critique → fix:** the first render showed pockets in numeric order 0-36, so same-colour pockets sat side by side (10/11 black, 18/19 red). Pockets now follow the European wheel order (`WHEEL_ORDER`), so red/black alternate. **Odds unchanged:** the result is still rolled uniformly first; only the pocket the wheel rotates to was remapped (`WHEEL_ORDER.indexOf(result)`).
+
+**Tests:** new regression check (wheel order has all 37 numbers once and alternates colours); regression **21/21** in 40 s. Evidence: `screenshots/iter-8/wheel-pixel-draft.png` → `wheel-pixel-final.png`.
