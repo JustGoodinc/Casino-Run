@@ -9,6 +9,8 @@ let allInAnimationActive = false;
 let popupQueueActive = false;
 let popupQueue = Promise.resolve();
 let goalPopupQueued = false;
+// Bumped on every reset; async callbacks from an older run compare against it and bail.
+let runId = 0;
 
 let currentWinStreak = 0;
 let highestWinStreak = 0;
@@ -92,16 +94,16 @@ let lowMoneySirenOn = false;
 
 let horseGallopInterval = null;
 
+// Shares the CR.audio context so every sound goes through the same bus, volume, mute and limiter.
 function getAudioContext() {
-  if (!audioContext) {
-    audioContext = new (window.AudioContext || window.webkitAudioContext)();
-  }
-
+  audioContext = CR.audio.init();
   return audioContext;
 }
 
+// Synth fallback voice. Only used when a generated sample isn't loaded yet, or for live-pitched sounds.
 function playTone(frequency, duration, type = "sine", volume = 0.12) {
   const ctx = getAudioContext();
+  if (!ctx) return;
 
   const oscillator = ctx.createOscillator();
   const gain = ctx.createGain();
@@ -113,38 +115,71 @@ function playTone(frequency, duration, type = "sine", volume = 0.12) {
   gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
 
   oscillator.connect(gain);
-  gain.connect(ctx.destination);
+  gain.connect(CR.audio.sfxInput);
 
   oscillator.start();
   oscillator.stop(ctx.currentTime + duration);
 }
 
-function playButtonClickSound() {
-  playTone(520, 0.04, "square", 0.06);
-
-  setTimeout(() => {
-    playTone(720, 0.035, "square", 0.045);
-  }, 35);
+// Plays a generated sample (assets/audio); runs the synth fallback if the sample isn't available.
+function sfx(name, options, fallback) {
+  if (!CR.audio.play(name, options) && fallback) fallback();
 }
 
-function playPegHitSound() {
-  const pitch = 650 + Math.random() * 350;
-  playTone(pitch, 0.055, "triangle", 0.08);
+function playButtonClickSound() {
+  sfx("ui_click", { rate: 0.95 + Math.random() * 0.1 }, () => {
+    playTone(520, 0.04, "square", 0.06);
+    setTimeout(() => playTone(720, 0.035, "square", 0.045), 35);
+  });
+}
+
+// 8 peg voices (assets-src/audio/sfx.mjs): never the same one twice in a row, and the pitch climbs
+// about a semitone per peg row, so each drop plays its own little rising run.
+const PLINKO_PEG_VARIANTS = 8;
+let lastPegVariant = 0;
+
+function playPegHitSound(peg) {
+  let variant = 1 + Math.floor(Math.random() * PLINKO_PEG_VARIANTS);
+  if (variant === lastPegVariant) variant = (variant % PLINKO_PEG_VARIANTS) + 1;
+  lastPegVariant = variant;
+  const row = peg ? Math.max(0, Math.round((peg.y - 70) / 40)) : 0;
+  const rate = 2 ** ((row - 3) / 12) * (0.98 + Math.random() * 0.04);
+  sfx(`plinko_peg_${variant}`, { rate, gain: 0.55 }, () => playTone(650 + Math.random() * 350, 0.055, "triangle", 0.08));
+}
+
+// Each game has its own loop; the shop keeps whatever is playing; the title uses the lobby loop.
+const SCREEN_MUSIC = {
+  "plinko-screen": "music_plinko",
+  "roulette-screen": "music_roulette",
+  "crash-screen": "music_crash",
+  "blackjack-screen": "music_blackjack",
+  "frog-screen": "music_river",
+  "horse-screen": "music_horse",
+};
+
+function playScreenMusic() {
+  if (!gameStarted) {
+    CR.audio.music("music_lobby");
+    return;
+  }
+  const screen = document.querySelector(".screen.active-screen");
+  const track = screen && SCREEN_MUSIC[screen.id];
+  if (track) CR.audio.music(track);
 }
 
 function playCardDealSound() {
-  playTone(420 + Math.random() * 120, 0.05, "triangle", 0.06);
+  sfx("card_deal", { rate: 0.9 + Math.random() * 0.2 }, () => playTone(420 + Math.random() * 120, 0.05, "triangle", 0.06));
 }
 
 function playHopSound() {
-  playTone(520, 0.07, "triangle", 0.08);
-
-  setTimeout(() => {
-    playTone(760, 0.06, "triangle", 0.06);
-  }, 65);
+  sfx("river_step", { rate: 0.95 + Math.random() * 0.1 }, () => {
+    playTone(520, 0.07, "triangle", 0.08);
+    setTimeout(() => playTone(760, 0.06, "triangle", 0.06), 65);
+  });
 }
 
 function playCarWhooshSound() {
+  if (CR.audio.play("river_step", { rate: 0.6, gain: 0.35 })) return;
   playTone(160, 0.08, "sawtooth", 0.035);
 
   setTimeout(() => {
@@ -153,6 +188,7 @@ function playCarWhooshSound() {
 }
 
 function playFrogHitSound() {
+  if (CR.audio.play("river_splash")) return;
   playTone(120, 0.18, "sawtooth", 0.1);
 
   setTimeout(() => {
@@ -161,6 +197,7 @@ function playFrogHitSound() {
 }
 
 function playHorseStartSound() {
+  if (CR.audio.play("horse_bugle")) return;
   playTone(480, 0.08, "square", 0.08);
 
   setTimeout(() => {
@@ -176,12 +213,13 @@ function startHorseGallopSound() {
   stopHorseGallopSound();
 
   horseGallopInterval = setInterval(() => {
+    if (CR.audio.play("horse_clop", { rate: 0.9 + Math.random() * 0.25, gain: 0.6 })) return;
     playTone(150 + Math.random() * 40, 0.035, "square", 0.035);
 
     setTimeout(() => {
       playTone(120 + Math.random() * 30, 0.035, "square", 0.03);
     }, 70);
-  }, 170);
+  }, 200);
 }
 
 function stopHorseGallopSound() {
@@ -192,6 +230,7 @@ function stopHorseGallopSound() {
 }
 
 function playFinishSound() {
+  if (CR.audio.play("horse_finish")) return;
   playTone(880, 0.08, "triangle", 0.08);
 
   setTimeout(() => {
@@ -200,6 +239,7 @@ function playFinishSound() {
 }
 
 function playCashSound() {
+  if (CR.audio.play("payout_total")) return;
   playTone(700, 0.08, "sine", 0.08);
 
   setTimeout(() => {
@@ -212,6 +252,7 @@ function playCashSound() {
 }
 
 function playLoseSound() {
+  if (CR.audio.play("lose")) return;
   playTone(260, 0.12, "sawtooth", 0.08);
 
   setTimeout(() => {
@@ -220,6 +261,8 @@ function playLoseSound() {
 }
 
 function playGameOverSound() {
+  CR.audio.music(null);
+  if (CR.audio.play("game_over")) return;
   playTone(220, 0.14, "sawtooth", 0.1);
 
   setTimeout(() => {
@@ -238,15 +281,13 @@ function startLowMoneySiren() {
 
   let highTone = false;
 
+  // Audio bible rule 4: a soft pulse every 2 s instead of a continuous 520 ms siren (fatiguing).
   lowMoneySirenInterval = setInterval(() => {
     if (!lowMoneySirenOn) return;
 
-    const frequency = highTone ? 620 : 430;
-
-    playTone(frequency, 0.22, "sine", 0.025);
-
     highTone = !highTone;
-  }, 520);
+    sfx("time_tick", { rate: highTone ? 0.8 : 0.7, gain: 0.7 }, () => playTone(highTone ? 620 : 430, 0.22, "sine", 0.025));
+  }, 2000);
 }
 
 function stopLowMoneySiren() {
@@ -262,6 +303,19 @@ function startRouletteSpinSound() {
   const ctx = getAudioContext();
 
   stopRouletteSpinSound();
+
+  // Sample path: ball-rattle ticks that slow down over the 4 s spin (the old interval never slowed).
+  if (CR.audio.play("roulette_tick", { gain: 0.7 })) {
+    let delay = 55;
+    const tick = () => {
+      CR.audio.play("roulette_tick", { rate: 0.9 + Math.random() * 0.2, gain: 0.7 });
+      delay *= 1.09;
+      if (delay < 450) rouletteTickInterval = setTimeout(tick, delay);
+    };
+    rouletteTickInterval = setTimeout(tick, delay);
+    return;
+  }
+  if (!ctx) return;
 
   rouletteSpinOscillator = ctx.createOscillator();
   rouletteSpinGain = ctx.createGain();
@@ -280,7 +334,7 @@ function startRouletteSpinSound() {
   );
 
   rouletteSpinOscillator.connect(rouletteSpinGain);
-  rouletteSpinGain.connect(ctx.destination);
+  rouletteSpinGain.connect(CR.audio.sfxInput);
 
   rouletteSpinOscillator.start();
 
@@ -302,6 +356,7 @@ function startRouletteSpinSound() {
 function stopRouletteSpinSound() {
   if (rouletteTickInterval) {
     clearInterval(rouletteTickInterval);
+    clearTimeout(rouletteTickInterval);
     rouletteTickInterval = null;
   }
 
@@ -318,8 +373,10 @@ function stopRouletteSpinSound() {
   rouletteSpinGain = null;
 }
 
+// Kept as live synthesis on purpose: its pitch tracks the multiplier every frame.
 function startCrashRocketSound() {
   const ctx = getAudioContext();
+  if (!ctx) return;
 
   stopCrashRocketSound();
 
@@ -332,7 +389,7 @@ function startCrashRocketSound() {
   crashRocketGain.gain.setValueAtTime(0.035, ctx.currentTime);
 
   crashRocketOscillator.connect(crashRocketGain);
-  crashRocketGain.connect(ctx.destination);
+  crashRocketGain.connect(CR.audio.sfxInput);
 
   crashRocketOscillator.start();
 }
@@ -395,9 +452,8 @@ const goalText = document.getElementById("goal");
 const timerText = document.getElementById("timer");
 
 function updateUI() {
-  balanceText.textContent = `Balance: $${balance.toFixed(2)}`;
-  goalText.textContent = `Goal: $${goal}`;
-  timerText.textContent = `Time: ${timeLeft}`;
+  // Balance ticks up/down, goal bar fills, timer goes red under 15 s (fx.js CR.hud).
+  CR.hud.update({ balance, goal, timeLeft, streak: currentWinStreak, gameStarted: gameStarted && !runEnded });
   updateStreakUI();
 
   updateBetSliders();
@@ -596,10 +652,10 @@ function getStreakBonusRate() {
 
 function getStreakLabel() {
   if (currentWinStreak >= 5) {
-    return "🔥 On Fire | Bonus: +50%";
+    return "ON FIRE! +50%";
   }
 
-  return `🔥 Streak: ${currentWinStreak} | Bonus: +${Math.round(getStreakBonusRate() * 100)}%`;
+  return `STREAK ${currentWinStreak}  +${Math.round(getStreakBonusRate() * 100)}%`;
 }
 
 function updateStreakUI() {
@@ -636,14 +692,13 @@ function handleHotStreakWin(baseProfit, bonusLines = []) {
   const bonusRate = getStreakBonusRate();
   let streakBonus = Math.max(0, baseProfit) * bonusRate;
 
-  if (greaseFireActive) {
-    if (streakBonus > 0) {
-      streakBonus *= 3;
-      bonusLines.push({
-        type: "bonus",
-        text: "Grease Fire! Triple Hot Streak Bonus!"
-      });
-    }
+  // Grease Fire stays lit until a win actually has a streak bonus to triple (per its description).
+  if (greaseFireActive && streakBonus > 0) {
+    streakBonus *= 3;
+    bonusLines.push({
+      type: "bonus",
+      text: "Grease Fire! Triple Hot Streak Bonus!"
+    });
 
     greaseFireActive = false;
     showStreakMessage("Grease Fire burned out.");
@@ -668,6 +723,7 @@ function handleHotStreakLoss() {
 
     if (burnAmount > 0) {
       changeBalance(-burnAmount);
+      CR.audio.play("grease_fire");
     }
 
     showStreakMessage(`Grease Fire Backfired! Burned $${burnAmount.toFixed(2)}.`);
@@ -724,6 +780,10 @@ function applyRoundWin(payout, bet, bonusLines = [], gameName = "Game") {
 
   recordRoundResult(gameName, baseProfit > 0 ? "Win" : "Push", finalPayout - bet);
 
+  // Presentation only: tier from settled profit vs stake (fx.js). Doesn't change any amount.
+  const naturalBlackjack = gameName === "Blackjack" && payout === bet * 2.5;
+  CR.fx.celebrate({ profit: finalPayout - bet, bet, streak: currentWinStreak, special: naturalBlackjack ? "blackjack" : undefined });
+
   return {
     payout: finalPayout,
     bonusLines
@@ -754,8 +814,12 @@ function animateBalanceChange(type) {
 
 function queuePopupStep(stepFunction, duration = 1000) {
   popupQueueActive = true;
+  const stepRunId = runId;
 
   popupQueue = popupQueue.then(() => {
+    // Popups queued in a previous run are dropped instead of leaking into the new one.
+    if (stepRunId !== runId) return;
+
     return new Promise((resolve) => {
       stepFunction();
 
@@ -778,10 +842,16 @@ function clearPopupQueue() {
   goalPopupQueued = false;
 }
 
+// Cascading payout (visual bible section 5): base payout, then each bonus line lands with a rising
+// tick, then the total pops. About 0.5 s + 0.26 s per line; any tap skips to the total.
+// Money was already settled before this runs, so the animation never blocks or changes amounts.
 function showMoneyGainPopup(amount, bonusLines = []) {
   if (!moneyPopupLayer || amount <= 0) return;
 
   moneyPopupActive = true;
+  const lineDelay = 260;
+  // Must outlast finish() + its 760 ms exit, so the next queued popup never shares the layer with this one.
+  const duration = 300 + bonusLines.length * lineDelay + 120 + 800;
 
   queuePopupStep(() => {
     moneyPopupLayer.classList.remove("hidden");
@@ -792,143 +862,71 @@ function showMoneyGainPopup(amount, bonusLines = []) {
 
     const mainNumber = document.createElement("div");
     mainNumber.classList.add("money-popup-main");
-    mainNumber.textContent = "+$0.00";
 
     const linesWrapper = document.createElement("div");
     linesWrapper.classList.add("money-popup-lines");
 
-    bonusLines.forEach((line) => {
+    const lineElements = bonusLines.map((line) => {
       const lineElement = document.createElement("div");
-      lineElement.classList.add("money-popup-line");
-
-      if (line.type === "base") {
-        lineElement.classList.add("base-win");
-      }
-
-      if (line.type === "bonus") {
-        lineElement.classList.add("item-bonus");
-      }
-
+      lineElement.classList.add("money-popup-line", line.type === "base" ? "base-win" : "item-bonus");
       lineElement.textContent = line.text;
       linesWrapper.appendChild(lineElement);
+      return lineElement;
     });
 
+    // Running total: the base line's amount first, the full amount at the end.
+    const parsed = bonusLines.map((line) => Number((line.text.match(/\$([\d,.]+)/) || [])[1]?.replace(/,/g, "")) || 0);
+    let running = 0;
+    mainNumber.textContent = "+$0.00";
+
     card.appendChild(mainNumber);
-
-    if (bonusLines.length > 0) {
-      card.appendChild(linesWrapper);
-    }
-
+    if (lineElements.length) card.appendChild(linesWrapper);
+    const skip = document.createElement("div");
+    skip.className = "money-popup-skip";
+    skip.textContent = "TAP TO SKIP";
+    card.appendChild(skip);
     moneyPopupLayer.appendChild(card);
 
-    card.animate(
-      [
-        {
-          transform: "scale(0.65)",
-          opacity: 0
-        },
-        {
-          transform: "scale(1.12)",
-          opacity: 1
-        },
-        {
-          transform: "scale(1)",
-          opacity: 1
-        }
-      ],
-      {
-        duration: 650,
-        easing: "cubic-bezier(0.16, 0.9, 0.22, 1)",
-        fill: "forwards"
-      }
-    );
+    card.animate([{ transform: "scale(0.6)", opacity: 0 }, { transform: "scale(1.08)", opacity: 1 }, { transform: "scale(1)", opacity: 1 }], { duration: 260, easing: "cubic-bezier(.34,1.56,.64,1)", fill: "forwards" });
 
-    let countStartTime = null;
-    const countDuration = 2500;
+    const timers = [];
+    let finished = false;
+    const finish = () => {
+      if (finished) return;
+      finished = true;
+      timers.forEach(clearTimeout);
+      lineElements.forEach((el) => el.classList.add("show"));
+      mainNumber.textContent = `+$${amount.toFixed(2)}`;
+      mainNumber.animate([{ transform: "scale(1.35)" }, { transform: "scale(1)" }], { duration: 240, easing: "cubic-bezier(.34,1.56,.64,1)" });
+      CR.audio.play("payout_total");
+      timers.push(setTimeout(() => {
+        const balanceBox = balanceText.getBoundingClientRect();
+        const cardBox = card.getBoundingClientRect();
+        const moveX = balanceBox.left + balanceBox.width / 2 - (cardBox.left + cardBox.width / 2);
+        const moveY = balanceBox.top + balanceBox.height / 2 - (cardBox.top + cardBox.height / 2);
+        card.animate([{ transform: "scale(1)", opacity: 1 }, { transform: `translate(${moveX}px, ${moveY}px) scale(0.16)`, opacity: 0 }], { duration: 380, easing: "cubic-bezier(.2,0,0,1)", fill: "forwards" });
+      }, 360));
+      timers.push(setTimeout(() => {
+        moneyPopupLayer.classList.add("hidden");
+        moneyPopupLayer.innerHTML = "";
+        animateBalanceChange("gain");
+        moneyPopupActive = false;
+        document.removeEventListener("pointerdown", finish, true);
+      }, 760));
+    };
+    document.addEventListener("pointerdown", finish, true);
 
-    function countUpMoney(timestamp) {
-      if (!countStartTime) {
-        countStartTime = timestamp;
-      }
-
-      const elapsed = timestamp - countStartTime;
-      const progress = Math.min(elapsed / countDuration, 1);
-
-      const easedProgress = 1 - Math.pow(1 - progress, 4);
-      const currentAmount = amount * easedProgress;
-
-      mainNumber.textContent = `+$${currentAmount.toFixed(2)}`;
-
-      if (progress < 1) {
-        requestAnimationFrame(countUpMoney);
-      } else {
-        mainNumber.textContent = `+$${amount.toFixed(2)}`;
-      }
-    }
-
-    requestAnimationFrame(countUpMoney);
-
-    setTimeout(() => {
-      card.classList.add("money-popup-readable-pulse");
-    }, 2600);
-
-    setTimeout(() => {
-      card.classList.remove("money-popup-readable-pulse");
-
-      const balanceBox = balanceText.getBoundingClientRect();
-      const cardBox = card.getBoundingClientRect();
-
-      const cardCenterX = cardBox.left + cardBox.width / 2;
-      const cardCenterY = cardBox.top + cardBox.height / 2;
-
-      const targetX = balanceBox.left + balanceBox.width / 2;
-      const targetY = balanceBox.top + balanceBox.height / 2;
-
-      const moveX = targetX - cardCenterX;
-      const moveY = targetY - cardCenterY;
-
-      card.animate(
-        [
-          {
-            transform: "scale(1)",
-            opacity: 1
-          },
-          {
-            transform: "scale(1.08)",
-            opacity: 1,
-            offset: 0.25
-          },
-          {
-            transform: `translate(${moveX}px, ${moveY}px) scale(0.16)`,
-            opacity: 0
-          }
-        ],
-        {
-          duration: 1500,
-          easing: "cubic-bezier(0.16, 0.9, 0.22, 1)",
-          fill: "forwards"
-        }
-      );
-    }, 4500);
-
-    setTimeout(() => {
-      moneyPopupLayer.classList.add("hidden");
-      moneyPopupLayer.innerHTML = "";
-
-      balanceText.classList.remove("balance-gain");
-      void balanceText.offsetWidth;
-      balanceText.classList.add("balance-gain");
-
-      setTimeout(() => {
-        balanceText.classList.remove("balance-gain");
-      }, 750);
-
-      moneyPopupActive = false;
-    }, 6100);
-  }, 6250);
+    lineElements.forEach((el, k) => {
+      timers.push(setTimeout(() => {
+        el.classList.add("show");
+        running = Math.min(amount, running + parsed[k]);
+        mainNumber.textContent = `+$${running.toFixed(2)}`;
+        CR.audio.play("cascade_tick", { rate: 1 + k * 0.15 });
+      }, 300 + k * lineDelay));
+    });
+    timers.push(setTimeout(finish, 300 + lineElements.length * lineDelay + 120));
+  }, duration);
 }
-
-
 
 function isAllInBet(bet) {
   const maxWholeBalance = Math.max(1, Math.floor(balance));
@@ -956,7 +954,7 @@ function showAllInAnimation(gameName, bet) {
 
     const title = document.createElement("div");
     title.classList.add("all-in-title");
-    title.textContent = "ALL IN!";
+    title.innerHTML = CR.spriteImg("words/allin");
 
     const subtitle = document.createElement("div");
     subtitle.classList.add("all-in-subtitle");
@@ -973,17 +971,13 @@ function showAllInAnimation(gameName, bet) {
 
     document.body.classList.remove("all-in-screen-shake");
     void document.body.offsetWidth;
-    document.body.classList.add("all-in-screen-shake");
+    if (!CR.settings.reducedMotion) document.body.classList.add("all-in-screen-shake");
 
-    playTone(220, 0.08, "square", 0.09);
-
-    setTimeout(() => {
-      playTone(440, 0.08, "square", 0.09);
-    }, 110);
-
-    setTimeout(() => {
-      playTone(880, 0.16, "triangle", 0.1);
-    }, 240);
+    sfx("all_in", undefined, () => {
+      playTone(220, 0.08, "square", 0.09);
+      setTimeout(() => playTone(440, 0.08, "square", 0.09), 110);
+      setTimeout(() => playTone(880, 0.16, "triangle", 0.1), 240);
+    });
 
     setTimeout(() => {
       allInLayer.classList.add("hidden");
@@ -1013,14 +1007,16 @@ function changeBalance(amount, bonusLines = []) {
 
   recordBalancePoint();
 
+  // Win sounds come from CR.fx.celebrate and the payout cascade, so a gain plays nothing here.
   if (amount > 0) {
     showMoneyGainPopup(amount, bonusLines);
-    playCashSound();
   }
 
+  // Negative changes are bets, purchases or burns: a chip clack, not a "you lost" sting.
+  // Lost bets get their sound from processFullLoss -> CR.fx.loss.
   if (amount < 0) {
     animateBalanceChange("loss");
-    playLoseSound();
+    sfx("bet_chip", { rate: 0.95 + Math.random() * 0.1 }, playLoseSound);
   }
 
   updateUI();
@@ -1051,6 +1047,9 @@ function shakeWinBoard() {
 }
 
 playBtn.addEventListener("click", () => {
+  const openScreen = document.querySelector(".screen.active-screen");
+  CR.audio.music(SCREEN_MUSIC[openScreen && openScreen.id] || "music_plinko");
+  CR.audio.play("new_round");
   resetRunTracking();
   goal = Math.max(50, Math.ceil(balance * 3));
 
@@ -1114,7 +1113,6 @@ const horseNames = ["Dingo", "Vas", "HisterBlue", "The Horse"];
 const shopItemData = [
   {
     id: "doubleHeadedCoin",
-    icon: "🪙",
     name: "Double-Headed Coin",
     type: "Trigger",
     price: 75,
@@ -1122,7 +1120,6 @@ const shopItemData = [
   },
   {
     id: "luckyHulaGirl",
-    icon: "🌺",
     name: "Lucky Hula Girl",
     type: "Passive",
     price: 100,
@@ -1130,7 +1127,6 @@ const shopItemData = [
   },
   {
     id: "timeBottle",
-    icon: "⏳",
     name: "Time in a Bottle",
     type: "Consumable",
     price: 45,
@@ -1138,15 +1134,13 @@ const shopItemData = [
   },
   {
     id: "rouletteMagnet",
-    icon: "🧲",
     name: "Roulette Magnet",
     type: "Consumable",
     price: 60,
-    description: "Use it before Roulette to improve your next spin odds."
+    description: "Use it before Roulette to improve your next Red or Black spin odds. No effect on Green."
   },
   {
     id: "frogSneakers",
-    icon: "🛟",
     name: "Pool Floaties",
     type: "Consumable",
     price: 55,
@@ -1154,7 +1148,6 @@ const shopItemData = [
   },
   {
     id: "insuranceTicket",
-    icon: "🎟️",
     name: "Insurance Ticket",
     type: "Trigger",
     price: 70,
@@ -1162,7 +1155,6 @@ const shopItemData = [
   },
   {
     id: "filthTea",
-    icon: "🍵",
     name: "Filth-Tea",
     type: "Consumable",
     price: 85,
@@ -1170,7 +1162,6 @@ const shopItemData = [
   },
   {
     id: "luckyMatch",
-    icon: "🔥",
     name: "Lucky Match",
     type: "Trigger",
     price: 90,
@@ -1178,7 +1169,6 @@ const shopItemData = [
   },
   {
     id: "heatShield",
-    icon: "🛡️",
     name: "Heat Shield",
     type: "Trigger",
     price: 95,
@@ -1186,7 +1176,6 @@ const shopItemData = [
   },
   {
     id: "greaseFire",
-    icon: "🛢️",
     name: "Grease Fire",
     type: "Consumable",
     price: 105,
@@ -1194,7 +1183,6 @@ const shopItemData = [
   },
   {
     id: "goalCutter",
-    icon: "🎯",
     name: "Goal Cutter",
     type: "Consumable",
     price: 90,
@@ -1202,7 +1190,6 @@ const shopItemData = [
   },
   {
     id: "dealerPeek",
-    icon: "👀",
     name: "Dealer’s Peek Card",
     type: "Consumable",
     price: 40,
@@ -1210,7 +1197,6 @@ const shopItemData = [
   },
   {
     id: "goldenHorseshoe",
-    icon: "🐎",
     name: "Golden Horseshoe",
     type: "Consumable",
     price: 50,
@@ -1218,7 +1204,6 @@ const shopItemData = [
   },
   {
     id: "weightedBall",
-    icon: "⚪",
     name: "Weighted Ball",
     type: "Consumable",
     price: 55,
@@ -1226,7 +1211,6 @@ const shopItemData = [
   },
   {
     id: "cashbackCoupon",
-    icon: "💸",
     name: "Cashback Coupon",
     type: "Timed Consumable",
     price: 80,
@@ -1234,7 +1218,6 @@ const shopItemData = [
   },
   {
     id: "thottiesJesterHat",
-    icon: "🎭",
     name: "Thottie’s Jester Hat",
     type: "Timed Consumable",
     price: 95,
@@ -1242,7 +1225,6 @@ const shopItemData = [
   },
   {
     id: "roseKatMagnumOpus",
-    icon: "🖼️",
     name: "RoseKat’s Magnum Opus",
     type: "Consumable",
     price: 110,
@@ -1250,7 +1232,6 @@ const shopItemData = [
   },
   {
     id: "ejmRecordVinyl",
-    icon: "💿",
     name: "EJM’s Record Vinyl",
     type: "Consumable",
     price: 125,
@@ -1276,6 +1257,7 @@ function unlockDevItemEasterEgg() {
     return;
   }
 
+  // Also marks this run as a dev run: submitScore() keeps it off the live leaderboard.
   devUEasterEggUnlocked = true;
 
   shopItemData.forEach((item) => {
@@ -1377,7 +1359,7 @@ function renderShop() {
 
     card.innerHTML = `
       <div class="shop-item-top">
-        <div class="shop-item-icon">${item.icon}</div>
+        <div class="shop-item-icon">${CR.spriteImg("items/" + item.id)}</div>
         <div>
           <h3>${item.name}</h3>
           <p class="shop-item-type">${item.type} • ${getRoundPriceText(item.price)}</p>
@@ -1410,11 +1392,13 @@ function buyShopItem(slotIndex) {
   const itemPrice = getRoundPrice(item.price);
 
   if (balance < itemPrice) {
+    CR.audio.play("ui_nofunds");
     showToast("Not enough money.");
     return;
   }
 
   changeBalance(-itemPrice);
+  CR.audio.play("ui_buy");
 
   slot.sold = true;
 
@@ -1452,11 +1436,11 @@ function showItemBreakAnimation(itemId) {
 
     const icon = document.createElement("div");
     icon.classList.add("item-break-icon");
-    icon.textContent = item.icon;
+    icon.innerHTML = CR.spriteImg("items/" + item.id);
 
     const crack = document.createElement("div");
     crack.classList.add("item-break-crack");
-    crack.textContent = "⚡";
+    crack.innerHTML = CR.spriteImg("fx/sparkle");
 
     const label = document.createElement("div");
     label.classList.add("item-break-label");
@@ -1480,11 +1464,10 @@ function showItemBreakAnimation(itemId) {
 
     breakLayer.appendChild(card);
 
-    playTone(190, 0.09, "square", 0.08);
-
-    setTimeout(() => {
-      playTone(95, 0.14, "sawtooth", 0.07);
-    }, 110);
+    sfx("item_break", undefined, () => {
+      playTone(190, 0.09, "square", 0.08);
+      setTimeout(() => playTone(95, 0.14, "sawtooth", 0.07), 110);
+    });
 
     setTimeout(() => {
       card.remove();
@@ -1576,7 +1559,7 @@ function updateInventoryHeader() {
   const sidebar = document.getElementById("inventory-sidebar");
 
   if (bagLabel) {
-    bagLabel.textContent = inventoryCollapsed ? "🎒 Items" : `🎒 ${getCurrentGameName()}`;
+    bagLabel.innerHTML = `${CR.spriteImg("ui/bag")} ${inventoryCollapsed ? "ITEMS" : getCurrentGameName().toUpperCase()}`;
   }
 
   if (bagCount) {
@@ -1620,8 +1603,9 @@ function renderInventory() {
 
     const button = document.createElement("button");
     button.classList.add("inventory-item-icon");
-    button.textContent = item.icon;
+    button.innerHTML = CR.spriteImg("items/" + item.id);
     button.title = item.name;
+    button.setAttribute("aria-label", item.name);
 
     button.addEventListener("click", () => {
       openItemPopup(itemId);
@@ -1663,7 +1647,7 @@ function openItemPopup(itemId) {
 
   selectedInventoryItemId = itemId;
 
-  itemPopupIcon.textContent = item.icon;
+  itemPopupIcon.innerHTML = CR.spriteImg("items/" + item.id);
   itemPopupName.textContent = item.name;
   itemPopupType.textContent = `Type: ${item.type}`;
   itemPopupDescription.textContent = item.description;
@@ -1685,7 +1669,10 @@ function closeItemPopup() {
 function useSelectedItem() {
   if (!selectedInventoryItemId) return;
 
+  const before = inventory.length;
   useInventoryItem(selectedInventoryItemId);
+  // Activation feedback only when the item was actually consumed (e.g. Peek used outside Blackjack is refused).
+  CR.audio.play(inventory.length < before ? "item_use" : "ui_error");
 }
 
 function useInventoryItem(itemId) {
@@ -1850,14 +1837,14 @@ function renderActiveItemTimers() {
   if (jesterSeconds > 0) {
     const timer = document.createElement("div");
     timer.classList.add("active-item-timer");
-    timer.textContent = `🎭 ${jesterSeconds}s`;
+    timer.innerHTML = `${CR.spriteImg("items/thottiesJesterHat")} ${jesterSeconds}S`;
     activeItemTimers.appendChild(timer);
   }
 
   if (cashbackSeconds > 0) {
     const timer = document.createElement("div");
     timer.classList.add("active-item-timer");
-    timer.textContent = `💸 ${cashbackSeconds}s`;
+    timer.innerHTML = `${CR.spriteImg("items/cashbackCoupon")} ${cashbackSeconds}S`;
     activeItemTimers.appendChild(timer);
   }
 }
@@ -1897,6 +1884,11 @@ function processFullLoss(bet, gameName = "Game") {
 
   handleHotStreakLoss();
   recordRoundResult(gameName, "Loss", -Math.abs(bet));
+
+  // Loss feedback: game-specific word (MISS / CRASHED / BUST / SPLASH) and a short shake.
+  // Crash and River already play their own impact sounds.
+  CR.fx.loss(gameName);
+  if (gameName !== "Crash" && gameName !== "Elephant River") CR.audio.play(gameName === "Blackjack" ? "bust" : "lose");
 
   if (refund > 0) {
     changeBalance(refund, [
@@ -1992,10 +1984,10 @@ function drawGameOverGraph(progress = 1) {
 
   gameOverCtx.clearRect(0, 0, width, height);
 
-  gameOverCtx.fillStyle = "#021920";
+  gameOverCtx.fillStyle = "#191727";
   gameOverCtx.fillRect(0, 0, width, height);
 
-  gameOverCtx.strokeStyle = "rgba(255, 209, 102, 0.22)";
+  gameOverCtx.strokeStyle = "rgba(244, 195, 78, 0.22)";
   gameOverCtx.lineWidth = 1;
 
   for (let i = 0; i < 5; i++) {
@@ -2033,7 +2025,7 @@ function drawGameOverGraph(progress = 1) {
     gameOverCtx.lineTo(current.x, current.y);
 
     gameOverCtx.strokeStyle =
-      current.value >= previous.value ? "#06d6a0" : "#ef476f";
+      current.value >= previous.value ? "#7EDD65" : "#F45B58";
 
     gameOverCtx.lineWidth = 4;
     gameOverCtx.lineCap = "round";
@@ -2044,14 +2036,14 @@ function drawGameOverGraph(progress = 1) {
 
   gameOverCtx.beginPath();
   gameOverCtx.arc(lastPoint.x, lastPoint.y, 6, 0, Math.PI * 2);
-  gameOverCtx.fillStyle = "#ffd166";
-  gameOverCtx.shadowColor = "#ffd166";
+  gameOverCtx.fillStyle = "#F4C34E";
+  gameOverCtx.shadowColor = "#F4C34E";
   gameOverCtx.shadowBlur = 14;
   gameOverCtx.fill();
   gameOverCtx.shadowBlur = 0;
 
   gameOverCtx.fillStyle = "white";
-  gameOverCtx.font = "bold 13px Arial";
+  gameOverCtx.font = "20px 'Casino Run Pixel', monospace";
   gameOverCtx.fillText(`High $${highestBalance.toFixed(0)}`, 20, 18);
 }
 
@@ -2077,6 +2069,15 @@ function animateGameOverGraph() {
 }
 
 function resetRunToTitleScreen() {
+  runId++;
+  clearPopupQueue();
+  CR.hud.reset();
+  CR.audio.stopAll();
+  CR.audio.music(null);
+  clearInterval(typewriterInterval);
+  devUEasterEggUnlocked = false;
+  devUEasterEggClicks = 0;
+
   balance = 100;
   goal = 300;
   timeLeft = 120;
@@ -2114,6 +2115,8 @@ function resetRunToTitleScreen() {
   coinFlipAnimating = false;
 
   activePlinkoBalls = 0;
+  rouletteSpinning = false;
+  stopRouletteSpinSound();
 
   inventory = [];
   currentShopSlots = [];
@@ -2251,8 +2254,10 @@ function showGoalPopup() {
   goalPopupQueued = true;
 
   queuePopupStep(() => {
-    if (runEnded) {
+    // Balance may have dropped back under the goal while this popup waited in the queue.
+    if (runEnded || balance < goal) {
       goalPopupQueued = false;
+      checkGameState();
       return;
     }
 
@@ -2260,7 +2265,7 @@ function showGoalPopup() {
     goalPopupOpen = true;
     goalPopup.classList.remove("hidden");
 
-    playCashSound();
+    CR.fx.goal(); // L6: confetti, GOAL! word, fanfare
 
     typeMessage(
       "AWESOME! You made it! But do you have the guts to keep going?"
@@ -2278,6 +2283,7 @@ function continueRun() {
   timeLeft = 120;
 
   goalPopupMessage.textContent = "";
+  CR.audio.play("new_round");
 
   generateShopRotation();
   renderShop();
@@ -2336,6 +2342,12 @@ async function submitScore() {
     name = "Player";
   }
 
+  if (devUEasterEggUnlocked) {
+    showToast("Dev stash runs are not submitted to the leaderboard.");
+    resetRunToTitleScreen();
+    return;
+  }
+
   leaderboardSubmitBusy = true;
   submitScoreBtn.disabled = true;
   submitScoreBtn.textContent = "SAVING...";
@@ -2361,7 +2373,8 @@ async function submitScore() {
     submitScoreBtn.disabled = false;
     submitScoreBtn.textContent = "SUBMIT SCORE";
     leaderboardSubmitBusy = false;
-    namePopup.classList.add("hidden");
+    // Previously only hid the popup, leaving the player on a dead, disabled game screen.
+    resetRunToTitleScreen();
   }, 900);
 }
 
@@ -2468,6 +2481,9 @@ async function submitLiveLeaderboardScore(name, finalBalance) {
 keepGoingBtn.addEventListener("click", continueRun);
 cashOutRunBtn.addEventListener("click", cashOutRun);
 submitScoreBtn.addEventListener("click", submitScore);
+document.getElementById("skip-score-btn").addEventListener("click", () => {
+  if (!leaderboardSubmitBusy) resetRunToTitleScreen();
+});
 
 playerNameInput.addEventListener("keydown", (event) => {
   if (event.key === "Enter") {
@@ -2567,15 +2583,11 @@ function flipRescueCoin() {
 
   coin.classList.add("flipping");
 
-  playTone(680, 0.08, "square", 0.06);
-
-  setTimeout(() => {
-    playTone(820, 0.08, "square", 0.06);
-  }, 250);
-
-  setTimeout(() => {
-    playTone(980, 0.08, "square", 0.06);
-  }, 500);
+  sfx("coin_flip", undefined, () => {
+    playTone(680, 0.08, "square", 0.06);
+    setTimeout(() => playTone(820, 0.08, "square", 0.06), 250);
+    setTimeout(() => playTone(980, 0.08, "square", 0.06), 500);
+  });
 
   setTimeout(() => {
     coin.classList.remove("flipping");
@@ -2735,6 +2747,7 @@ navButtons.forEach((button) => {
     document.getElementById(screenId).classList.add("active-screen");
 
     renderInventory();
+    playScreenMusic();
 
     if (screenId === "plinko-screen") {
       requestAnimationFrame(() => {
@@ -2756,6 +2769,20 @@ let pegs = [];
 let activePlinkoBalls = 0;
 
 const plinkoMultipliers = [0, 0.5, 1, 2, 5];
+// Slot odds, paired with plinkoMultipliers. Return per $1 = 0.23*0.5 + 0.18*1 + 0.13*2 + 0.08*5 = 0.955.
+// (The old pure-physics drop returned ~1.83-1.89 and varied with screen width.)
+const plinkoSlotOdds = [0.38, 0.23, 0.18, 0.13, 0.08];
+
+function rollPlinkoSlot() {
+  let roll = Math.random();
+
+  for (let i = 0; i < plinkoSlotOdds.length; i++) {
+    roll -= plinkoSlotOdds[i];
+    if (roll < 0) return i;
+  }
+
+  return 0;
+}
 
 function createPegs() {
   if (!board || !pegsContainer) return;
@@ -2863,8 +2890,24 @@ function dropPlinkoBall(bet) {
   const boardHeight = board.clientHeight;
   const slotHeight = 42;
   const floorY = boardHeight - slotHeight - ballRadius;
+  const ballRunId = runId;
+
+  // The slot is rolled up front (fixed odds, same on every screen size) and the ball is
+  // steered into it. Weighted Ball now shifts the target, so the visual slot always matches the payout.
+  let targetSlot = rollPlinkoSlot();
+
+  if (activeWeightedBall > 0) {
+    targetSlot = Math.min(targetSlot + 1 + Math.floor(Math.random() * 2), plinkoMultipliers.length - 1);
+    activeWeightedBall--;
+  }
+
+  const slotWidth = boardWidth / plinkoMultipliers.length;
+  const targetX = (targetSlot + 0.5) * slotWidth;
 
   function physicsStep() {
+    // A ball from a reset run must not pay out into the next one.
+    if (ballRunId !== runId) return;
+
     vy += gravity;
 
     x += vx;
@@ -2907,7 +2950,7 @@ function dropPlinkoBall(bet) {
         vy += ny * 0.25;
         vx += (Math.random() - 0.5) * 0.45;
 
-        playPegHitSound();
+        playPegHitSound(peg);
 
         peg.element.classList.add("hit");
 
@@ -2919,11 +2962,21 @@ function dropPlinkoBall(bet) {
 
     vx *= friction;
 
+    // Steering pull grows with depth. 0.02/0.1 lands ~99% of balls in the target unaided
+    // (tuned by simulation); stronger values trap balls on pegs.
+    const depth = Math.max(0, (y - 26) / (floorY - 26));
+    vx += (targetX - x) * 0.02 * depth;
+    vx *= 1 - 0.1 * depth;
+
+    if (y >= floorY) {
+      x = Math.min(Math.max(x, targetSlot * slotWidth + ballRadius), (targetSlot + 1) * slotWidth - ballRadius);
+    }
+
     ball.style.left = `${x - ballRadius}px`;
     ball.style.top = `${y - ballRadius}px`;
 
     if (y >= floorY) {
-      finishPlinkoBall(ball, x, bet);
+      finishPlinkoBall(ball, targetSlot, bet);
       return;
     }
 
@@ -2933,26 +2986,14 @@ function dropPlinkoBall(bet) {
   requestAnimationFrame(physicsStep);
 }
 
-function finishPlinkoBall(ball, x, bet) {
-  const slotWidth = board.clientWidth / plinkoMultipliers.length;
-
-  let slotIndex = Math.floor(x / slotWidth);
-
-  if (slotIndex < 0) slotIndex = 0;
-  if (slotIndex >= plinkoMultipliers.length) {
-    slotIndex = plinkoMultipliers.length - 1;
+function finishPlinkoBall(ball, slotIndex, bet) {
+  const slotElement = board.querySelectorAll(".slot")[slotIndex];
+  if (slotElement) {
+    slotElement.classList.remove("slot-hit");
+    void slotElement.offsetWidth;
+    slotElement.classList.add("slot-hit");
   }
-
-  if (activeWeightedBall > 0) {
-    const weightedBoost = 1;
-
-    slotIndex = Math.min(
-      slotIndex + weightedBoost + Math.floor(Math.random() * 2),
-      plinkoMultipliers.length - 1
-    );
-
-    activeWeightedBall--;
-  }
+  CR.audio.play("plinko_land", { rate: 0.9 + slotIndex * 0.08 });
 
   const multiplier = plinkoMultipliers[slotIndex];
   let normalPayout = bet * multiplier;
@@ -3090,16 +3131,16 @@ function drawRouletteWheel() {
     ctx.closePath();
 
     if (color === "green") {
-      ctx.fillStyle = "#06d6a0";
+      ctx.fillStyle = "#7EDD65";
     } else if (color === "red") {
-      ctx.fillStyle = "#ef476f";
+      ctx.fillStyle = "#F45B58";
     } else {
-      ctx.fillStyle = "#073b4c";
+      ctx.fillStyle = "#191727";
     }
 
     ctx.fill();
 
-    ctx.strokeStyle = "#ffd166";
+    ctx.strokeStyle = "#F4C34E";
     ctx.lineWidth = 0.8;
     ctx.stroke();
 
@@ -3113,7 +3154,7 @@ function drawRouletteWheel() {
     ctx.translate(textX, textY);
     ctx.rotate(textAngle + Math.PI / 2);
     ctx.fillStyle = "white";
-    ctx.font = "bold 10px Arial";
+    ctx.font = "10px 'Casino Run Pixel', monospace";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText(number.toString(), 0, 0);
@@ -3122,9 +3163,9 @@ function drawRouletteWheel() {
 
   ctx.beginPath();
   ctx.arc(center, center, 38, 0, Math.PI * 2);
-  ctx.fillStyle = "#073b4c";
+  ctx.fillStyle = "#191727";
   ctx.fill();
-  ctx.strokeStyle = "#ffd166";
+  ctx.strokeStyle = "#F4C34E";
   ctx.lineWidth = 3;
   ctx.stroke();
 }
@@ -3151,18 +3192,19 @@ spinBtn.addEventListener("click", () => {
   if (runEnded || goalPopupOpen || coinFlipOpen || !gameStarted) return;
   if (rouletteSpinning) return;
 
+  if (!selectedRouletteBet) {
+    showToast("Pick Red, Black, or Green first.");
+    return;
+  }
+
   let bet = Number(rouletteBetSlider.value);
   let isFreeVinylSpin = false;
 
+  // Vinyl is only spent once the spin is known to be valid (it was lost when no color was picked).
   if (activeFreeRouletteMaxSpin > 0) {
     bet = Math.max(1, Math.floor(balance));
     isFreeVinylSpin = true;
     activeFreeRouletteMaxSpin--;
-  }
-
-  if (!selectedRouletteBet) {
-    showToast("Pick Red, Black, or Green first.");
-    return;
   }
 
   if (!Number.isFinite(bet) || bet <= 0) {
@@ -3188,17 +3230,27 @@ spinBtn.addEventListener("click", () => {
 
 function spinRoulette(bet, isFreeVinylSpin = false) {
   rouletteSpinning = true;
+  // Lock the color at spin time: settlement used to read the live selection, so switching
+  // color while watching the wheel land always won.
+  const betColor = selectedRouletteBet;
+  const spinRunId = runId;
 
   startRouletteSpinSound();
 
   let result;
 
-  if (activeRouletteMagnet && Math.random() < 0.55) {
-    result = getRandomRouletteNumberForColor(selectedRouletteBet);
+  // Magnet only pulls toward red/black: on green (14x) it made a spin return ~7.9 per $1.
+  // A green spin leaves the Magnet active for the next red/black spin instead of wasting it.
+  const magnetApplies = activeRouletteMagnet && betColor !== "green";
+
+  if (magnetApplies) {
     activeRouletteMagnet = false;
+  }
+
+  if (magnetApplies && Math.random() < 0.55) {
+    result = getRandomRouletteNumberForColor(betColor);
   } else {
     result = Math.floor(Math.random() * 37);
-    activeRouletteMagnet = false;
   }
 
   const segmentAngle = 360 / 37;
@@ -3212,22 +3264,24 @@ function spinRoulette(bet, isFreeVinylSpin = false) {
   rouletteCanvas.style.transform = `rotate(${finalRotation}deg)`;
 
   setTimeout(() => {
+    if (spinRunId !== runId) return;
+
     stopRouletteSpinSound();
 
-    playTone(420, 0.14, "square", 0.08);
+    sfx("roulette_stop", undefined, () => playTone(420, 0.14, "square", 0.08));
 
-    finishRouletteSpin(result, bet, isFreeVinylSpin);
+    finishRouletteSpin(result, bet, isFreeVinylSpin, betColor);
     rouletteSpinning = false;
   }, 4100);
 }
 
-function finishRouletteSpin(result, bet, isFreeVinylSpin = false) {
+function finishRouletteSpin(result, bet, isFreeVinylSpin, betColor) {
   const resultColor = getRouletteColor(result);
 
   let winnings = 0;
   let bonusLines = [];
 
-  if (selectedRouletteBet === resultColor) {
+  if (betColor === resultColor) {
     if (resultColor === "green") {
       winnings = bet * 14;
     } else {
@@ -3286,46 +3340,42 @@ let crashPoint = 0;
 let crashStartTime = 0;
 let crashAnimationFrame = null;
 
+// P(crash point > m) = 0.96 / m, so cashing out at ANY target returns 0.96 per $1.
+// ~4% of rounds crash instantly at 1.00x; capped at 100x. (Old curve returned up to 1.34.)
 function generateCrashPoint() {
-  const random = Math.random();
-
-  if (random < 0.5) {
-    return 1 + Math.random() * 1.5;
-  }
-
-  if (random < 0.85) {
-    return 2.5 + Math.random() * 3;
-  }
-
-  return 5.5 + Math.random() * 8;
+  return Math.min(100, Math.max(1, 0.96 / (1 - Math.random())));
 }
 
 function updateCrashGlow(multiplier, crashed = false) {
   if (crashed) {
-    crashMultiplierText.style.color = "#ef476f";
+    crashMultiplierText.style.color = "#F45B58";
     crashMultiplierText.style.textShadow =
-      "0 0 8px rgba(239, 71, 111, 0.85), 0 0 18px rgba(239, 71, 111, 0.55)";
+      "0 0 8px rgba(244, 91, 88, 0.85), 0 0 18px rgba(244, 91, 88, 0.55)";
     return;
   }
 
   const glowA = Math.min(8 + multiplier * 3, 22);
   const glowB = Math.min(18 + multiplier * 5, 42);
 
-  crashMultiplierText.style.color = "#06d6a0";
+  crashMultiplierText.style.color = "#7EDD65";
   crashMultiplierText.style.textShadow =
-    `0 0 ${glowA}px rgba(6, 214, 160, 0.9), 0 0 ${glowB}px rgba(6, 214, 160, 0.55)`;
+    `0 0 ${glowA}px rgba(126, 221, 101, 0.9), 0 0 ${glowB}px rgba(126, 221, 101, 0.55)`;
 }
+
+const crashRocketSprite = new Image();
+crashRocketSprite.src = "assets/sprites/crash/rocket.png";
 
 function drawCrashGraph(multiplier, crashed = false) {
   const width = crashCanvas.width;
   const height = crashCanvas.height;
 
   crashCtx.clearRect(0, 0, width, height);
+  crashCtx.imageSmoothingEnabled = false;
 
-  crashCtx.fillStyle = "#021920";
+  crashCtx.fillStyle = "#191727";
   crashCtx.fillRect(0, 0, width, height);
 
-  crashCtx.strokeStyle = "rgba(255, 209, 102, 0.22)";
+  crashCtx.strokeStyle = "#3B3752";
   crashCtx.lineWidth = 1;
 
   for (let i = 0; i < 5; i++) {
@@ -3375,30 +3425,27 @@ function drawCrashGraph(multiplier, crashed = false) {
     crashCtx.lineTo(points[i].x, points[i].y);
   }
 
-  crashCtx.strokeStyle = crashed ? "#ef476f" : "#06d6a0";
-  crashCtx.lineWidth = 5;
-  crashCtx.lineCap = "round";
-  crashCtx.lineJoin = "round";
+  crashCtx.strokeStyle = crashed ? "#F45B58" : "#7EDD65";
+  crashCtx.lineWidth = 4;
+  crashCtx.lineCap = "square";
+  crashCtx.lineJoin = "miter";
   crashCtx.stroke();
 
-  const ballPoint = points[points.length - 1];
+  // Pixel rocket rides the tip of the curve, nose along the curve's direction (2 flame frames).
+  const tip = points[points.length - 1], prev = points[points.length - 4] || points[0];
+  if (crashRocketSprite.complete && crashRocketSprite.naturalWidth && !crashed) {
+    const fw = crashRocketSprite.naturalWidth / 2, fh = crashRocketSprite.naturalHeight;
+    const frame = Math.floor(performance.now() / 80) % 2;
+    crashCtx.save();
+    crashCtx.translate(Math.round(tip.x), Math.round(tip.y));
+    crashCtx.rotate(Math.atan2(tip.y - prev.y, tip.x - prev.x) + Math.PI / 2);
+    crashCtx.drawImage(crashRocketSprite, frame * fw, 0, fw, fh, -fw, -fh, fw * 2, fh * 2);
+    crashCtx.restore();
+  }
 
-  const glowStrength = Math.min(10 + multiplier * 4, 42);
-  const ballRadius = Math.min(5 + multiplier * 0.35, 10);
-
-  crashCtx.save();
-  crashCtx.shadowColor = "rgba(255, 255, 255, 0.95)";
-  crashCtx.shadowBlur = glowStrength;
-  crashCtx.fillStyle = "#ffffff";
-
-  crashCtx.beginPath();
-  crashCtx.arc(ballPoint.x, ballPoint.y, ballRadius, 0, Math.PI * 2);
-  crashCtx.fill();
-  crashCtx.restore();
-
-  crashCtx.fillStyle = crashed ? "#ef476f" : "#06d6a0";
-  crashCtx.font = "bold 16px Arial";
-  crashCtx.fillText(`${multiplier.toFixed(2)}x`, 15, 18);
+  crashCtx.fillStyle = crashed ? "#FF7A72" : "#7EDD65";
+  crashCtx.font = "20px 'Casino Run Pixel', monospace";
+  crashCtx.fillText(`${multiplier.toFixed(2)}X`, 14, 24);
 }
 
 drawCrashGraph(1);
@@ -3490,9 +3537,9 @@ cashoutBtn.addEventListener("click", () => {
   crashStatusText.textContent =
     `Cashed out at ${crashMultiplier.toFixed(2)}x. Won $${winnings.toFixed(2)}.`;
 
-  crashMultiplierText.style.color = "#ffd166";
+  crashMultiplierText.style.color = "#F4C34E";
   crashMultiplierText.style.textShadow =
-    "0 0 8px rgba(255, 209, 102, 0.85), 0 0 18px rgba(255, 209, 102, 0.5)";
+    "0 0 8px rgba(244, 195, 78, 0.85), 0 0 18px rgba(244, 195, 78, 0.5)";
 
   cashoutBtn.disabled = true;
   startCrashBtn.disabled = false;
@@ -3511,11 +3558,12 @@ function crashGameOver() {
 
   stopCrashRocketSound();
 
-  playTone(180, 0.12, "sawtooth", 0.09);
-
-  setTimeout(() => {
-    playTone(95, 0.28, "sawtooth", 0.09);
-  }, 100);
+  sfx("crash_boom", undefined, () => {
+    playTone(180, 0.12, "sawtooth", 0.09);
+    setTimeout(() => playTone(95, 0.28, "sawtooth", 0.09), 100);
+  });
+  const crashBox = crashCanvas.getBoundingClientRect();
+  CR.fx.burst(crashBox.right - 30, crashBox.top + 30, { count: 18, kinds: ["fx/star", "fx/sparkle", "fx/chip-red"], speed: 320, up: 80 });
 
   crashMultiplierText.textContent = "CRASHED";
   updateCrashGlow(crashPoint, true);
@@ -3633,31 +3681,26 @@ function drawBlackjackCard() {
   return blackjackDeck.pop();
 }
 
+const CARD_SUIT_SPRITE = { "♠": "spade", "♥": "heart", "♦": "diamond", "♣": "club" };
+
+// Original pixel cards (assets/sprites/cards/<rank>-<suit>.png); the deck logic still uses rank/suit.
 function createCardElement(card, hidden = false) {
   const cardElement = document.createElement("div");
   cardElement.classList.add("playing-card");
 
+  const img = document.createElement("img");
+  img.draggable = false;
+
   if (hidden) {
     cardElement.classList.add("hidden-card");
-    cardElement.textContent = "?";
-    return cardElement;
+    img.src = "assets/sprites/cards/back.png";
+    img.alt = "Face-down card";
+  } else {
+    img.src = `assets/sprites/cards/${card.rank}-${CARD_SUIT_SPRITE[card.suit]}.png`;
+    img.alt = `${card.rank} of ${CARD_SUIT_SPRITE[card.suit]}s`;
   }
 
-  if (card.suit === "♥" || card.suit === "♦") {
-    cardElement.classList.add("red-card");
-  }
-
-  const rankElement = document.createElement("div");
-  rankElement.classList.add("card-rank");
-  rankElement.textContent = card.rank;
-
-  const suitElement = document.createElement("div");
-  suitElement.classList.add("card-suit");
-  suitElement.textContent = card.suit;
-
-  cardElement.appendChild(rankElement);
-  cardElement.appendChild(suitElement);
-
+  cardElement.appendChild(img);
   return cardElement;
 }
 
@@ -3719,7 +3762,11 @@ function resetBlackjack() {
 }
 
 function dealCardWithDelay(targetHand, callback, delay = 300) {
+  const dealRunId = runId;
+
   setTimeout(() => {
+    if (dealRunId !== runId) return;
+
     targetHand.push(drawBlackjackCard());
     renderBlackjackHands();
     playCardDealSound();
@@ -3812,10 +3859,13 @@ function blackjackStand() {
 
   playCardDealSound();
 
-  setTimeout(dealerPlayBlackjack, 500);
+  const standRunId = runId;
+  setTimeout(() => dealerPlayBlackjack(standRunId), 500);
 }
 
-function dealerPlayBlackjack() {
+function dealerPlayBlackjack(standRunId = runId) {
+  if (standRunId !== runId) return;
+
   const dealerTotal = getProtectedDealerTotal();
 
   if (dealerTotal < 17) {
@@ -3895,6 +3945,9 @@ function finishBlackjackRound(reason) {
     });
 
     message = `Push! You tied at ${playerTotal}. Your bet is returned.`;
+    recordRoundResult("Blackjack", "Push", 0);
+    const pushAt = CR.fx.anchor();
+    CR.fx.word("push", pushAt.x, pushAt.y - 20, 3);
   } else {
     payout = 0;
     const lossText = processFullLoss(blackjackBet, "Blackjack");
@@ -3979,7 +4032,7 @@ function updateFrogButtons() {
   }
 
   frogStartBtn.disabled = frogRoundActive || frogBusy;
-  frogHopBtn.disabled = !frogRoundActive || frogBusy;
+  frogHopBtn.disabled = !frogRoundActive || frogBusy || frogLane >= 5;
   frogCashoutBtn.disabled = !frogRoundActive || frogBusy || frogLane <= 0;
 }
 
@@ -4018,8 +4071,24 @@ function startFrogRoadRound() {
   updateFrogButtons();
 }
 
+function getFrogBaseCrashChance(lane) {
+  return Math.min(0.12 + lane * 0.08, 0.55);
+}
+
+// Multiplier = 0.96 / chance of surviving to this lane, so cashing out at any lane returns
+// 0.96 per $1 without Floaties (lane 1 1.20x ... lane 5 9.69x). Old curve returned up to 1.23.
+function getFrogMultiplier(lane) {
+  let survival = 1;
+
+  for (let i = 1; i <= lane; i++) {
+    survival *= 1 - getFrogBaseCrashChance(i);
+  }
+
+  return 0.96 / survival;
+}
+
 function getFrogCrashChance(lane) {
-  let chance = Math.min(0.12 + lane * 0.08, 0.55);
+  let chance = getFrogBaseCrashChance(lane);
 
   if (activeFrogSneakers > 0) {
     const protectionMultiplier = Math.max(0.2, 1 - activeFrogSneakers * 0.45);
@@ -4030,7 +4099,8 @@ function getFrogCrashChance(lane) {
 }
 
 function hopFrogForward() {
-  if (!frogRoundActive || frogBusy) return;
+  // Lane 5 is the safe shore; stepping past it used to keep raising the multiplier forever.
+  if (!frogRoundActive || frogBusy || frogLane >= 5) return;
 
   frogBusy = true;
   updateFrogButtons();
@@ -4043,11 +4113,15 @@ function hopFrogForward() {
   frogPlayer.classList.add("hopping");
   frogPlayer.style.bottom = `${frogLaneBottoms[Math.min(frogLane, 5)]}px`;
 
-  frogMultiplier = 1 + frogLane * 0.45 + frogLane * frogLane * 0.06;
+  frogMultiplier = getFrogMultiplier(frogLane);
   frogMultiplierText.textContent = `Multiplier: ${frogMultiplier.toFixed(2)}x`;
   frogMessage.textContent = `River lane ${frogLane}. Potential cash out: $${(frogBet * frogMultiplier).toFixed(2)}`;
 
+  const hopRunId = runId;
+
   setTimeout(() => {
+    if (hopRunId !== runId) return;
+
     frogPlayer.classList.remove("hopping");
 
     const crashChance = getFrogCrashChance(frogLane);
@@ -4406,7 +4480,9 @@ function checkGameState() {
 /* ========================= */
 
 setInterval(() => {
-  if (!gameStarted || runEnded || goalPopupOpen || coinFlipOpen || moneyPopupActive || allInAnimationActive || popupQueueActive) return;
+  // Only blocking modals pause the clock. Win popups are non-blocking overlays, so pausing for
+  // them let players keep betting on a frozen timer.
+  if (!gameStarted || runEnded || goalPopupOpen || coinFlipOpen) return;
 
   if (timeLeft > 0) {
     timeLeft--;
@@ -4536,6 +4612,34 @@ function setupHowToPlayModal() {
   showHelpPage("basics");
 }
 
+// How to Play item gallery, generated from shopItemData so it can never drift from the real catalog.
+function renderHelpItemGallery() {
+  const gallery = document.getElementById("help-item-gallery");
+  if (!gallery) return;
+
+  const games = ["Plinko", "Roulette", "Crash", "Blackjack", "Elephant River", "Horse Race"];
+  gallery.innerHTML = "";
+
+  shopItemData.forEach((item) => {
+    const usedIn = games.filter((game) => isItemRelevantToGame(item.id, game));
+    const card = document.createElement("div");
+    card.className = "help-item-card";
+    card.innerHTML = `${CR.spriteImg("items/" + item.id)}<b></b><p></p><small></small>`;
+    card.querySelector("b").textContent = item.name;
+    card.querySelector("p").textContent = item.description;
+    card.querySelector("small").textContent =
+      `${item.type} - $${item.price} base - ${usedIn.length === games.length ? "All games" : usedIn.join(", ")}`;
+    gallery.appendChild(card);
+  });
+}
+
+document.querySelectorAll(".open-settings-btn").forEach((button) => {
+  button.addEventListener("click", CR.openSettings);
+});
+
+// Browsers only allow audio after a gesture: the first tap anywhere starts the lobby music.
+document.addEventListener("pointerdown", playScreenMusic, { once: true });
+
 resetBlackjack();
 resetFrogRoad();
 resetHorseRace();
@@ -4545,4 +4649,5 @@ renderShop();
 renderActiveItemTimers();
 setupDevUEasterEgg();
 setupHowToPlayModal();
+renderHelpItemGallery();
 updateUI();

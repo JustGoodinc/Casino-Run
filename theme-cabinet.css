@@ -1,0 +1,256 @@
+/* Casino Run "Cabinet" theme: design-bible layer loaded after style.css.
+   Tokens come from assets/palette.json (assets-src/palette.mjs). Text sizes are multiples of 10px
+   because the pixel font is crisp at 1 font px = 1/10 em. */
+@font-face {
+  font-family: "Casino Run Pixel";
+  src: url("assets/fonts/casino-run-pixel.ttf") format("truetype");
+  font-display: block;
+}
+
+:root {
+  --ink: #0E0C17; --cabinet: #191727; --panel-c: #29263A; --panelHi: #3B3752;
+  --purple: #6944B8; --purpleLight: #9B7BF0; --gold: #F4C34E; --goldDark: #B8862B;
+  --cyan: #37D9E8; --cyanDark: #1E8FA0; --red: #F45B58; --redDark: #A8323A; --redLight: #FF7A72;
+  --green-c: #7EDD65; --greenDark: #3F9447; --cream: #FFF0CE; --creamDark: #D9C49A;
+  --orange: #FF9E45; --pink-c: #FF8CC6; --blue-c: #3A7BD5; --blueDark: #24508F; --felt: #2E7D4F;
+  --ease-pop: cubic-bezier(.34, 1.56, .64, 1); --ease-snap: cubic-bezier(.2, 0, 0, 1);
+  /* Remap the old theme variables so untouched rules inherit the new palette. */
+  --pink: var(--red); --yellow: var(--gold); --green: var(--green-c); --blue: var(--cyanDark);
+  --navy: var(--cabinet); --dark-navy: var(--ink); --deep-navy: var(--ink);
+  --panel: var(--panel-c); --panel-dark: var(--cabinet); --white: var(--cream);
+}
+
+html, body {
+  font-family: "Casino Run Pixel", "Courier New", monospace;
+  font-size: 20px;
+  -webkit-font-smoothing: none;
+  font-smooth: never;
+}
+
+body {
+  background-color: var(--cabinet);
+  background-image:
+    linear-gradient(var(--ink) 2px, transparent 2px),
+    linear-gradient(90deg, var(--ink) 2px, transparent 2px);
+  background-size: 40px 40px;
+  background-position: -1px -1px;
+  color: var(--cream);
+  padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+}
+
+.sprite { image-rendering: pixelated; image-rendering: crisp-edges; width: calc(var(--w, auto)); vertical-align: middle; }
+img.s1 { zoom: 1; } img.s2 { zoom: 2; } img.s3 { zoom: 3; } img.s4 { zoom: 4; }
+
+h1, h2, h3, h4, p, button, span, b, strong, li, input, label, select { font-family: inherit; }
+h2 { font-size: 30px; font-weight: normal; letter-spacing: 0; }
+h3, h4 { font-size: 20px; font-weight: normal; }
+p { font-size: 20px; }
+b, strong { font-weight: normal; }
+
+/* ---------- Panels: ink frame + bevel + hard shadow (no glass, no blur) ---------- */
+.title-card, .stats, .bet-slider-card, .crash-card, .blackjack-board, .shop-card, .leaderboard-card,
+.horse-pick-card, .frog-info, .horse-info, .goal-popup-card, .how-to-play-card, .run-history-card,
+.help-mini-card, .help-hero-card, .help-game-card, .help-item-card, .shop-item, .money-popup-card, .settings-card {
+  background: var(--panel-c) !important;
+  border: 2px solid var(--ink) !important;
+  border-radius: 0 !important;
+  box-shadow: inset 0 0 0 2px var(--panelHi), 4px 4px 0 var(--ink) !important;
+  backdrop-filter: none !important;
+}
+
+/* ---------- Buttons ---------- */
+button, .main-btn, .play-btn, .how-to-play-btn, .nav-btn, .shop-buy-btn, .roulette-choice, .horse-choice,
+.submit-score-btn, .try-again-btn, .goal-popup-buttons button, .help-nav-control, .help-tab {
+  font-family: inherit;
+  font-size: 20px;
+  font-weight: normal;
+  border-radius: 0 !important;
+  border: 2px solid var(--ink) !important;
+  box-shadow: 0 4px 0 var(--ink) !important;
+  text-shadow: none !important;
+  transition: transform 60ms var(--ease-snap), box-shadow 60ms var(--ease-snap), filter 80ms;
+  letter-spacing: 0;
+}
+.main-btn, .play-btn, .submit-score-btn, #keep-going-btn, .shop-buy-btn {
+  background: var(--gold) !important;
+  color: var(--ink) !important;
+  box-shadow: inset 0 -4px 0 var(--goldDark), 0 4px 0 var(--ink) !important;
+}
+.cashout-btn, #cash-out-run-btn { background: var(--green-c) !important; color: var(--ink) !important; box-shadow: inset 0 -4px 0 var(--greenDark), 0 4px 0 var(--ink) !important; }
+.how-to-play-btn, .try-again-btn, .nav-btn, .help-nav-control, .help-tab, .roulette-choice, .horse-choice {
+  background: var(--panelHi) !important;
+  color: var(--cream) !important;
+  box-shadow: inset 0 -4px 0 var(--panel-c), 0 4px 0 var(--ink) !important;
+}
+button:hover:not(:disabled), button:focus-visible { filter: brightness(1.12); transform: translateY(-1px); }
+button:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; }
+button:active:not(:disabled) { transform: translateY(4px); box-shadow: none !important; }
+button:disabled { background: var(--panel-c) !important; color: var(--purpleLight) !important; box-shadow: 0 2px 0 var(--ink) !important; filter: none; opacity: 1; }
+.nav-btn.active, .help-tab.active, .roulette-choice.selected, .horse-choice.selected { background: var(--gold) !important; color: var(--ink) !important; box-shadow: inset 0 -4px 0 var(--goldDark), 0 4px 0 var(--ink) !important; }
+#bet-red.selected { background: var(--red) !important; } #bet-black.selected { background: var(--ink) !important; color: var(--cream) !important; } #bet-green.selected { background: var(--felt) !important; color: var(--cream) !important; }
+
+.nav { gap: 6px !important; }
+.nav-btn { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 6px 8px !important; font-size: 20px; }
+.nav-btn .sprite { zoom: 2; }
+
+/* ---------- Logo ---------- */
+.casino-logo { font-size: 40px !important; color: var(--gold) !important; letter-spacing: 2px; font-weight: normal !important;
+  text-shadow: 2px 0 var(--ink), -2px 0 var(--ink), 0 2px var(--ink), 0 -2px var(--ink), 4px 4px 0 var(--ink) !important; }
+.title-logo { display: block; margin: 0 auto 12px; position: relative; width: fit-content; }
+.title-logo img { zoom: 3; display: block; }
+/* Dev easter-egg hotspot sits over the "U" of RUN in logo.png (118x63): U spans x 48-67, y 30-58. */
+.title-logo .dev-u { position: absolute; left: 40.7%; top: 47.6%; width: 17%; height: 44%; color: transparent !important; font-size: 0 !important; text-shadow: none !important; background: none !important; animation: none; cursor: pointer; overflow: hidden; }
+.title-logo .dev-u.dev-u-spin { animation: none !important; }
+.title-screen { background: transparent !important; }
+
+/* ---------- HUD ---------- */
+.stats.hud { display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; padding: 10px 12px !important; align-items: center; }
+.hud p { margin: 0 !important; }
+.hud-money { display: flex; align-items: center; gap: 8px; }
+.hud-money .sprite { zoom: 2; }
+#balance { font-size: 40px !important; color: var(--gold); text-shadow: 3px 3px 0 var(--ink); line-height: 1; }
+#balance.balance-gain { color: var(--green-c) !important; }
+#balance.balance-loss { color: var(--redLight) !important; }
+.hud-timer { display: flex; align-items: center; gap: 6px; justify-self: end; color: var(--cyan); }
+.hud-timer .sprite { zoom: 2; }
+#timer { font-size: 30px !important; color: var(--cyan); }
+.hud-timer.urgent #timer { color: var(--redLight); animation: urgentPulse 1s steps(2) infinite; }
+@keyframes urgentPulse { 50% { transform: scale(1.12); } }
+.hud-goal { grid-column: 1 / -1; }
+#goal { font-size: 20px !important; color: var(--cream); }
+.goal-bar { height: 12px; background: var(--ink); border: 2px solid var(--ink); box-shadow: inset 0 0 0 2px var(--panelHi); margin-top: 4px; }
+.goal-bar i { display: block; height: 100%; width: 0; background: repeating-linear-gradient(90deg, var(--gold) 0 10px, var(--goldDark) 10px 12px); transition: width 300ms var(--ease-snap); }
+.goal-bar i.full { background: repeating-linear-gradient(90deg, var(--green-c) 0 10px, var(--greenDark) 10px 12px); }
+.hud-streak { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; }
+.streak-pips { display: flex; gap: 2px; }
+/* Each pip shows frame 0 of the 3-frame flame strip (11x14 per frame, drawn at 2x). */
+.streak-pips .pip { display: inline-block; width: 22px; height: 28px; overflow: hidden; }
+.streak-pips .pip .sprite { zoom: 2; max-width: none; display: block; filter: grayscale(1) brightness(0.45); transition: filter 120ms; }
+.streak-pips .pip.lit .sprite { filter: none; animation: pipPop 260ms var(--ease-pop); }
+@keyframes pipPop { 0% { transform: scale(0.4); } 100% { transform: scale(1); } }
+/* ON FIRE: lit pips cycle the 3 flame frames by sliding the strip. */
+.hud-streak.on-fire .pip.lit .sprite { animation: flameFrames 0.3s steps(1) infinite; }
+@keyframes flameFrames { 0% { transform: translateX(0); } 33% { transform: translateX(-11px); } 66% { transform: translateX(-22px); } }
+@keyframes flicker { 50% { transform: translateY(-2px) scaleY(1.1); } }
+.streak-text { font-size: 20px !important; color: var(--orange) !important; text-shadow: none !important; margin: 0 !important; }
+.settings-btn { margin-left: auto; padding: 2px 8px !important; font-size: 20px; background: var(--panelHi) !important; color: var(--cream) !important; }
+
+/* ---------- Plinko: The Peg Foundry ---------- */
+#board { background: var(--ink) !important; border: 2px solid var(--ink) !important; border-radius: 0 !important; box-shadow: inset 0 0 0 3px var(--orange), 4px 4px 0 var(--ink) !important;
+  background-image: radial-gradient(var(--panel-c) 1px, transparent 1px) !important; background-size: 10px 10px !important; }
+.peg { width: 14px !important; height: 14px !important; border-radius: 0 !important; box-shadow: none !important; background: url("assets/sprites/ui/peg.png") 0 0 / 14px 14px no-repeat !important; image-rendering: pixelated; }
+.peg.hit { filter: brightness(1.8); transform: translate(-50%, -50%) scale(1.25) !important; }
+.ball { width: 18px !important; height: 18px !important; border-radius: 0 !important; box-shadow: none !important; background: url("assets/sprites/ui/ball.png") 0 0 / 18px 18px no-repeat !important; image-rendering: pixelated; }
+.slot { background: var(--panel-c) !important; border-right: 2px solid var(--ink) !important; color: var(--cream) !important; font-size: 20px; }
+.slot:nth-child(1) { color: var(--redLight) !important; } .slot:nth-child(4) { color: var(--green-c) !important; } .slot:nth-child(5) { background: var(--gold) !important; color: var(--ink) !important; }
+.slot.slot-hit { animation: slotHit 420ms var(--ease-pop); filter: brightness(1.5); }
+@keyframes slotHit { 30% { transform: translateY(-8px) scale(1.1); } }
+
+/* ---------- Roulette: The Ruby Wheel ---------- */
+#pointer { border: none !important; width: 28px !important; height: 28px !important; top: -10px !important; background: url("assets/sprites/ui/pointer.png") center / 28px 28px no-repeat; image-rendering: pixelated; }
+#roulette-canvas { image-rendering: pixelated; }
+#roulette-result { font-size: 20px; color: var(--cream); }
+
+/* ---------- Crash ---------- */
+#crash-multiplier { font-size: 60px !important; text-shadow: 4px 4px 0 var(--ink) !important; }
+#crash-canvas { image-rendering: pixelated; border: 2px solid var(--ink); }
+
+/* ---------- Blackjack: The Twenty-One Club ---------- */
+.blackjack-board { background: var(--felt) !important; box-shadow: inset 0 0 0 2px var(--greenDark), 4px 4px 0 var(--ink) !important; }
+.playing-card { width: 62px !important; height: 80px !important; padding: 0 !important; border: none !important; border-radius: 0 !important; background: none !important; box-shadow: none !important; animation: cardIn 220ms var(--ease-pop); }
+.playing-card img { width: 62px; height: 80px; image-rendering: pixelated; filter: drop-shadow(3px 3px 0 var(--ink)); }
+@keyframes cardIn { from { transform: translateY(-30px) rotate(-8deg); opacity: 0; } }
+.blackjack-message { font-size: 20px; color: var(--cream); background: var(--ink) !important; border-radius: 0 !important; }
+
+/* ---------- Elephant River ---------- */
+.elephant-river { background: repeating-linear-gradient(180deg, var(--blue-c) 0 50%, var(--blueDark) 50% 100%) !important; }
+.elephant-shore-top, .elephant-shore-bottom { background: var(--felt) !important; color: var(--cream) !important; font-size: 20px; border-radius: 0 !important; }
+.car { font-size: 0 !important; line-height: 0; }
+.car img { zoom: 2; }
+.frog-player { font-size: 0 !important; width: 48px !important; height: 34px !important; background: url("assets/sprites/river/elephant.png") 0 0 / 96px 34px no-repeat; image-rendering: pixelated; animation: walk2 0.5s steps(1) infinite; }
+@keyframes walk2 { 50% { background-position: -48px 0; } }
+/* style.css hue-rotated the grey emoji to make it pink; the sprite is already pink, so drop that filter. */
+.elephant-player, .elephant-player.hopping { filter: drop-shadow(2px 2px 0 var(--ink)) !important; }
+.frog-player.hit, .elephant-player.hit { filter: brightness(0.6) sepia(1) hue-rotate(170deg) !important; }
+
+/* ---------- Horse Race: Derby Dash ---------- */
+.horse-runner { font-size: 0 !important; width: 56px; height: 38px; background-repeat: no-repeat; background-size: 112px 38px; image-rendering: pixelated; }
+#horse-0 { background-image: url("assets/sprites/horse/horse-0.png"); } #horse-1 { background-image: url("assets/sprites/horse/horse-1.png"); }
+#horse-2 { background-image: url("assets/sprites/horse/horse-2.png"); } #horse-3 { background-image: url("assets/sprites/horse/horse-3.png"); }
+.horse-runner.racing { animation: gallop 0.2s steps(1) infinite !important; }
+@keyframes gallop { 50% { background-position: -56px 0; } }
+.horse-runner.winner { filter: drop-shadow(0 0 0 var(--gold)) drop-shadow(2px 2px 0 var(--gold)) !important; }
+.lane-number { font-size: 10px !important; color: var(--cream); }
+
+/* ---------- Shop + inventory ---------- */
+.inventory-item-icon { width: 56px !important; height: 56px !important; padding: 0 !important; }
+.shop-item-icon { width: 60px !important; height: 60px !important; }
+.shop-item-icon, .inventory-item-icon { background: var(--ink) !important; border-radius: 0 !important; box-shadow: inset 0 0 0 2px var(--panelHi) !important; }
+.shop-item-icon .sprite, .inventory-item-icon .sprite { zoom: 2; }
+.shop-item h3 { color: var(--gold); }
+.shop-item-type { color: var(--purpleLight) !important; font-size: 20px; }
+.shop-item-desc { font-size: 20px; color: var(--cream); line-height: 1.2; }
+.shop-item.sold { position: relative; }
+.shop-item.sold::after { content: ""; position: absolute; inset: 0; background: url("assets/sprites/words/soldout.png") center / auto 60px no-repeat; image-rendering: pixelated; transform: rotate(-8deg); pointer-events: none; }
+.item-popup-icon .sprite { zoom: 4; }
+.item-break-icon .sprite { zoom: 4; }
+/* Bag floats bottom-right (thumb reach, safe-area aware). Top-right covered the HUD timer on narrow screens. */
+.inventory-sidebar {
+  top: auto !important;
+  bottom: max(12px, env(safe-area-inset-bottom)) !important;
+  right: max(12px, env(safe-area-inset-right)) !important;
+  max-height: 70vh; overflow-y: auto;
+  background: var(--panel-c) !important; border: 2px solid var(--ink) !important; border-radius: 0 !important;
+  box-shadow: inset 0 0 0 2px var(--gold), 4px 4px 0 var(--ink) !important;
+}
+.inventory-bag-toggle { font-size: 20px !important; }
+.game { padding-bottom: 96px; } /* content can always scroll clear of the floating bag */
+.inventory-bag-toggle .sprite { zoom: 2; }
+.active-item-timer .sprite { zoom: 1; }
+
+/* ---------- Popups ---------- */
+.goal-popup { background: rgba(14, 12, 23, 0.82) !important; }
+.goal-popup-glow { display: none !important; }
+.goal-popup-card h2 { color: var(--gold); text-shadow: 3px 3px 0 var(--ink); }
+.money-popup-card { min-width: 260px; }
+.money-popup-main { font-size: 60px !important; color: var(--gold) !important; text-shadow: 4px 4px 0 var(--ink) !important; }
+.money-popup-line { font-size: 20px !important; opacity: 0; transform: translateX(-12px); transition: opacity 120ms, transform 160ms var(--ease-pop); }
+.money-popup-line.show { opacity: 1; transform: none; }
+.money-popup-line.base-win { color: var(--cream) !important; } .money-popup-line.item-bonus { color: var(--green-c) !important; }
+.money-popup-skip { font-size: 10px; color: var(--purpleLight); margin-top: 6px; }
+.all-in-card { background: none !important; border: none !important; box-shadow: none !important; }
+.all-in-card .sprite { zoom: 5; }
+.toast-message { font-size: 20px; background: var(--ink) !important; border: 2px solid var(--gold) !important; border-radius: 0 !important; color: var(--cream) !important; box-shadow: 4px 4px 0 var(--ink) !important; }
+.danger-flash { box-shadow: inset 0 0 0 6px var(--red) !important; background: none !important; }
+
+/* ---------- FX layers ---------- */
+.fx-canvas { position: fixed; inset: 0; pointer-events: none; z-index: 1000001; }
+.fx-word { position: fixed; z-index: 1000002; pointer-events: none; image-rendering: pixelated; transform: translate(-50%, -50%); animation: wordPop 900ms var(--ease-pop) forwards; }
+.fx-word.fx-word-calm { animation: wordFade 900ms linear forwards; }
+@keyframes wordPop { 0% { transform: translate(-50%, -50%) scale(0.2) rotate(-12deg); opacity: 0; } 20% { transform: translate(-50%, -50%) scale(1.15) rotate(3deg); opacity: 1; } 35% { transform: translate(-50%, -50%) scale(1) rotate(0); } 80% { opacity: 1; } 100% { transform: translate(-50%, -80%) scale(1); opacity: 0; } }
+@keyframes wordFade { 0%, 80% { opacity: 1; transform: translate(-50%, -50%); } 100% { opacity: 0; transform: translate(-50%, -50%); } }
+.fx-shake { animation: fxShake 300ms steps(6); }
+@keyframes fxShake { 20% { transform: translate(var(--shake), 0); } 40% { transform: translate(calc(var(--shake) * -1), calc(var(--shake) * .5)); } 60% { transform: translate(calc(var(--shake) * .5), calc(var(--shake) * -.5)); } 80% { transform: translate(calc(var(--shake) * -.5), 0); } }
+
+/* ---------- Settings ---------- */
+.settings-card { display: flex; flex-direction: column; gap: 12px; text-align: left; max-width: 360px; }
+.settings-card label { display: flex; justify-content: space-between; align-items: center; gap: 12px; font-size: 20px; }
+.settings-card label.check { justify-content: flex-start; }
+.settings-card input[type="range"] { accent-color: var(--gold); width: 140px; }
+.settings-card select { background: var(--panelHi); color: var(--cream); border: 2px solid var(--ink); padding: 2px 6px; }
+
+/* ---------- How to Play ---------- */
+.help-big-icon .sprite { zoom: 3; }
+.help-mini-card > .sprite, .help-item-card .sprite, .help-game-card .sprite { zoom: 2; }
+.help-item-card small { display: block; color: var(--purpleLight); font-size: 10px; margin-top: 4px; }
+
+/* ---------- Reduced motion ---------- */
+.reduced-motion *, .reduced-motion *::before, .reduced-motion *::after { animation-duration: 1ms !important; animation-iteration-count: 1 !important; transition-duration: 1ms !important; }
+.reduced-motion .frog-player, .reduced-motion .horse-runner.racing { animation: none !important; }
+@media (prefers-reduced-motion: reduce) { .fx-shake { animation: none; } }
+
+/* Phones keep 20px text (no tiny copy); only the biggest numbers step down a size. */
+@media (max-width: 500px) {
+  #balance { font-size: 30px !important; }
+  #crash-multiplier { font-size: 40px !important; }
+}

@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Casino Run Asset Studio</title>
+<style>
+  @font-face { font-family: "Casino Run Pixel"; src: url("../../assets/fonts/casino-run-pixel.ttf") format("truetype"); }
+  :root { --ink:#0E0C17; --cabinet:#191727; --panel:#29263A; --panelHi:#3B3752; --gold:#F4C34E; --cyan:#37D9E8; --cream:#FFF0CE; --red:#F45B58; --green:#7EDD65; --purpleLight:#9B7BF0; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--cabinet); color: var(--cream); font: 20px "Casino Run Pixel", monospace; }
+  header { display: flex; gap: 8px; align-items: center; padding: 10px 16px; background: var(--panel); border-bottom: 2px solid var(--ink); flex-wrap: wrap; }
+  header h1 { font-size: 20px; margin: 0 16px 0 0; color: var(--gold); font-weight: normal; }
+  button, select, input { font: inherit; color: var(--cream); background: var(--panelHi); border: 2px solid var(--ink); padding: 4px 10px; box-shadow: 2px 2px 0 var(--ink); cursor: pointer; }
+  button.on { background: var(--gold); color: var(--ink); }
+  button:active { transform: translate(2px, 2px); box-shadow: none; }
+  main { padding: 16px; }
+  .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+  .grid { display: flex; flex-wrap: wrap; gap: 10px; }
+  .tile { background: var(--bg, var(--panel)); border: 2px solid var(--ink); padding: 8px; display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 70px; cursor: pointer; }
+  .tile.bad { border-color: var(--red); }
+  .tile small { font-size: 10px; color: var(--purpleLight); max-width: 140px; overflow-wrap: anywhere; text-align: center; }
+  canvas { image-rendering: pixelated; }
+  h2 { font-size: 20px; color: var(--cyan); font-weight: normal; margin: 18px 0 8px; }
+  table { border-collapse: collapse; font-size: 10px; }
+  td, th { border: 1px solid var(--panelHi); padding: 4px 8px; text-align: left; }
+  .pass { color: var(--green); } .fail { color: var(--red); } .est { color: var(--purpleLight); }
+  #detail { position: fixed; right: 16px; top: 70px; width: 340px; background: var(--panel); border: 2px solid var(--ink); padding: 12px; box-shadow: 4px 4px 0 var(--ink); display: none; font-size: 10px; max-height: calc(100vh - 90px); overflow: auto; }
+  .screens { display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start; }
+  .screens figure { margin: 0; } .screens figcaption { font-size: 10px; color: var(--purpleLight); margin-top: 4px; }
+  iframe { border: 2px solid var(--ink); background: #000; }
+</style>
+</head>
+<body>
+<header>
+  <h1>CASINO RUN ASSET STUDIO</h1>
+  <button data-tab="sprites" class="on">SPRITES</button>
+  <button data-tab="audio">AUDIO</button>
+  <button data-tab="palette">PALETTE</button>
+  <button data-tab="screens">SCREENS</button>
+  <button data-tab="checks">CHECKS</button>
+</header>
+<main id="main"></main>
+<div id="detail"></div>
+<script type="module">
+const ROOT = "../../assets/";
+const manifest = await (await fetch(ROOT + "manifest.json", { cache: "no-store" })).json();
+const palette = await (await fetch(ROOT + "palette.json", { cache: "no-store" })).json();
+const paletteSet = new Set(Object.values(palette).map((h) => h.toLowerCase()));
+const main = document.getElementById("main"), detail = document.getElementById("detail");
+const img = (src) => new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = src; });
+const state = { zoom: 3, bg: "panel", tab: "sprites", group: "all" };
+const BGS = { panel: "#29263A", cabinet: "#191727", felt: "#2E7D4F", cream: "#FFF0CE", checker: "repeating-conic-gradient(#555 0 25%, #888 0 50%) 0 0/8px 8px" };
+const images = {};
+for (const s of manifest.sprites) images[s.id] = await img(ROOT + s.file);
+
+function frameCanvas(s, frame, zoom) {
+  const c = document.createElement("canvas");
+  c.width = s.frameW * zoom; c.height = s.frameH * zoom;
+  const ctx = c.getContext("2d"); ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(images[s.id], frame * s.frameW, 0, s.frameW, s.frameH, 0, 0, c.width, c.height);
+  return c;
+}
+
+// ---------- Validation (shared by tiles + CHECKS tab) ----------
+const scratch = document.createElement("canvas").getContext("2d", { willReadFrequently: true });
+function validateSprite(s) {
+  const im = images[s.id], issues = [];
+  scratch.canvas.width = im.width; scratch.canvas.height = im.height;
+  scratch.clearRect(0, 0, im.width, im.height); scratch.drawImage(im, 0, 0);
+  const d = scratch.getImageData(0, 0, im.width, im.height).data;
+  let offPalette = 0, partialAlpha = 0, opaque = 0, edge = 0;
+  for (let p = 0; p < d.length; p += 4) {
+    const a = d[p + 3];
+    if (a === 0) continue;
+    if (a !== 255) partialAlpha++;
+    opaque++;
+    const hex = "#" + [d[p], d[p + 1], d[p + 2]].map((v) => v.toString(16).padStart(2, "0")).join("");
+    if (!paletteSet.has(hex)) offPalette++;
+    const x = (p / 4) % im.width, y = Math.floor(p / 4 / im.width);
+    if ((x % s.frameW === 0 || x % s.frameW === s.frameW - 1 || y === 0 || y === im.height - 1) && s.group !== "words" && s.id !== "ui/logo") edge++;
+  }
+  if (im.width !== s.frameW * s.frames || im.height !== s.frameH) issues.push("dimension mismatch");
+  if (offPalette) issues.push(`${offPalette} off-palette px`);
+  if (partialAlpha) issues.push(`${partialAlpha} semi-transparent px`);
+  if (!opaque) issues.push("empty");
+  if (s.frameW > 256 || s.frameH > 256) issues.push("frame > 256px (3DS budget)");
+  return { issues, opaque, edge };
+}
+
+// ---------- Tabs ----------
+const TABS = {
+  sprites() {
+    const groups = ["all", ...new Set(manifest.sprites.map((s) => s.group))];
+    main.innerHTML = `<div class="row">
+      GROUP <select id="grp">${groups.map((g) => `<option ${g === state.group ? "selected" : ""}>${g}</option>`).join("")}</select>
+      ZOOM <input id="zoom" type="range" min="1" max="8" value="${state.zoom}"> <span>${state.zoom}X</span>
+      BG ${Object.keys(BGS).map((b) => `<button data-bg="${b}" class="${b === state.bg ? "on" : ""}">${b}</button>`).join("")}
+      <span class="est">${manifest.sprites.length} SPRITES</span></div><div class="grid" id="grid"></div>`;
+    const grid = document.getElementById("grid");
+    manifest.sprites.filter((s) => state.group === "all" || s.group === state.group).forEach((s) => {
+      const t = document.createElement("div");
+      t.className = "tile" + (validateSprite(s).issues.length ? " bad" : "");
+      t.style.setProperty("--bg", BGS[state.bg]);
+      t.appendChild(frameCanvas(s, 0, state.zoom));
+      t.insertAdjacentHTML("beforeend", `<small>${s.id}${s.frames > 1 ? ` (${s.frames}F)` : ""}</small>`);
+      t.onclick = () => showDetail(s);
+      grid.appendChild(t);
+    });
+    document.getElementById("grp").onchange = (e) => { state.group = e.target.value; render(); };
+    document.getElementById("zoom").oninput = (e) => { state.zoom = +e.target.value; render(); };
+    main.querySelectorAll("[data-bg]").forEach((b) => (b.onclick = () => { state.bg = b.dataset.bg; render(); }));
+  },
+  audio() {
+    const list = manifest.audio || [];
+    main.innerHTML = `<div class="row">SFX VOL <input id="vol" type="range" min="0" max="1" step="0.05" value="0.8">
+      RATE <input id="rate" type="range" min="0.5" max="2" step="0.05" value="1"> <span id="rateTxt">1.00</span>
+      <button id="layer">LAYER TEST: WIN + STREAK + COINS</button> <span class="est">${list.length} SOUNDS</span></div>
+      <table><tr><th></th><th>ID</th><th>CATEGORY</th><th>DUR</th><th>PEAK DBFS</th><th>RMS DBFS</th><th>KB</th><th>WAVE</th></tr>
+      ${list.map((a) => `<tr><td><button data-play="${a.id}">PLAY</button></td><td>${a.id}</td><td>${a.category}</td><td>${a.seconds.toFixed(2)}S</td>
+        <td class="${a.peakDb < -0.5 ? "pass" : "fail"}">${a.peakDb.toFixed(1)}</td><td>${a.rmsDb.toFixed(1)}</td><td>${(a.bytes / 1024).toFixed(1)}</td><td><canvas data-wave="${a.id}" width="160" height="24"></canvas></td></tr>`).join("")}</table>`;
+    const ctx = (window.__ac ||= new AudioContext()), gain = ctx.createGain(); gain.connect(ctx.destination);
+    const buffers = {};
+    const load = async (id) => (buffers[id] ||= await ctx.decodeAudioData(await (await fetch(ROOT + list.find((a) => a.id === id).file)).arrayBuffer()));
+    const play = async (id, rate = +document.getElementById("rate").value) => {
+      const src = ctx.createBufferSource(); src.buffer = await load(id); src.playbackRate.value = rate; src.connect(gain); src.start();
+    };
+    document.getElementById("vol").oninput = (e) => (gain.gain.value = +e.target.value);
+    document.getElementById("rate").oninput = (e) => (document.getElementById("rateTxt").textContent = (+e.target.value).toFixed(2));
+    main.querySelectorAll("[data-play]").forEach((b) => (b.onclick = () => play(b.dataset.play)));
+    document.getElementById("layer").onclick = () => { ["win_large", "streak_5"].forEach((id) => play(id, 1)); for (let n = 0; n < 6; n++) setTimeout(() => play(`plinko_peg_${(n % 8) + 1}`, 2 ** (n / 12)), n * 60); };
+    main.querySelectorAll("[data-wave]").forEach(async (c) => {
+      const b = await load(c.dataset.wave), d = b.getChannelData(0), g = c.getContext("2d");
+      g.fillStyle = "#37D9E8";
+      for (let x = 0; x < c.width; x++) {
+        let m = 0; const step = Math.ceil(d.length / c.width);
+        for (let i = x * step; i < (x + 1) * step && i < d.length; i++) m = Math.max(m, Math.abs(d[i]));
+        g.fillRect(x, 12 - m * 12, 1, Math.max(1, m * 24));
+      }
+    });
+  },
+  palette() {
+    main.innerHTML = `<div class="grid">${Object.entries(palette).map(([k, v]) => `<div class="tile" style="--bg:${v};min-width:120px;height:80px;justify-content:flex-end"><small style="background:#0E0C17;padding:2px 4px">${k} ${v}</small></div>`).join("")}</div>
+      <h2>GLYPHS (CASINO RUN PIXEL)</h2>
+      ${[10, 20, 30, 40].map((px) => `<div style="font-size:${px}px;margin:6px 0">${px}PX: THE QUICK BROWN FOX $1,234.56 +50% X4.5 !?</div>`).join("")}`;
+  },
+  async screens() {
+    main.innerHTML = `<div class="row">GAME <select id="game">${["plinko", "roulette", "crash", "blackjack", "river", "horse"].map((g) => `<option>${g}</option>`).join("")}</select>
+      <span class="est">NATIVE 3DS MOCKUPS DRAWN WITH THE REAL SPRITES AND GLYPH ATLAS (2X)</span></div>
+      <div class="screens"><figure><canvas id="top" width="400" height="240" style="width:800px;height:480px"></canvas><figcaption>TOP 400X240</figcaption></figure>
+      <figure><canvas id="bottom" width="320" height="240" style="width:640px;height:480px"></canvas><figcaption>BOTTOM 320X240 (TOUCH)</figcaption></figure></div>
+      <h2>LIVE GAME AT TARGET VIEWPORTS</h2>
+      <div class="row">${[["DESKTOP", 1280, 800, 0.5], ["MOBILE PORTRAIT", 375, 812, 0.6], ["MOBILE LANDSCAPE", 812, 375, 0.6], ["3DS TOP", 400, 240, 1], ["3DS BOTTOM", 320, 240, 1]]
+        .map(([n, w, h, s]) => `<figure><div style="width:${w * s}px;height:${h * s}px;overflow:hidden"><iframe src="../../index.html" width="${w}" height="${h}" style="transform:scale(${s});transform-origin:0 0"></iframe></div><figcaption>${n} ${w}X${h}</figcaption></figure>`).join("")}</div>`;
+    const draw = () => drawScreens(document.getElementById("game").value);
+    document.getElementById("game").onchange = draw; draw();
+  },
+  checks() {
+    const rows = manifest.sprites.map((s) => ({ s, v: validateSprite(s) }));
+    const audio = manifest.audio || [];
+    const texMem = manifest.sprites.reduce((a, s) => a + 2 ** Math.ceil(Math.log2(Math.max(8, s.frameW * s.frames))) * 2 ** Math.ceil(Math.log2(Math.max(8, s.frameH))) * 4, 0);
+    const fails = rows.filter((r) => r.v.issues.length);
+    const audioFails = audio.filter((a) => a.peakDb >= -0.5);
+    main.innerHTML = `<h2>SUMMARY</h2><table>
+      <tr><td>SPRITES</td><td>${rows.length}</td><td class="${fails.length ? "fail" : "pass"}">${fails.length ? fails.length + " FAIL" : "ALL PASS"}</td></tr>
+      <tr><td>SPRITE FILE BYTES (MEASURED)</td><td>${(manifest.sprites.reduce((a, s) => a + s.bytes, 0) / 1024).toFixed(1)} KB</td><td></td></tr>
+      <tr><td>TEXTURE MEMORY IF EACH STRIP IS ITS OWN POW2 RGBA8 TEXTURE</td><td>${(texMem / 1024).toFixed(0)} KB</td><td class="est">ESTIMATE; ATLAS PACKING IS SMALLER</td></tr>
+      <tr><td>AUDIO CLIPS</td><td>${audio.length}</td><td class="${audioFails.length ? "fail" : "pass"}">${audioFails.length ? audioFails.length + " CLIP" : "NO CLIPPING"}</td></tr>
+      <tr><td>AUDIO MEMORY (PCM16, MEASURED BYTES)</td><td>${(audio.reduce((a, x) => a + x.bytes, 0) / 1024).toFixed(0)} KB</td><td></td></tr>
+      <tr><td>3DS TEX3DS CONVERSION</td><td colspan="2">${manifest.tex3ds ? `<span class="${manifest.tex3ds.ok ? "pass" : "fail"}">${manifest.tex3ds.ok ? "PASS" : "FAIL"}</span> ${manifest.tex3ds.note}` : '<span class="est">RUN tools/asset-validator/validate.mjs</span>'}</td></tr>
+      </table><h2>PER SPRITE</h2><table><tr><th>ID</th><th>FRAME</th><th>FRAMES</th><th>BYTES</th><th>RESULT</th></tr>
+      ${rows.map(({ s, v }) => `<tr><td>${s.id}</td><td>${s.frameW}X${s.frameH}</td><td>${s.frames}</td><td>${s.bytes}</td><td class="${v.issues.length ? "fail" : "pass"}">${v.issues.join(", ") || "PASS"}</td></tr>`).join("")}</table>`;
+  },
+};
+
+function showDetail(s) {
+  detail.style.display = "block";
+  let frame = 0, playing = s.frames > 1, speed = 1, timer;
+  const v = validateSprite(s);
+  detail.innerHTML = `<div class="row"><b style="color:var(--gold)">${s.id}</b><button id="x">X</button></div>
+    <div id="view" style="background:${BGS[state.bg]};padding:12px;display:flex;justify-content:center"></div>
+    <div class="row" style="margin-top:8px"><button id="pp">${playing ? "PAUSE" : "PLAY"}</button><button id="step">STEP</button>
+    SPEED <input id="spd" type="range" min="0.25" max="3" step="0.25" value="1"></div>
+    <div>FRAME ${s.frameW}X${s.frameH}, ${s.frames} FRAMES @ ${s.fps || "-"} FPS<br>${s.bytes} BYTES<br>GAME: ${s.game}<br>
+    CHECKS: <span class="${v.issues.length ? "fail" : "pass"}">${v.issues.join(", ") || "PASS"}</span></div>
+    <h2>SCALES</h2><div id="scales" class="row"></div>`;
+  const view = detail.querySelector("#view"), scales = detail.querySelector("#scales");
+  [1, 2, 4].forEach((z) => scales.appendChild(frameCanvas(s, 0, z)));
+  const paint = () => { view.innerHTML = ""; view.appendChild(frameCanvas(s, frame, 6)); };
+  const loop = () => { clearTimeout(timer); if (playing && s.frames > 1) timer = setTimeout(() => { frame = (frame + 1) % s.frames; paint(); loop(); }, 1000 / ((s.fps || 6) * speed)); };
+  paint(); loop();
+  detail.querySelector("#x").onclick = () => { clearTimeout(timer); detail.style.display = "none"; };
+  detail.querySelector("#pp").onclick = (e) => { playing = !playing; e.target.textContent = playing ? "PAUSE" : "PLAY"; loop(); };
+  detail.querySelector("#step").onclick = () => { frame = (frame + 1) % s.frames; paint(); };
+  detail.querySelector("#spd").oninput = (e) => { speed = +e.target.value; loop(); };
+}
+
+// ---------- 3DS screen mockups (native resolution, real assets) ----------
+const glyphAtlas = await img(ROOT + "fonts/casino-run-pixel-atlas.png");
+const glyphMap = (await (await fetch(ROOT + "fonts/casino-run-pixel-atlas.json")).json()).glyphs;
+const tint = {};
+function tintedAtlas(color) {
+  if (tint[color]) return tint[color];
+  const c = document.createElement("canvas"); c.width = glyphAtlas.width; c.height = glyphAtlas.height;
+  const g = c.getContext("2d"); g.drawImage(glyphAtlas, 0, 0); g.globalCompositeOperation = "source-in"; g.fillStyle = color; g.fillRect(0, 0, c.width, c.height);
+  return (tint[color] = c);
+}
+function text(g, str, x, y, color = palette.cream, scale = 1) {
+  const a = tintedAtlas(color);
+  for (const ch of str.toUpperCase()) {
+    const m = glyphMap[ch] || glyphMap["?"];
+    g.drawImage(a, m.x, m.y, m.w, 8, x, y, m.w * scale, 8 * scale);
+    x += (m.w + 1) * scale;
+  }
+  return x;
+}
+const spr = (g, id, x, y, frame = 0) => { const s = manifest.sprites.find((q) => q.id === id); g.drawImage(images[id], frame * s.frameW, 0, s.frameW, s.frameH, x, y, s.frameW, s.frameH); return s; };
+function panel(g, x, y, w, h, fill = palette.panel) {
+  g.fillStyle = palette.ink; g.fillRect(x, y, w, h);
+  g.fillStyle = palette.panelHi; g.fillRect(x + 1, y + 1, w - 2, h - 2);
+  g.fillStyle = fill; g.fillRect(x + 2, y + 2, w - 4, h - 3);
+}
+function drawScreens(game) {
+  const top = document.getElementById("top").getContext("2d"), bot = document.getElementById("bottom").getContext("2d");
+  [top, bot].forEach((g) => { g.imageSmoothingEnabled = false; g.fillStyle = palette.cabinet; g.fillRect(0, 0, g.canvas.width, g.canvas.height); });
+  // Top HUD strip.
+  panel(top, 0, 0, 400, 22);
+  spr(top, "fx/coin", 4, 4); text(top, "$1,284.50", 20, 7, palette.gold);
+  text(top, "GOAL $3,000", 120, 7, palette.cream);
+  spr(top, "ui/timer", 236, 4); text(top, "1:42", 252, 7, palette.cyan);
+  for (let n = 0; n < 5; n++) spr(top, "ui/flame", 296 + n * 13, 3, n < 3 ? n % 3 : 0).id;
+  top.fillStyle = palette.panelHi; top.fillRect(0, 22, 400, 3); top.fillStyle = palette.gold; top.fillRect(0, 22, 172, 3);
+  const scene = {
+    plinko() {
+      for (let r = 0; r < 7; r++) for (let c = 0; c < 9 - (r % 2); c++) spr(top, "ui/peg", 130 + c * 18 + (r % 2) * 9, 40 + r * 22);
+      spr(top, "ui/ball", 196, 92);
+      ["0X", ".5X", "1X", "2X", "5X"].forEach((t, n) => { panel(top, 122 + n * 32, 202, 30, 18, n === 4 ? palette.gold : palette.panel); text(top, t, 128 + n * 32, 208, n === 4 ? palette.ink : palette.cream); });
+      spr(top, "words/bigwin", 140, 160);
+    },
+    roulette() { spr(top, "icons/roulette", 168, 60); top.save(); top.scale(4, 4); top.drawImage(images["icons/roulette"], 42, 12); top.restore(); text(top, "17 RED", 176, 200, palette.redLight, 2); },
+    crash() {
+      top.strokeStyle = palette.cyan; top.lineWidth = 2; top.beginPath(); top.moveTo(20, 220); top.quadraticCurveTo(250, 210, 330, 70); top.stroke();
+      spr(top, "crash/rocket", 322, 46, 1); text(top, "3.42X", 150, 60, palette.green, 4);
+    },
+    blackjack() {
+      top.fillStyle = palette.felt; top.fillRect(0, 25, 400, 215);
+      ["K-spade", "back"].forEach((c, n) => spr(top, "cards/" + c, 150 + n * 34, 40));
+      ["A-heart", "9-club", "Q-diamond"].forEach((c, n) => spr(top, "cards/" + c, 130 + n * 34, 150));
+      text(top, "DEALER ?", 150, 30); text(top, "YOU 20", 130, 140); spr(top, "words/blackjack", 230, 110);
+    },
+    river() {
+      for (let l = 0; l < 5; l++) { top.fillStyle = l % 2 ? palette.blue : palette.blueDark; top.fillRect(0, 50 + l * 32, 400, 32); }
+      top.fillStyle = palette.green; top.fillRect(0, 25, 400, 25); top.fillRect(0, 210, 400, 30);
+      ["log", "croc", "boat", "canoe", "log"].forEach((h, l) => spr(top, "river/" + h, 40 + ((l * 97) % 300), 58 + l * 32));
+      spr(top, "river/elephant", 188, 212); text(top, "LANE 2  X1.67", 10, 30, palette.ink);
+    },
+    horse() {
+      for (let l = 0; l < 4; l++) { top.fillStyle = l % 2 ? palette.felt : palette.greenDark; top.fillRect(0, 40 + l * 46, 400, 46); spr(top, `horse/horse-${l}`, 60 + l * 50, 52 + l * 46, l % 2); }
+      top.fillStyle = palette.cream; for (let y = 40; y < 224; y += 8) top.fillRect(360, y, 6, 4);
+    },
+  };
+  scene[game]();
+  // Bottom: touch controls + inventory.
+  panel(bot, 0, 0, 320, 26); text(bot, "BET $25", 8, 9, palette.gold);
+  bot.fillStyle = palette.panelHi; bot.fillRect(80, 11, 160, 4); bot.fillStyle = palette.gold; bot.fillRect(80, 11, 40, 4); spr(bot, "ui/ball", 116, 8);
+  text(bot, "MAX $1,284", 248, 9, palette.purpleLight);
+  const labels = { plinko: ["DROP (A)"], roulette: ["RED", "BLACK", "GREEN", "SPIN (A)"], crash: ["START (A)", "CASH OUT (B)"], blackjack: ["DEAL (A)", "HIT (X)", "STAND (B)"], river: ["START (A)", "STEP (X)", "CASH (B)"], horse: ["DINGO", "VAS", "HISTERBLUE", "THE HORSE", "RACE (A)"] }[game];
+  labels.forEach((l, n) => { const w = Math.floor(304 / labels.length); panel(bot, 8 + n * w, 36, w - 4, 34, n === labels.length - 1 ? palette.gold : palette.panel); text(bot, l, 12 + n * w, 49, n === labels.length - 1 ? palette.ink : palette.cream); });
+  panel(bot, 0, 80, 320, 112); text(bot, "ITEMS", 8, 86, palette.cyan);
+  ["weightedBall", "luckyMatch", "heatShield", "greaseFire", "timeBottle", "goldenHorseshoe", "rouletteMagnet", "filthTea"].forEach((id, n) => { panel(bot, 8 + (n % 4) * 76, 98 + Math.floor(n / 4) * 46, 72, 42); spr(bot, "items/" + id, 12 + (n % 4) * 76, 110 + Math.floor(n / 4) * 46); text(bot, "X" + ((n % 3) + 1), 36 + (n % 4) * 76, 116 + Math.floor(n / 4) * 46); });
+  ["PLNK", "ROUL", "CRSH", "BJ", "RIVR", "HRSE", "SHOP"].forEach((t, n) => { panel(bot, n * 45 + 2, 200, 43, 38, ["plinko", "roulette", "crash", "blackjack", "river", "horse", "shop"][n] === game ? palette.gold : palette.panel); text(bot, t, n * 45 + 6, 214, ["plinko", "roulette", "crash", "blackjack", "river", "horse", "shop"][n] === game ? palette.ink : palette.cream); });
+}
+
+function render() { TABS[state.tab](); }
+document.querySelectorAll("header [data-tab]").forEach((b) => (b.onclick = () => {
+  document.querySelectorAll("header [data-tab]").forEach((x) => x.classList.toggle("on", x === b));
+  state.tab = b.dataset.tab; detail.style.display = "none"; render();
+}));
+render();
+window.__studio = { manifest, validateSprite };
+</script>
+</body>
+</html>

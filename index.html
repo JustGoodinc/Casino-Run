@@ -13,18 +13,24 @@
   <meta name="apple-mobile-web-app-title" content="Casino Run" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 
-  <link rel="stylesheet" href="./style.css?v=20" />
+  <link rel="stylesheet" href="./style.css?v=25" />
+  <link rel="stylesheet" href="./theme-cabinet.css?v=25" />
+  <link rel="preload" href="./assets/fonts/casino-run-pixel.ttf" as="font" type="font/ttf" crossorigin />
 </head>
 <body>
 
   <div id="title-screen" class="title-screen">
     <div class="title-card">
-      <h1 class="casino-logo">Casino R<span class="dev-u" title="Dev secret">u</span>n</h1>
+      <h1 class="title-logo" aria-label="Casino Run">
+        <img src="assets/sprites/ui/logo.png" alt="" draggable="false" />
+        <span class="dev-u" title="Dev secret">u</span>
+      </h1>
       <p>Make the goal before time runs out.</p>
       <p class="title-subtext">Win big. Risk more. Cash out before it all disappears.</p>
 
       <button id="play-btn" class="play-btn">PLAY</button>
       <button id="how-to-play-btn" class="how-to-play-btn" type="button">HOW TO PLAY</button>
+      <button class="how-to-play-btn open-settings-btn" type="button">SETTINGS</button>
     </div>
   </div>
 
@@ -51,7 +57,7 @@
       <div class="help-pages">
         <section class="help-page active" data-help-page="basics">
           <div class="help-hero-card">
-            <div class="help-big-icon">🎰</div>
+            <div class="help-big-icon"><img class="sprite" src="assets/sprites/fx/coin.png" alt="" /></div>
             <div>
               <h3>Core Objective</h3>
               <p>Start with a balance, choose casino games, win money, use items, and reach the target goal before going broke or running out of time.</p>
@@ -61,12 +67,12 @@
 
           <div class="help-grid two">
             <div class="help-mini-card">
-              <span>💰</span>
+              <img class="sprite" src="assets/sprites/fx/chip-gold.png" alt="" />
               <h4>Cash Out</h4>
               <p>When you hit the goal, you can cash out and save your score to the leaderboard.</p>
             </div>
             <div class="help-mini-card">
-              <span>🔥</span>
+              <img class="sprite" src="assets/sprites/ui/flame.png" style="object-fit:cover;object-position:0 0;width:11px;height:14px" alt="" />
               <h4>Keep Going</h4>
               <p>Risk your winnings for a bigger goal, better items, and a higher final balance.</p>
             </div>
@@ -88,18 +94,18 @@
           </div>
 
           <div class="help-game-list">
-            <div class="help-game-card"><b>🟡 Plinko</b><p>Drop a ball through pegs. Win based on the slot multiplier. Lose if it lands on 0x. Affected by Weighted Ball and RoseKat’s Magnum Opus.</p></div>
-            <div class="help-game-card"><b>🎡 Roulette</b><p>Pick red, black, or green, then spin. Match the color to win. Roulette Magnet and EJM’s Record Vinyl help here.</p></div>
-            <div class="help-game-card"><b>🚀 Crash</b><p>Start the rocket multiplier and cash out before it crashes. Wait too long and you lose the bet.</p></div>
-            <div class="help-game-card"><b>🃏 Blackjack</b><p>Beat the dealer without going over 21. Hit, stand, and use card-related items like Dealer’s Peek Card or Thottie’s Jester Hat.</p></div>
-            <div class="help-game-card"><b>🐘 Elephant River</b><p>Move the elephant forward across river lanes. Cash out or risk another step. Pool Floaties reduce danger.</p></div>
-            <div class="help-game-card"><b>🐎 Horse Race</b><p>Pick a horse and watch the race. If your horse wins, you get a big payout. Golden Horseshoe boosts payout.</p></div>
+            <div class="help-game-card"><b><img class="sprite" src="assets/sprites/icons/plinko.png" alt="" /> Plinko</b><p>Drop a ball through pegs. Win based on the slot multiplier. Lose if it lands on 0x. Affected by Weighted Ball and RoseKat’s Magnum Opus.</p></div>
+            <div class="help-game-card"><b><img class="sprite" src="assets/sprites/icons/roulette.png" alt="" /> Roulette</b><p>Pick red, black, or green, then spin. Match the color to win. Roulette Magnet (Red/Black only) and EJM’s Record Vinyl help here.</p></div>
+            <div class="help-game-card"><b><img class="sprite" src="assets/sprites/icons/crash.png" alt="" /> Crash</b><p>Start the rocket multiplier and cash out before it crashes. Wait too long and you lose the bet.</p></div>
+            <div class="help-game-card"><b><img class="sprite" src="assets/sprites/icons/blackjack.png" alt="" /> Blackjack</b><p>Beat the dealer without going over 21. Hit, stand, and use card-related items like Dealer’s Peek Card or Thottie’s Jester Hat.</p></div>
+            <div class="help-game-card"><b><img class="sprite" src="assets/sprites/icons/river.png" alt="" /> Elephant River</b><p>Move the elephant forward across river lanes. Cash out or risk another step. Pool Floaties reduce danger.</p></div>
+            <div class="help-game-card"><b><img class="sprite" src="assets/sprites/icons/horse.png" alt="" /> Horse Race</b><p>Pick a horse and watch the race. If your horse wins, you get a big payout. Golden Horseshoe boosts payout.</p></div>
           </div>
         </section>
 
         <section class="help-page" data-help-page="streak">
           <div class="help-hero-card">
-            <div class="help-big-icon">🔥</div>
+            <div class="help-big-icon"><img class="sprite" src="assets/sprites/ui/flame.png" style="object-fit:cover;object-position:0 0;width:11px;height:14px" alt="" /></div>
             <div>
               <h3>Hot Streak</h3>
               <p>Wins increase your streak. Losses break it unless an item protects it. Streak bonuses apply only to positive profit from a win, not refunds, break-even results, or your whole balance.</p>
@@ -116,8 +122,8 @@
           </div>
 
           <div class="help-grid two">
-            <div class="help-mini-card"><span>✅</span><h4>Example Win</h4><p>Win $100 profit at streak 3. Hot Streak adds +20%, so you gain a $20 streak bonus.</p></div>
-            <div class="help-mini-card"><span>🛡️</span><h4>Example Save</h4><p>Lose at streak 5 with Heat Shield. Your streak becomes 4 instead of resetting to 0.</p></div>
+            <div class="help-mini-card"><img class="sprite" src="assets/sprites/fx/star.png" alt="" /><h4>Example Win</h4><p>Win $100 profit at streak 3. Hot Streak adds +20%, so you gain a $20 streak bonus.</p></div>
+            <div class="help-mini-card"><img class="sprite" src="assets/sprites/items/heatShield.png" alt="" /><h4>Example Save</h4><p>Lose at streak 5 with Heat Shield. Your streak becomes 4 instead of resetting to 0.</p></div>
           </div>
         </section>
 
@@ -127,21 +133,13 @@
             <p>Items can be general, game-specific, passive, timed, or consumed. Many break after use with an animation.</p>
           </div>
 
-          <div class="help-item-gallery">
-            <div class="help-item-card"><span>🔥</span><b>Lucky Match</b><p>Protects your streak from breaking one time.</p></div>
-            <div class="help-item-card"><span>🛡️</span><b>Heat Shield</b><p>A loss lowers streak by 1 instead of resetting it.</p></div>
-            <div class="help-item-card"><span>🍳</span><b>Grease Fire</b><p>Next win triples Hot Streak bonus. Next loss burns 25% of current balance.</p></div>
-            <div class="help-item-card"><span>🍵</span><b>Filth-Tea</b><p>Refunds a random consumed item from the current run.</p></div>
-            <div class="help-item-card"><span>⚪</span><b>Weighted Ball</b><p>Queues future weighted Plinko rolls. Multiple uses stack as multiple pending rolls.</p></div>
-            <div class="help-item-card"><span>🖼️</span><b>RoseKat’s Magnum Opus</b><p>For winning Plinko drops, adds 4x the profit as bonus money after the final multiplier is known.</p></div>
-            <div class="help-item-card"><span>🌺</span><b>Lucky Hula Girl</b><p>Passive item. Adds extra profit to wins and stacks with copies.</p></div>
-            <div class="help-item-card"><span>💿</span><b>EJM’s Record Vinyl</b><p>Gives a free Roulette spin at max bet.</p></div>
-          </div>
+          <!-- Generated from shopItemData in script.js (renderHelpItemGallery) so it never drifts from the real catalog. -->
+          <div class="help-item-gallery" id="help-item-gallery"></div>
         </section>
 
         <section class="help-page" data-help-page="inventory">
           <div class="help-hero-card">
-            <div class="help-big-icon">🎒</div>
+            <div class="help-big-icon"><img class="sprite" src="assets/sprites/ui/bag.png" alt="" /></div>
             <div>
               <h3>Inventory Bag</h3>
               <p>Tap the bag to collapse or expand your inventory. Collapsed mode saves space on mobile.</p>
@@ -149,12 +147,12 @@
           </div>
 
           <div class="help-grid two">
-            <div class="help-mini-card"><span>👀</span><h4>Filtered View</h4><p>Only items relevant to the current game are shown. General items still appear everywhere.</p></div>
-            <div class="help-mini-card"><span>🔒</span><h4>Hidden ≠ Lost</h4><p>Items hidden by the filter are still in your inventory. Switch games to see relevant items.</p></div>
+            <div class="help-mini-card"><img class="sprite" src="assets/sprites/items/dealerPeek.png" alt="" /><h4>Filtered View</h4><p>Only items relevant to the current game are shown. General items still appear everywhere.</p></div>
+            <div class="help-mini-card"><img class="sprite" src="assets/sprites/ui/bag.png" alt="" /><h4>Hidden Is Not Lost</h4><p>Items hidden by the filter are still in your inventory. Switch games to see relevant items.</p></div>
           </div>
 
           <div class="help-mini-card wide">
-            <span>🏆</span>
+            <img class="sprite" src="assets/sprites/fx/star.png" alt="" />
             <h4>End Summary</h4>
             <p>At cash out or game over, review your graph, favorite game, most lost game, time played, best streak, Hot Streak bonus earned, and scroll through your run history.</p>
           </div>
@@ -176,7 +174,7 @@
 
     <div id="inventory-sidebar" class="inventory-sidebar inventory-collapsed">
       <button id="inventory-bag-toggle" class="inventory-bag-toggle" type="button">
-        <span id="inventory-bag-label">🎒 Items</span>
+        <span id="inventory-bag-label">ITEMS</span>
         <span id="inventory-bag-count">0</span>
       </button>
       <div id="inventory-icons" class="inventory-icons"></div>
@@ -185,21 +183,22 @@
 
     <h1 class="casino-logo">Casino R<span class="dev-u" title="Dev secret">u</span>n</h1>
 
-    <div class="stats">
-      <p id="balance">Balance: $100.00</p>
-      <p id="goal">Goal: $300</p>
-      <p id="timer">Time: 120</p>
-      <p id="streak-text" class="streak-text">🔥 Streak: 0 | Bonus: +0%</p>
+    <div class="stats hud">
+      <div class="hud-money"><img class="sprite" src="assets/sprites/fx/coin.png" alt="" /><p id="balance" aria-label="Balance">$100.00</p></div>
+      <div class="hud-timer"><img class="sprite" src="assets/sprites/ui/timer.png" alt="" /><p id="timer" aria-label="Time left">2:00</p></div>
+      <div class="hud-goal"><p id="goal">GOAL $300</p><div class="goal-bar" aria-hidden="true"><i id="goal-bar-fill"></i></div></div>
+      <div class="hud-streak"><div id="streak-pips" class="streak-pips" aria-hidden="true"></div><p id="streak-text" class="streak-text">Streak: 0 | Bonus: +0%</p>
+        <button class="settings-btn open-settings-btn" type="button" aria-label="Settings">SET</button></div>
     </div>
 
     <div class="nav">
-      <button class="nav-btn active" data-screen="plinko-screen">Plinko</button>
-      <button class="nav-btn" data-screen="roulette-screen">Roulette</button>
-      <button class="nav-btn" data-screen="crash-screen">Crash</button>
-      <button class="nav-btn" data-screen="blackjack-screen">Blackjack</button>
-      <button class="nav-btn" data-screen="frog-screen">Elephant River</button>
-      <button class="nav-btn" data-screen="horse-screen">Horse Race</button>
-      <button class="nav-btn shop-nav-btn" data-screen="shop-screen">Shop</button>
+      <button class="nav-btn active" data-screen="plinko-screen"><img class="sprite" src="assets/sprites/icons/plinko.png" alt="" />PLINKO</button>
+      <button class="nav-btn" data-screen="roulette-screen"><img class="sprite" src="assets/sprites/icons/roulette.png" alt="" />ROULETTE</button>
+      <button class="nav-btn" data-screen="crash-screen"><img class="sprite" src="assets/sprites/icons/crash.png" alt="" />CRASH</button>
+      <button class="nav-btn" data-screen="blackjack-screen"><img class="sprite" src="assets/sprites/icons/blackjack.png" alt="" />BLACKJACK</button>
+      <button class="nav-btn" data-screen="frog-screen"><img class="sprite" src="assets/sprites/icons/river.png" alt="" />RIVER</button>
+      <button class="nav-btn" data-screen="horse-screen"><img class="sprite" src="assets/sprites/icons/horse.png" alt="" />HORSES</button>
+      <button class="nav-btn shop-nav-btn" data-screen="shop-screen"><img class="sprite" src="assets/sprites/icons/shop.png" alt="" />SHOP</button>
     </div>
 
     <div id="plinko-screen" class="screen active-screen">
@@ -357,30 +356,30 @@
         <div class="frog-road elephant-river">
           <div class="frog-lane">
             <div class="lane-line river-line"></div>
-            <div class="car car-a">🪵</div>
+            <div class="car car-a"><img class="sprite" src="assets/sprites/river/log.png" alt="" /></div>
           </div>
 
           <div class="frog-lane">
             <div class="lane-line river-line"></div>
-            <div class="car car-b">🐊</div>
+            <div class="car car-b"><img class="sprite" src="assets/sprites/river/croc.png" alt="" style="transform:scaleX(-1)" /></div>
           </div>
 
           <div class="frog-lane">
             <div class="lane-line river-line"></div>
-            <div class="car car-c">🚤</div>
+            <div class="car car-c"><img class="sprite" src="assets/sprites/river/boat.png" alt="" /></div>
           </div>
 
           <div class="frog-lane">
             <div class="lane-line river-line"></div>
-            <div class="car car-d">🛶</div>
+            <div class="car car-d"><img class="sprite" src="assets/sprites/river/canoe.png" alt="" style="transform:scaleX(-1)" /></div>
           </div>
 
           <div class="frog-lane">
             <div class="lane-line river-line"></div>
-            <div class="car car-e">🪵</div>
+            <div class="car car-e"><img class="sprite" src="assets/sprites/river/log.png" alt="" /></div>
           </div>
 
-          <div id="frog-player" class="frog-player elephant-player">🐘</div>
+          <div id="frog-player" class="frog-player elephant-player" role="img" aria-label="Pink elephant"></div>
         </div>
 
         <div class="frog-start-zone elephant-shore-bottom">RIVERBANK</div>
@@ -429,22 +428,22 @@
 
         <div class="horse-track-lane">
           <span class="lane-number">Dingo</span>
-          <div id="horse-0" class="horse-runner">🐎</div>
+          <div id="horse-0" class="horse-runner"></div>
         </div>
 
         <div class="horse-track-lane">
           <span class="lane-number">Vas</span>
-          <div id="horse-1" class="horse-runner">🐎</div>
+          <div id="horse-1" class="horse-runner"></div>
         </div>
 
         <div class="horse-track-lane">
           <span class="lane-number">HisterBlue</span>
-          <div id="horse-2" class="horse-runner">🐎</div>
+          <div id="horse-2" class="horse-runner"></div>
         </div>
 
         <div class="horse-track-lane">
           <span class="lane-number">The Horse</span>
-          <div id="horse-3" class="horse-runner">🐎</div>
+          <div id="horse-3" class="horse-runner"></div>
         </div>
       </div>
 
@@ -515,6 +514,7 @@
       <input id="player-name-input" class="name-input" type="text" maxlength="12" placeholder="Your name" />
 
       <button id="submit-score-btn" class="submit-score-btn">SUBMIT SCORE</button>
+      <button id="skip-score-btn" class="try-again-btn" type="button">SKIP — BACK TO TITLE</button>
     </div>
   </div>
 
@@ -574,7 +574,7 @@
     <div class="goal-popup-card item-popup-card">
       <div class="goal-popup-glow"></div>
 
-      <div id="item-popup-icon" class="item-popup-icon">🛒</div>
+      <div id="item-popup-icon" class="item-popup-icon"></div>
       <h2 id="item-popup-name">Item</h2>
       <p id="item-popup-type">Type</p>
       <p id="item-popup-description">Description</p>
@@ -606,7 +606,9 @@
     }
   </script>
 
-  <script src="./script.js?v=20"></script>
+  <script src="./audio.js?v=25"></script>
+  <script src="./fx.js?v=25"></script>
+  <script src="./script.js?v=25"></script>
 
 </body>
 </html>

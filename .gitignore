@@ -1,0 +1,3 @@
+tools/asset-validator/.cache/
+# Third-party reference screenshots (Balatro, Nubby's Number Factory) stay local: not ours to publish.
+docs/gauntlet/screenshots/reference/
