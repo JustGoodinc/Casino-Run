@@ -4278,7 +4278,7 @@ function startHorseRace() {
   horseBet = bet;
   horseRaceActive = true;
   horseRaceBusy = true;
-  horseWinner = R.randInt(4);
+  horseWinner = R.rollHorseWinner();
   horsePositions = [0, 0, 0, 0];
 
   horseRunners.forEach((horse) => {
@@ -4357,7 +4357,7 @@ function finishHorseRace() {
   horseRunners[horseWinner].classList.add("winner");
 
   if (horseWinner === selectedHorse) {
-    let multiplier = 4 + activeGoldenHorseshoe * 0.5;
+    let multiplier = R.horsePayout(activeGoldenHorseshoe);
     let payout = horseBet * multiplier;
 
     activeGoldenHorseshoe = 0;

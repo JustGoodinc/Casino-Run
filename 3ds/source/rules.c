@@ -55,6 +55,9 @@ double cr_roulette_payout(int bet_color, int n) {
   return cr_roulette_color(n) != bet_color ? 0 : bet_color == CR_GREEN ? 14 : 2;
 }
 
+int cr_roll_horse_winner(cr_rng *r) { return cr_rand_int(r, 4); }
+double cr_horse_payout(int horseshoes) { return 4 + horseshoes * 0.5; }
+
 double cr_crash_multiplier_at(double seconds) { return 1 + seconds * seconds * 0.55; }
 
 double cr_crash_point(cr_rng *r) {

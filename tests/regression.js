@@ -96,6 +96,7 @@
       JSON.stringify({ lr, sb }));
     check("Roulette payout table", Rr.roulettePayout("red", 1) === 2 && Rr.roulettePayout("black", 2) === 2
       && Rr.roulettePayout("green", 0) === 14 && Rr.roulettePayout("red", 2) === 0 && Rr.roulettePayout("black", 0) === 0);
+    check("Horse payout", Rr.horsePayout() === 4 && Rr.horsePayout(2) === 5);
     check("Crash climb curve", Rr.crashMultiplierAt(0) === 1 && Math.abs(Rr.crashMultiplierAt(2) - 3.2) < 1e-12);
     check("Run state priority", Rr.runState(0, 500, 300) === "timeout" && Rr.runState(5, 300, 300) === "goal"
       && Rr.runState(5, 0.5, 300) === "broke" && Rr.runState(5, 1, 300) === "play");

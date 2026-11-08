@@ -41,6 +41,10 @@ CR.rules = (() => {
   // Colour bet return multiplier (stake included): red/black 2x, green 14x, miss 0.
   const roulettePayout = (betColor, n) => (getRouletteColor(n) !== betColor ? 0 : betColor === "green" ? 14 : 2);
 
+  // Horse Race: 4 horses, uniform winner; the pick pays 4x (+0.5x per Golden Horseshoe).
+  const rollHorseWinner = () => randInt(4);
+  const horsePayout = (horseshoes = 0) => 4 + horseshoes * 0.5;
+
   // Crash: P(crash point > m) = 0.96 / m, capped at 100x.
   const generateCrashPoint = () => Math.min(100, Math.max(1, 0.96 / (1 - rand())));
   const crashMultiplierAt = (seconds) => 1 + seconds * seconds * 0.55; // the climb shown while flying
@@ -113,7 +117,7 @@ CR.rules = (() => {
     seed: (n) => { seeded = n == null ? null : mulberry32(n >>> 0); },
     rand, randInt, shuffle, pick,
     plinkoMultipliers, plinkoSlotOdds, rollPlinkoSlot,
-    redNumbers, getRouletteColor, getRandomRouletteNumberForColor, rollRoulette, roulettePayout,
+    redNumbers, getRouletteColor, getRandomRouletteNumberForColor, rollRoulette, roulettePayout, rollHorseWinner, horsePayout,
     generateCrashPoint, crashMultiplierAt,
     getFrogBaseCrashChance, getFrogMultiplier,
     shuffledDeck, getCardValue, getHandValue, isBlackjack,

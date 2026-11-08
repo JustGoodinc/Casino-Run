@@ -22,6 +22,9 @@ int    cr_roulette_color(int n);
 int    cr_random_roulette_number_for_color(cr_rng *r, int color);
 int    cr_roll_roulette(cr_rng *r, int magnet_color);
 double cr_roulette_payout(int bet_color, int n); // stake included: red/black 2, green 14, miss 0
+// Horse Race: uniform winner of 4; the pick pays 4x (+0.5x per Golden Horseshoe)
+int    cr_roll_horse_winner(cr_rng *r);
+double cr_horse_payout(int horseshoes);
 // Crash
 double cr_crash_point(cr_rng *r);
 double cr_crash_multiplier_at(double seconds); // climb shown while flying

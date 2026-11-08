@@ -72,10 +72,10 @@ static void draw(C2D_Image img, float x, float y, float depth) { C2D_DrawImageAt
 
 static float slotX(int slot) { return 40 + (slot + 0.5f) * (TOP_W - 80) / 5.0f; }
 
-enum { GAME_PLINKO, GAME_CRASH, GAME_RIVER, GAME_ROULETTE, GAME_COUNT };
-static const char *GAME_NAME[GAME_COUNT] = { "PLINKO", "CRASH", "ELEPHANT RIVER", "ROULETTE" };
+enum { GAME_PLINKO, GAME_CRASH, GAME_RIVER, GAME_ROULETTE, GAME_HORSE, GAME_COUNT };
+static const char *GAME_NAME[GAME_COUNT] = { "PLINKO", "CRASH", "ELEPHANT RIVER", "ROULETTE", "HORSE RACE" };
 static const char *GAME_HELP[GAME_COUNT] = { "A DROP  UP/DOWN BET  SELECT GAME", "A LAUNCH/CASH OUT  UP/DOWN BET  SELECT GAME",
-  "A START/STEP  B CASH OUT  SELECT GAME", "A SPIN  LEFT/RIGHT COLOUR  UP/DOWN BET" };
+  "A START/STEP  B CASH OUT  SELECT GAME", "A SPIN  LEFT/RIGHT COLOUR  UP/DOWN BET", "A RACE  LEFT/RIGHT HORSE  UP/DOWN BET" };
 
 typedef struct {
   double balance, goal;
@@ -85,6 +85,8 @@ typedef struct {
   // Roulette: spin = frames left; colour = bet colour (CR_RED/CR_BLACK/CR_GREEN); result -1 = none yet
   int spin, colour, result;
   float angle, angleFrom, angleTo;
+  // Horse Race: race = frames run so far (0 = idle), pick = chosen horse, winner -1 = none yet
+  int race, pick, winner;
   // Plinko
   int dropping, target, lastSlot;
   float ballX, ballY;
@@ -100,7 +102,7 @@ static void settle(state *s, double win) {
   if (s->balance >= s->goal) s->goal = cr_next_goal(s->balance);
 }
 
-static int busy(const state *s) { return s->dropping || s->flying || s->crossing || s->spin; }
+static int busy(const state *s) { return s->dropping || s->flying || s->crossing || s->spin || s->race; }
 
 // ---------- Elephant River ----------
 #define HOP_FRAMES 31 /* ~0.52 s, like the web hop */
@@ -329,6 +331,65 @@ static void drawRoulette(const state *s) {
   text(TOP_W - 8 - cw, 8, 2, 0xFFCEF0FF, c);
 }
 
+// ---------- Horse Race ----------
+#define RACE_FRAMES 252 /* 4.2 s, like the web race */
+static const char *HORSE_NAME[4] = { "DINGO", "VAS", "HISTERBLUE", "THE HORSE" };
+
+static void updateHorse(state *s, cr_rng *rng, u32 down) {
+  if (!s->race) {
+    if (down & KEY_RIGHT) s->pick = (s->pick + 1) % 4;
+    if (down & KEY_LEFT) s->pick = (s->pick + 3) % 4;
+    if (down & KEY_A && s->balance >= s->bet) {
+      s->balance -= s->bet;
+      s->winner = cr_roll_horse_winner(rng); // decided up front; the race animates toward it
+      s->race = 1; s->mood = 0;
+    }
+    return;
+  }
+  if (++s->race > RACE_FRAMES + 30) { // short hold at the line, then settle
+    s->race = 0;
+    settle(s, s->winner == s->pick ? s->bet * cr_horse_payout(0) : 0);
+  }
+}
+
+// Same visual progress curve as the web race: everyone wobbles forward, the winner gets a boost
+// and reaches the line; the rest stop short of it.
+static float horseProgress(int i, int winner, int frames) {
+  float p = fminf(frames / (float)RACE_FRAMES, 1);
+  float base = p * (0.78f + i * 0.025f + (i == winner ? 0.18f : 0)) + sinf(p * 3.1415927f * 5 + i) * 0.035f;
+  if (i == winner) base = p >= 1 ? 1 : fminf(p * 1.08f + 0.03f, 1);
+  else if (p >= 1) base = fminf(base, 0.86f - i * 0.01f);
+  return fmaxf(0, fminf(base, 1));
+}
+
+static void drawHorse(const state *s) {
+  C2D_Image turf = C2D_SpriteSheetGetImage(sheet, sprites_turf_idx);
+  for (int y = 0; y < SCREEN_H; y += 32)
+    for (int x = 0; x < TOP_W; x += 32) draw(turf, x, y, 0);
+  for (int c = 0; c < 22; c++) // chequered finish line
+    for (int k = 0; k < 2; k++) C2D_DrawRectSolid(352 + k * 6, 30 + c * 9, 0.05f, 6, 9, ((c + k) & 1) ? 0xFF170C0E : 0xFFFFFFFF);
+  static const int HORSE_IDX[4] = { sprites_horse_0_idx, sprites_horse_1_idx, sprites_horse_2_idx, sprites_horse_3_idx };
+  int done = s->race > RACE_FRAMES || (!s->race && s->winner >= 0);
+  for (int i = 0; i < 4; i++) {
+    float ly = 38 + i * 48;
+    C2D_DrawLine(0, ly + 44, 0x60FFFFFF, TOP_W, ly + 44, 0x60FFFFFF, 1, 0.06f); // lane rail
+    float prog = s->race ? horseProgress(i, s->winner, s->race) : (s->winner >= 0 ? horseProgress(i, s->winner, RACE_FRAMES) : 0);
+    Tex3DS_SubTexture sub;
+    int f = s->race && s->race <= RACE_FRAMES ? (s->tick / 5) & 3 : 0;
+    C2D_DrawImageAt(frame(HORSE_IDX[i], f, 4, &sub), floorf(8 + prog * 300), ly, 0.2f, NULL, 2, 2);
+    u32 nameCol = done && i == s->winner ? 0xFF4EC3F4 : i == s->pick ? 0xFFFFFFFF : 0xFFCEF0FF;
+    text(6, ly - 8, 1, nameCol, HORSE_NAME[i]);
+    if (i == s->pick) C2D_DrawTriangle(textW(HORSE_NAME[i], 1) + 10, ly - 8, 0xFF4EC3F4, textW(HORSE_NAME[i], 1) + 10, ly, 0xFF4EC3F4,
+                                       textW(HORSE_NAME[i], 1) + 16, ly - 4, 0xFF4EC3F4, 0.3f); // pick marker
+  }
+  char m[48];
+  if (done) snprintf(m, sizeof m, "%s WINS!", HORSE_NAME[s->winner]);
+  else if (s->race) snprintf(m, sizeof m, "AND THEY ARE OFF!");
+  else snprintf(m, sizeof m, "PICK A HORSE  PAYS %gX", cr_horse_payout(0));
+  C2D_DrawRectSolid(0, 0, 0.4f, TOP_W, 22, 0xFF170C0E);
+  text((TOP_W - textW(m, 2)) / 2.0f, 3, 2, done && s->winner == s->pick ? 0xFF4EC3F4 : 0xFFCEF0FF, m);
+}
+
 int main(void) {
   romfsInit();
   gfxInitDefault();
@@ -344,7 +405,7 @@ int main(void) {
 
   cr_rng rng;
   cr_seed(&rng, (u32)osGetTime());
-  state s = { .balance = CR_START_BALANCE, .goal = CR_START_GOAL, .bet = 10, .lastSlot = -1, .mult = 1, .colour = CR_RED, .result = -1 };
+  state s = { .balance = CR_START_BALANCE, .goal = CR_START_GOAL, .bet = 10, .lastSlot = -1, .mult = 1, .colour = CR_RED, .result = -1, .winner = -1 };
   Tex3DS_SubTexture hostSub;
 
   while (aptMainLoop()) {
@@ -361,7 +422,8 @@ int main(void) {
     if (s.game == GAME_PLINKO) updatePlinko(&s, &rng, down);
     else if (s.game == GAME_CRASH) updateCrash(&s, &rng, down);
     else if (s.game == GAME_RIVER) updateRiver(&s, &rng, down);
-    else updateRoulette(&s, &rng, down);
+    else if (s.game == GAME_ROULETTE) updateRoulette(&s, &rng, down);
+    else updateHorse(&s, &rng, down);
 
     C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
     C2D_TargetClear(top, C2D_Color32(0x19, 0x17, 0x27, 0xFF));
@@ -369,7 +431,8 @@ int main(void) {
     if (s.game == GAME_PLINKO) drawPlinko(&s);
     else if (s.game == GAME_CRASH) drawCrash(&s);
     else if (s.game == GAME_RIVER) drawRiver(&s);
-    else drawRoulette(&s);
+    else if (s.game == GAME_ROULETTE) drawRoulette(&s);
+    else drawHorse(&s);
 
     C2D_TargetClear(bottom, C2D_Color32(0x29, 0x26, 0x3A, 0xFF));
     C2D_SceneBegin(bottom);

@@ -205,3 +205,13 @@ Evidence: `screenshots/iter-18/`.
 **Verified in Azahar (60 FPS):** a spin landed on 4 black, between 19 and 21 as on a real wheel, with pointer and ball on 4; the red bet lost. After Right → black, a spin landed on 21 red and the black bet lost. Balances were exact.
 
 **Found → fixed:** the red "ON RED" label was unreadable on red velvet (`roulette-4-black-label-bug.png`). Both labels now sit on ink panels, with a colour swatch.
+
+## Iteration 20 (2026-11-08): Horse Race on 3DS
+
+**Rules:** `rollHorseWinner` (uniform of 4) and `horsePayout(horseshoes)` (4× + 0.5× per Golden Horseshoe) moved into `rules.js` / C; the web race uses both. Regression check "Horse payout" (27/27); C check 0 failures; vectors unchanged.
+
+**3DS:** the fifth game: turf tiles, 4 lanes with rails, a chequered finish line, the four jockey-silk horses on their 4-frame gallop at 2×. Left/Right picks the horse (gold marker); A runs a 4.2 s race. The winner is rolled first and the race animates toward it with the same progress curve as the web (wobble, a winner boost, losers stopping short). The winner's name turns gold.
+
+**Verified in Azahar (60 FPS):** picked Vas; mid-race gallop captured; Dingo won at the line; the bet was lost and Dice sweated.
+
+**Found → fixed:** the pixel font has no apostrophe, so "AND THEY'RE OFF!" would have rendered with a gap. Reworded to "AND THEY ARE OFF!".
