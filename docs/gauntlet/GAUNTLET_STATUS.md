@@ -6,7 +6,7 @@
 
 | Game | Art | UI/frame | Anim | Sound | Score FX | Special FX | Gameplay | Visual QA | Perf | 3DS |
 |---|---|---|---|---|---|---|---|---|---|---|
-| Plinko | ✅ pegs/ball/plate | ✅ | ✅ slot hit | ✅ 8 pegs + music | ✅ cascade | ✅ coins+sparkles at slot | ✅ | ✅ | ✅ | ◐ builds as .3dsx slice (not run) |
+| Plinko | ✅ pegs/ball/plate | ✅ | ✅ slot hit | ✅ 8 pegs + music | ✅ cascade | ✅ coins+sparkles at slot | ✅ | ✅ | ✅ | ✅ .3dsx slice runs in Azahar (it. 16) |
 | Roulette | ✅ bowl, hub, ball, pixel wheel in European order (it. 8) | ✅ | ✅ ball drop | ✅ ticks + tango | ✅ | ✅ chips | ✅ | ✅ 375px (it. 9) | ✅ | ◐ rules in C |
 | Crash | ✅ rocket, stars | ✅ | ✅ exhaust trail | ✅ boom + synth | ✅ | ✅ explosion | ✅ | ✅ | ✅ | ◐ rules in C |
 | Blackjack | ✅ 53 cards | ✅ | ✅ deal | ✅ jazz | ✅ | ✅ mini cards | ✅ | ✅ | ✅ | ◐ rules in C |
@@ -36,6 +36,7 @@
 | 13 | First `.3dsx` build: Plinko slice (stage 3) | builds clean, not run (b290efb) |
 | 14 | Pixel font on 3DS (web glyph atlas) | builds clean, not run (cc48a88) |
 | 15 | Run state into rules.js + rules.c; stage 1 complete | 24/24, C 0 failures (ea4be05) |
+| 16 | First emulator run (Azahar); 1x text fix | 60 FPS, controls verified (497b0a9) |
 
 ## Next priorities
 
